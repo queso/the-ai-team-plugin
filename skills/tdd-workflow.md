@@ -1,0 +1,176 @@
+# TDD Workflow Skill
+
+Test-Driven Development guidance for the A(i)-Team.
+
+## The TDD Cycle
+
+```
+   ┌─────────────────────────────────────────┐
+   │                                         │
+   │    RED → GREEN → REFACTOR → REPEAT      │
+   │                                         │
+   └─────────────────────────────────────────┘
+```
+
+### 1. RED - Write a Failing Test
+
+**Murdock's domain.**
+
+- Write a test that describes the desired behavior
+- The test MUST fail (no implementation exists)
+- The failure should be for the RIGHT reason (missing code, not syntax error)
+
+```typescript
+it('should return user by ID', () => {
+  const user = userService.getById('123');
+  expect(user.id).toBe('123');
+  expect(user.name).toBeDefined();
+});
+// FAILS: userService.getById is not defined
+```
+
+### 2. GREEN - Make It Pass
+
+**B.A.'s domain.**
+
+- Write the MINIMUM code to make the test pass
+- Don't over-engineer
+- Don't add features not covered by tests
+- Ugly is OK at this stage
+
+```typescript
+function getById(id: string): User {
+  return { id, name: 'Hardcoded' }; // Just enough to pass
+}
+// PASSES
+```
+
+### 3. REFACTOR - Improve the Code
+
+**B.A.'s domain (with Lynch watching).**
+
+- Clean up the implementation
+- Remove duplication
+- Improve naming
+- Tests MUST still pass after refactoring
+
+```typescript
+function getById(id: string): User {
+  return users.find(u => u.id === id) ?? notFound(id);
+}
+// STILL PASSES
+```
+
+### 4. REPEAT
+
+- Add the next test
+- Make it pass
+- Refactor
+- Continue until all acceptance criteria are met
+
+## Work Item Ordering
+
+The A(i)-Team enforces TDD through work item ordering:
+
+```
+001-user-types.md       (interface)  ← First: Define the contract
+010-user-tests.md       (test)       ← Second: Write tests against contract
+020-user-impl.md        (implementation) ← Third: Implement to pass tests
+```
+
+Dependencies ensure this order:
+- Tests depend on interfaces
+- Implementations depend on tests AND interfaces
+
+## Benefits of TDD in A(i)-Team
+
+### 1. Clear Acceptance Criteria
+Tests define "done" unambiguously. B.A. knows exactly what to build.
+
+### 2. Parallel Safety
+Tests and implementations can't conflict because tests come first.
+
+### 3. Quality Gate
+Lynch reviews against tests. If tests pass and match spec, it ships.
+
+### 4. Fearless Refactoring
+After tests pass, B.A. can improve code knowing tests catch regressions.
+
+## Test Types
+
+### Unit Tests
+- Test single functions/methods
+- Mock dependencies
+- Fast execution
+- High coverage
+
+### Integration Tests
+- Test component interactions
+- Minimal mocking
+- Verify wiring
+- Medium coverage
+
+### End-to-End Tests
+- Test full user flows
+- No mocking
+- Slow but comprehensive
+- Critical paths only
+
+## A(i)-Team Test Strategy
+
+```
+Murdock writes:
+├── Unit tests (most items)
+├── Integration tests (integration items)
+└── E2E tests (final integration items)
+
+Coverage target: 80%+
+```
+
+## Test Quality Checklist
+
+- [ ] Tests are independent (no shared state)
+- [ ] Tests are deterministic (no flaky tests)
+- [ ] Tests are fast (mock slow operations)
+- [ ] Tests are readable (clear arrange/act/assert)
+- [ ] Tests cover edge cases
+- [ ] Tests cover error paths
+- [ ] Tests document expected behavior
+
+## Anti-Patterns
+
+### Testing Implementation
+```typescript
+// BAD: Testing internal state
+expect(service._cache.size).toBe(1);
+
+// GOOD: Testing behavior
+expect(service.get('key')).toBe('value');
+```
+
+### Brittle Assertions
+```typescript
+// BAD: Exact error message
+expect(error.message).toBe('User not found with ID: 123');
+
+// GOOD: Error type
+expect(error).toBeInstanceOf(NotFoundError);
+```
+
+### Test Interdependence
+```typescript
+// BAD: Tests share state
+let user;
+it('creates user', () => { user = create(); });
+it('updates user', () => { update(user); }); // Depends on previous test
+
+// GOOD: Independent tests
+it('creates user', () => { const user = create(); expect(user).toBeDefined(); });
+it('updates user', () => { const user = create(); update(user); expect(...); });
+```
+
+## Murdock's Mantra
+
+> "Write the test first. Watch it fail. Then make it pass.
+> If you can't write a test for it, you don't understand it.
+> If you don't understand it, you shouldn't build it."

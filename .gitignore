@@ -1,0 +1,6 @@
+# Mission state is project-specific, not part of plugin
+mission/
+
+# OS files
+.DS_Store
+docs/kanban-ui-prd.md
