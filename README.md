@@ -19,6 +19,7 @@ A self-orchestrating Claude Code plugin that transforms a PRD into working, test
 | **Murdock** | QA Engineer | `qa-engineer` | Writes tests for critical paths. Move fast. |
 | **B.A.** | Implementer | `clean-code-architect` | Builds solid, reliable code. No jibber-jabber. |
 | **Lynch** | Reviewer | `code-review-expert` | Reviews tests + implementation together. |
+| **Amy** | Investigator | `bug-hunter` | Probes every feature for bugs beyond tests. |
 
 ## Installation
 
@@ -70,25 +71,26 @@ git submodule update --remote .claude/ai-team
 Each feature flows through stages sequentially:
 
 ```
-briefings → ready → testing → implementing → review → done
-                       ↑           ↑            ↑        │
-                    Murdock      B.A.        Lynch       │
-                                          (per-feature)  │
-                                                         ▼
-                                               ┌─────────────────┐
-                                               │  Final Review   │
-                                               │  (Lynch - all   │
-                                               │   code at once) │
-                                               └─────────────────┘
+briefings → ready → testing → implementing → review → probing → done
+                       ↑           ↑            ↑         ↑       │
+                    Murdock      B.A.        Lynch      Amy       │
+                                          (per-feature)           │
+                                                                  ▼
+                                                        ┌─────────────────┐
+                                                        │  Final Review   │
+                                                        │  (Lynch - all   │
+                                                        │   code at once) │
+                                                        └─────────────────┘
 ```
 
 **Stage transitions:**
 1. `ready → testing`: Murdock writes tests (and types if needed)
 2. `testing → implementing`: B.A. implements to pass tests
 3. `implementing → review`: Lynch reviews ALL outputs together
-4. `review → done`: Feature complete (or back to ready if rejected)
-5. `all done → final review`: Lynch reviews entire codebase holistically
-6. `final review → complete`: Mission complete (or items back to ready if rejected)
+4. `review → probing`: Amy probes for bugs beyond tests (APPROVED)
+5. `probing → done`: Feature complete (VERIFIED), or back to ready (FLAG)
+6. `all done → final review`: Lynch reviews entire codebase holistically
+7. `final review → complete`: Mission complete (or items back to ready if rejected)
 
 ## Pipeline Parallelism
 
@@ -139,11 +141,11 @@ This is achieved through:
 │  │                                                              │  │
 │  │  For each feature in pipeline:                               │  │
 │  │                                                              │  │
-│  │    ┌─────────┐     ┌─────────┐     ┌─────────┐              │  │
-│  │    │ Murdock │ ──▶ │  B.A.   │ ──▶ │  Lynch  │ ──▶ done    │  │
-│  │    │ (tests) │     │ (impl)  │     │(review) │              │  │
-│  │    └─────────┘     └─────────┘     └─────────┘              │  │
-│  │     subagent        subagent        subagent                │  │
+│  │    ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐  │  │
+│  │    │ Murdock │ ─▶│  B.A.   │ ─▶│  Lynch  │ ─▶│   Amy   │─▶done │
+│  │    │ (tests) │   │ (impl)  │   │(review) │   │(probing)│  │  │
+│  │    └─────────┘   └─────────┘   └─────────┘   └─────────┘  │  │
+│  │     subagent      subagent      subagent      subagent    │  │
 │  │                                                              │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │                                                                     │
@@ -152,7 +154,7 @@ This is achieved through:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key:** Hannibal runs in the main Claude context (visible to you), dispatching Murdock, B.A., and Lynch as subagents.
+**Key:** Hannibal runs in the main Claude context (visible to you), dispatching Murdock, B.A., Lynch, and Amy as subagents.
 
 ## Mission Directory Structure
 
@@ -165,6 +167,7 @@ mission/
 ├── testing/                 # Murdock writing tests
 ├── implementing/            # B.A. implementing
 ├── review/                  # Lynch reviewing
+├── probing/                 # Amy probing for bugs
 ├── done/                    # Completed features
 ├── blocked/                 # Needs human intervention
 └── archive/                 # Completed missions (optional)
@@ -208,10 +211,11 @@ Business logic, patterns, edge cases to consider.
 
 ### TDD Pipeline
 
-Each feature flows: **Murdock → B.A. → Lynch**
+Each feature flows: **Murdock → B.A. → Lynch → Amy**
 1. Murdock writes tests first (defines acceptance criteria)
 2. B.A. implements to pass those tests
 3. Lynch reviews tests + implementation together
+4. Amy probes for bugs that slip past tests
 
 ### Final Mission Review
 
@@ -278,7 +282,8 @@ ai-team/                     # Add as .claude/ai-team submodule
 │   ├── face.md              # Decomposer
 │   ├── murdock.md           # QA Engineer (qa-engineer)
 │   ├── ba.md                # Implementer (clean-code-architect)
-│   └── lynch.md             # Reviewer (code-review-expert)
+│   ├── lynch.md             # Reviewer (code-review-expert)
+│   └── amy.md               # Investigator (bug-hunter)
 ├── commands/
 │   ├── plan.md              # Initialize mission
 │   ├── run.md               # Execute mission
