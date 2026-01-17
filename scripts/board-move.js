@@ -95,12 +95,27 @@ async function main() {
       // Log activity
       await logActivity(MISSION_DIR, agent || 'Hannibal', `Feature ${itemId} → ${to}`);
 
+      // Check if final review is needed (all items in done)
+      let finalReviewReady = false;
+      if (to === 'done') {
+        const activeStages = ['briefings', 'ready', 'testing', 'implementing', 'review', 'blocked'];
+        const hasActiveItems = activeStages.some(stage =>
+          board.phases[stage] && board.phases[stage].length > 0
+        );
+        finalReviewReady = !hasActiveItems && board.phases.done && board.phases.done.length > 0;
+
+        if (finalReviewReady) {
+          await logActivity(MISSION_DIR, 'System', '🎯 All items complete - Final Mission Review ready');
+        }
+      }
+
       return {
         success: true,
         itemId,
         from,
         to,
         path: newPath,
+        finalReviewReady,
         timestamp: new Date().toISOString()
       };
     });

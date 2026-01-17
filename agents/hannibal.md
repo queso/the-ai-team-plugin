@@ -91,6 +91,7 @@ while items remain outside done/:
 
        For items in "review" with completed Lynch:
            → If APPROVED: release claim, move to done
+             **Check output for finalReviewReady: true → trigger Final Mission Review**
            → If REJECTED: echo '{"itemId":"001","reason":"..."}' | node .claude/ai-team/scripts/item-reject.js
              (script handles moving to ready or blocked based on rejection count)
 
@@ -103,8 +104,8 @@ while items remain outside done/:
            → Claim for Murdock: echo '{"itemId":"003","agent":"murdock","task_id":"..."}' | node .claude/ai-team/scripts/board-claim.js
            → Dispatch Murdock with the feature item
 
-    5. If ALL items in done/ AND final review not yet completed:
-           → Dispatch Lynch for FINAL MISSION REVIEW
+    5. When board-move.js returns `finalReviewReady: true`:
+           → Dispatch Lynch for FINAL MISSION REVIEW immediately
            → If FINAL APPROVED: Mission complete!
            → If FINAL REJECTED: Move rejected items back to ready/, continue loop
 
@@ -255,6 +256,19 @@ echo '{"itemId":"001"}' | node .claude/ai-team/scripts/board-release.js
 # 2. Move to done
 echo '{"itemId":"001","to":"done"}' | node .claude/ai-team/scripts/board-move.js
 ```
+
+**IMPORTANT:** Check the output of `board-move.js` for `finalReviewReady: true`:
+
+```json
+{
+  "success": true,
+  "itemId": "001",
+  "to": "done",
+  "finalReviewReady": true  // <-- When true, trigger Final Mission Review!
+}
+```
+
+When `finalReviewReady` is true, immediately dispatch Lynch for the Final Mission Review.
 
 ## Reading Board State
 

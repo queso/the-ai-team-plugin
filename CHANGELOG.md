@@ -5,6 +5,17 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-16
+
+### Changed
+
+- **`board-move.js`** - Now returns `finalReviewReady: true` when all items reach done
+  - Automatically logs "All items complete - Final Mission Review ready" to activity log
+  - Hannibal watches for this flag to trigger Final Mission Review
+- **`hannibal.md`** - Updated to check `finalReviewReady` flag after each move to done
+
+---
+
 ## [1.6.0] - 2026-01-16
 
 ### Added
