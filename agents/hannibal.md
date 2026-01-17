@@ -37,9 +37,9 @@ Main Claude (you, as Hannibal)
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `board-read.js` | Read board state | `node .claude/ai-team/scripts/board-read.js` |
-| `board-move.js` | Move item between stages | `echo '{"itemId":"001","to":"testing"}' \| node .claude/ai-team/scripts/board-move.js` |
-| `board-claim.js` | Assign agent to item | `echo '{"itemId":"001","agent":"murdock","task_id":"..."}' \| node .claude/ai-team/scripts/board-claim.js` |
-| `board-release.js` | Release agent claim | `echo '{"itemId":"001"}' \| node .claude/ai-team/scripts/board-release.js` |
+| `board-move.js` | Move item between stages | `echo '{"itemId":"001","to":"testing","agent":"murdock"}' \| node .claude/ai-team/scripts/board-move.js` |
+| `board-claim.js` | Manually assign agent (rarely needed) | `echo '{"itemId":"001","agent":"murdock"}' \| node .claude/ai-team/scripts/board-claim.js` |
+| `board-release.js` | Manually release claim (rarely needed) | `echo '{"itemId":"001"}' \| node .claude/ai-team/scripts/board-release.js` |
 | `item-reject.js` | Record rejection | `echo '{"itemId":"001","reason":"..."}' \| node .claude/ai-team/scripts/item-reject.js` |
 
 **Never manually edit board.json or use `mv` to move item files.** The scripts ensure:
@@ -54,9 +54,9 @@ Main Claude (you, as Hannibal)
 Each feature flows through stages sequentially:
 
 ```
-briefings → ready → testing → implementing → review → done
-                       ↑           ↑            ↑
-                    Murdock      B.A.        Lynch
+briefings → ready → testing → implementing → review → probing → done
+                       ↑           ↑            ↑         ↑
+                    Murdock      B.A.        Lynch      Amy
 ```
 
 ## Pipeline Parallelism
@@ -71,59 +71,237 @@ Feature 003:            [testing]  →  [implementing]  →  [review]
 
 WIP limit controls total in-flight features (features not in briefings/ready/done).
 
+## Dependency Waves vs Stage Batching
+
+**Understand the difference:**
+
+### Dependency Waves (CORRECT - respect these)
+Items are grouped by dependency depth. Use `deps-check.js --verbose` to see waves:
+```bash
+node .claude/ai-team/scripts/deps-check.js --verbose
+# Returns: { "waves": { "0": ["001", "002"], "1": ["003", "004"] }, "readyItems": ["001", "002"] }
+# Without --verbose, only returns: { "readyItems": ["001", "002"] }
+```
+- Wave 0: items with no dependencies
+- Wave 1: items that depend on Wave 0 items
+- Wave 2: items that depend on Wave 1 items
+
+**Items in later waves MUST wait for their dependencies to reach `done/`.**
+This is correct behavior - don't fight it.
+
+### Stage Batching (WRONG - never do this)
+Waiting for sibling items at the same pipeline stage:
+- 001 finishes testing → DON'T wait for 002 to also finish testing
+- Advance 001 to implementing IMMEDIATELY
+
+**Within a wave, items flow through stages INDEPENDENTLY.**
+
+### ANTI-PATTERNS - Stage Batching
+
+**NEVER batch items at stage boundaries:**
+```
+# WRONG - collecting completions then batch-processing
+completed_testing = [item for item in testing if completed]
+for item in completed_testing:
+    move_to_implementing(item)  # Moving all at once = BATCH
+
+# CORRECT - advance each item immediately on completion
+if item_001_completed:
+    move_001_to_implementing()  # Don't wait for 002
+```
+
+**NEVER confuse waves with stages:**
+- CORRECT: "Wave 2 items wait in ready/ until Wave 1 deps are done"
+- WRONG: "All Wave 1 items must finish testing before any can implement"
+
+**NEVER wait for entire wave completion:**
+```
+# WRONG - waiting for all of Wave 0 to fully complete
+if all_wave_0_items_in_done:
+    start_all_wave_1_items()  # Wave 1 items sit idle unnecessarily!
+
+# CORRECT - unlock each Wave 1 item as its specific deps complete
+if item_003_deps_done:  # 003 depends only on 001
+    move_003_to_ready()  # Don't wait for 002 to finish!
+```
+
+**"Wave" refers to DEPENDENCY DEPTH, not pipeline stage.**
+
 ## Orchestration Loop
 
+**Key Principle: Individual Item Processing**
+
+Each item flows through the pipeline INDEPENDENTLY. When an agent finishes with one item, that item moves immediately - don't wait for other agents to complete.
+
+### Task Tracking
+
+Maintain a map of active tasks:
 ```
-while items remain outside done/:
-    1. Check board state:
-       node .claude/ai-team/scripts/board-read.js --agents
-
-    2. Check for completed agents and advance items:
-
-       For items in "testing" with completed Murdock:
-           → Release claim: echo '{"itemId":"001"}' | node .claude/ai-team/scripts/board-release.js
-           → Move to implementing: echo '{"itemId":"001","to":"implementing"}' | node .claude/ai-team/scripts/board-move.js
-           → Claim for B.A.: echo '{"itemId":"001","agent":"ba","task_id":"..."}' | node .claude/ai-team/scripts/board-claim.js
-           → Dispatch B.A. with the feature item
-
-       For items in "implementing" with completed B.A.:
-           → Release claim, move to review, claim for Lynch, dispatch Lynch
-
-       For items in "review" with completed Lynch:
-           → If APPROVED: release claim, move to done
-             **Check output for finalReviewReady: true → trigger Final Mission Review**
-           → If REJECTED: echo '{"itemId":"001","reason":"..."}' | node .claude/ai-team/scripts/item-reject.js
-             (script handles moving to ready or blocked based on rejection count)
-
-    3. Move eligible items from briefings → ready (dependency check):
-       → echo '{"itemId":"003","to":"ready"}' | node .claude/ai-team/scripts/board-move.js
-
-    4. If in-flight < WIP limit AND ready/ not empty:
-           → Pick item from ready (respect parallel_group)
-           → Move to testing: echo '{"itemId":"003","to":"testing"}' | node .claude/ai-team/scripts/board-move.js
-           → Claim for Murdock: echo '{"itemId":"003","agent":"murdock","task_id":"..."}' | node .claude/ai-team/scripts/board-claim.js
-           → Dispatch Murdock with the feature item
-
-    5. When board-move.js returns `finalReviewReady: true`:
-           → Dispatch Lynch for FINAL MISSION REVIEW immediately
-           → If FINAL APPROVED: Mission complete!
-           → If FINAL REJECTED: Move rejected items back to ready/, continue loop
-
-    6. Repeat until mission complete
+active_tasks = {
+  "001": "task_abc123",  // item_id → task_id from Task tool
+  "002": "task_def456"
+}
 ```
+
+When dispatching agents with `run_in_background: true`, the Task tool returns a task_id. Store this to poll individual items later.
+
+### The Orchestration Loop
+
+**Two concerns, handled differently:**
+1. **Dependency gates** - items wait in `ready/` for deps (between waves)
+2. **Pipeline flow** - items advance immediately on completion (within waves)
+
+```
+active_tasks = {}  # item_id → task_id
+
+LOOP CONTINUOUSLY:
+
+    # ═══════════════════════════════════════════════════════════
+    # PHASE 1: POLL ACTIVE TASKS - ADVANCE IMMEDIATELY ON COMPLETION
+    # ═══════════════════════════════════════════════════════════
+    for item_id, task_id in list(active_tasks.items()):
+        result = TaskOutput(task_id, block=false, timeout=500)
+
+        if result shows completion:
+            # === ADVANCE THIS ITEM RIGHT NOW ===
+            del active_tasks[item_id]
+
+            if item was in testing:
+                board-move to implementing with agent=ba
+                new_task = dispatch B.A. in background
+                active_tasks[item_id] = new_task.id
+                # Don't wait for other testing items!
+
+            elif item was in implementing:
+                board-move to review with agent=lynch
+                new_task = dispatch Lynch in background
+                active_tasks[item_id] = new_task.id
+
+            elif item was in review:
+                if APPROVED:
+                    board-move to probing with agent=amy
+                    new_task = dispatch Amy in background
+                    active_tasks[item_id] = new_task.id
+                if REJECTED: item-reject
+
+            elif item was in probing:
+                if VERIFIED: board-move to done
+                if FLAG: item-reject  # Goes back to ready for B.A. to fix
+                # Moving to done may unlock Wave 2 items!
+
+    # ═══════════════════════════════════════════════════════════
+    # PHASE 2: CHECK DEPENDENCY GATES - UNLOCK NEXT WAVE ITEMS
+    # ═══════════════════════════════════════════════════════════
+    # Run deps-check to find newly ready items
+    deps_result = run deps-check.js
+
+    for item_id in deps_result.readyItems:
+        if item is in briefings/:
+            board-move to ready/
+            # This item's deps are now satisfied
+
+    # ═══════════════════════════════════════════════════════════
+    # PHASE 3: FILL PIPELINE FROM READY (respects WIP limit)
+    # ═══════════════════════════════════════════════════════════
+    in_flight = count(testing/) + count(implementing/) + count(review/) + count(probing/)
+    while in_flight < WIP_LIMIT and ready/ not empty:
+        pick ONE item from ready/
+        board-move to testing with agent=murdock
+        new_task = dispatch Murdock in background
+        active_tasks[item_id] = new_task.id
+
+    # When finalReviewReady: true → dispatch Lynch for Final Review
+
+    # Brief pause then repeat
+```
+
+**KEY BEHAVIORS:**
+- Phase 1: Advance items IMMEDIATELY - no waiting for siblings
+- Phase 2: Unlock next-wave items when deps complete (correct waiting)
+- Phase 3: Keep pipeline full up to WIP limit
+
+### TaskOutput Polling Pattern
+
+Use the Claude Code `TaskOutput` tool to poll background agents:
+```
+TaskOutput(task_id: "...", block: false, timeout: 500)
+```
+
+- `task_id` = ID returned when dispatching agent with `run_in_background: true`
+- `block: false` = non-blocking, returns immediately with current status
+- `timeout: 500` = wait max 500ms for any output
+- Returns: agent output if complete, OR timeout/still-running indicator
+
+**Poll each task individually - don't batch:**
+```
+# CORRECT
+result_a = TaskOutput(task_a, block: false)
+if result_a.complete: advance(001)
+result_b = TaskOutput(task_b, block: false)
+if result_b.complete: advance(002)
+
+# WRONG - don't collect then batch
+results = [TaskOutput(t) for t in tasks]
+completed = [r for r in results if r.complete]
+for c in completed: advance(c)  # BATCH!
+```
+
+### Concrete Example: Dependency Waves + Pipeline Parallelism
+
+Setup:
+- Wave 0: 001, 002 (no deps)
+- Wave 1: 003 (depends on 001), 004 (depends on 001, 002)
+
+```
+T=0s    deps-check.js → readyItems: [001, 002], 003/004 blocked
+        Move 001, 002 to ready/
+        Dispatch Murdock for 001 (task_a), 002 (task_b)
+        active_tasks = {001: a, 002: b}
+
+T=30s   Poll a → COMPLETE!
+        → IMMEDIATELY: move 001 to implementing, dispatch B.A. (task_c)
+        active_tasks = {001: c, 002: b}
+        (002 still in testing - that's fine, don't wait!)
+
+T=55s   Poll b → COMPLETE!
+        → IMMEDIATELY: move 002 to implementing, dispatch B.A. (task_d)
+        active_tasks = {001: c, 002: d}
+
+T=60s   Poll c → COMPLETE!
+        → IMMEDIATELY: move 001 to review, dispatch Lynch (task_e)
+        active_tasks = {001: e, 002: d}
+
+T=90s   Poll e → COMPLETE! (Lynch approved)
+        → Move 001 to done/
+        deps-check.js → readyItems: [003]  ← 003's dep (001) now satisfied!
+        Move 003 to ready/ (004 still blocked - needs 002 done too)
+        Dispatch Murdock for 003 (task_f)
+        active_tasks = {002: d, 003: f}
+
+T=95s   Poll d → COMPLETE!
+        → IMMEDIATELY: move 002 to review, dispatch Lynch (task_g)
+        active_tasks = {002: g, 003: f}
+
+T=120s  Poll g → COMPLETE! (Lynch approved 002)
+        → Move 002 to done/
+        deps-check.js → readyItems: [004]  ← 004's deps (001,002) now satisfied!
+        Move 004 to ready/
+```
+
+**KEY INSIGHTS:**
+1. Within Wave 0: 001 advances to review while 002 is still implementing (no stage batching)
+2. Between waves: 003 unlocks when 001 hits done/, 004 unlocks when both 001+002 hit done/
+3. Pipeline stays full - new items enter as deps are satisfied
 
 ## Dispatching Agents
 
-**IMPORTANT: Always move the item to the appropriate stage and claim it BEFORE dispatching the agent.**
+**IMPORTANT: Use board-move.js with the `agent` parameter - it automatically claims the item and updates agent status.**
 
 ### Workflow for dispatching Murdock (testing stage):
 
 ```bash
-# 1. Move item to testing
-echo '{"itemId":"001","to":"testing"}' | node .claude/ai-team/scripts/board-move.js
-
-# 2. Claim for Murdock (include task_id after dispatching)
-echo '{"itemId":"001","agent":"murdock","task_id":"<task_id>"}' | node .claude/ai-team/scripts/board-claim.js
+# Move to testing AND claim for Murdock in one call
+echo '{"itemId":"001","to":"testing","agent":"murdock"}' | node .claude/ai-team/scripts/board-move.js
 ```
 
 Then dispatch:
@@ -148,14 +326,8 @@ Task(
 ### Workflow for dispatching B.A. (implementing stage):
 
 ```bash
-# 1. Release Murdock's claim
-echo '{"itemId":"001"}' | node .claude/ai-team/scripts/board-release.js
-
-# 2. Move item to implementing
-echo '{"itemId":"001","to":"implementing"}' | node .claude/ai-team/scripts/board-move.js
-
-# 3. Claim for B.A.
-echo '{"itemId":"001","agent":"ba","task_id":"<task_id>"}' | node .claude/ai-team/scripts/board-claim.js
+# Move to implementing AND claim for B.A. (auto-releases Murdock's claim)
+echo '{"itemId":"001","to":"implementing","agent":"ba"}' | node .claude/ai-team/scripts/board-move.js
 ```
 
 Then dispatch:
@@ -178,14 +350,8 @@ Task(
 ### Workflow for dispatching Lynch (review stage):
 
 ```bash
-# 1. Release B.A.'s claim
-echo '{"itemId":"001"}' | node .claude/ai-team/scripts/board-release.js
-
-# 2. Move item to review
-echo '{"itemId":"001","to":"review"}' | node .claude/ai-team/scripts/board-move.js
-
-# 3. Claim for Lynch
-echo '{"itemId":"001","agent":"lynch","task_id":"<task_id>"}' | node .claude/ai-team/scripts/board-claim.js
+# Move to review AND claim for Lynch (auto-releases B.A.'s claim)
+echo '{"itemId":"001","to":"review","agent":"lynch"}' | node .claude/ai-team/scripts/board-move.js
 ```
 
 Then dispatch:
@@ -203,6 +369,34 @@ Task(
   - Test: {outputs.test}
   - Implementation: {outputs.impl}
   - Types (if exists): {outputs.types}"
+)
+```
+
+### Workflow for dispatching Amy (probing stage):
+
+```bash
+# Move to probing AND claim for Amy (auto-releases Lynch's claim)
+echo '{"itemId":"001","to":"probing","agent":"amy"}' | node .claude/ai-team/scripts/board-move.js
+```
+
+Then dispatch:
+```
+Task(
+  subagent_type: "bug-hunter",
+  model: "sonnet",
+  run_in_background: true,
+  description: "Amy: {feature title}",
+  prompt: "[Amy prompt from agents/amy.md]
+
+  Feature Item:
+  [Full content of the work item file]
+
+  Files to probe:
+  - Test: {outputs.test}
+  - Implementation: {outputs.impl}
+  - Types (if exists): {outputs.types}
+
+  Execute the Raptor Protocol. Respond with VERIFIED or FLAG."
 )
 ```
 
@@ -299,10 +493,7 @@ B.A. will see this diagnosis when picking up the item for retry.
 When Lynch approves:
 
 ```bash
-# 1. Release Lynch's claim
-echo '{"itemId":"001"}' | node .claude/ai-team/scripts/board-release.js
-
-# 2. Move to done
+# Move to done (auto-releases Lynch's claim)
 echo '{"itemId":"001","to":"done"}' | node .claude/ai-team/scripts/board-move.js
 ```
 

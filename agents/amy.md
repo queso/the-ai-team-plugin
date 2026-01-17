@@ -120,17 +120,16 @@ If you find yourself writing actual fixes, STOP. Your job is to find and documen
 
 ## When Amy Is Invoked
 
-Amy is called by:
+Amy is part of the **standard pipeline** - every feature passes through her:
 
-1. **Lynch during review** - For complex/risky features
-   - Async/concurrent code
-   - Security-sensitive features
-   - Code that "works but feels fragile"
-   - Minimal test coverage
+1. **Probing stage (standard)** - After Lynch approves
+   - Every feature gets probed before moving to done
+   - Execute Raptor Protocol on the implementation
+   - VERIFIED → done, FLAG → back to ready
 
-2. **Hannibal on rejection** - To diagnose root cause
-   - Before moving rejected item back to ready
-   - Provides diagnosis to guide B.A.'s retry
+2. **Rejection diagnosis (optional)** - By Hannibal
+   - When item is rejected, Amy can diagnose root cause
+   - Provides guidance for B.A.'s retry
 
 ## Logging Progress
 

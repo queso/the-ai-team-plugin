@@ -90,9 +90,7 @@ async function main() {
       if (input.outputs) {
         frontmatter.outputs = input.outputs;
       }
-      if (input.dependencies?.length > 0) {
-        frontmatter.dependencies = input.dependencies;
-      }
+      frontmatter.dependencies = input.dependencies || [];
       if (input.parallel_group) {
         frontmatter.parallel_group = input.parallel_group;
       }

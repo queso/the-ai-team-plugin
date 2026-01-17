@@ -102,6 +102,23 @@ Feature 003:                   [testing]      ─→ ...
 
 WIP limit controls how many features are in-flight.
 
+### True Individual Item Tracking
+
+Items flow independently through the pipeline. When an agent completes work on one item, that item advances **immediately** without waiting for other agents:
+
+```
+Time T0: Dispatch Murdock for 001, 002, 003
+Time T1: 001 completes → immediately move to implementing, dispatch B.A.
+         (002 and 003 still in testing)
+Time T2: 002 completes → immediately move to implementing, dispatch B.A.
+         (001 now in implementing, 003 still in testing)
+```
+
+This is achieved through:
+1. **TaskOutput polling** - Hannibal polls each background agent individually
+2. **Completion signaling** - Agents call `item-complete.js` when done
+3. **Per-item task_id tracking** - `board-move.js` stores task_id in assignments
+
 ## How It Works
 
 ```
@@ -298,12 +315,13 @@ npm install
 | Script | Purpose | Example |
 |--------|---------|---------|
 | `board-read.js` | Read board state | `node .claude/ai-team/scripts/board-read.js --agents` |
-| `board-move.js` | Move item between stages | `echo '{"itemId":"001","to":"testing"}' \| node .claude/ai-team/scripts/board-move.js` |
+| `board-move.js` | Move item between stages | `echo '{"itemId":"001","to":"testing","agent":"murdock","task_id":"abc123"}' \| node .claude/ai-team/scripts/board-move.js` |
 | `board-claim.js` | Assign agent to item | `echo '{"itemId":"001","agent":"murdock"}' \| node .claude/ai-team/scripts/board-claim.js` |
 | `board-release.js` | Release agent claim | `echo '{"itemId":"001"}' \| node .claude/ai-team/scripts/board-release.js` |
 | `item-create.js` | Create work item | `echo '{"title":"...","type":"feature",...}' \| node .claude/ai-team/scripts/item-create.js` |
 | `item-update.js` | Update work item | `echo '{"itemId":"001","updates":{...}}' \| node .claude/ai-team/scripts/item-update.js` |
 | `item-reject.js` | Record rejection | `echo '{"itemId":"001","reason":"..."}' \| node .claude/ai-team/scripts/item-reject.js` |
+| `item-complete.js` | Signal agent completion | `echo '{"itemId":"001","agent":"murdock","status":"success"}' \| node .claude/ai-team/scripts/item-complete.js` |
 | `item-render.js` | Render as markdown | `node .claude/ai-team/scripts/item-render.js --item=001` |
 | `mission-archive.js` | Archive completed items | `node .claude/ai-team/scripts/mission-archive.js --complete` |
 | `mission-init.js` | Initialize fresh mission | `node .claude/ai-team/scripts/mission-init.js --force` |

@@ -11,24 +11,32 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 - **Murdock** (QA): Writes tests first (qa-engineer subagent)
 - **B.A.** (Implementer): Implements code to pass tests (clean-code-architect subagent)
 - **Lynch** (Reviewer): Reviews tests + implementation together (code-review-expert subagent)
-- **Amy** (Investigator): Probes for bugs beyond tests, diagnoses rejections (bug-hunter subagent)
+- **Amy** (Investigator): Probes every feature for bugs beyond tests (bug-hunter subagent)
 
 ## Architecture
 
 ### Pipeline Flow
 ```
-briefings → ready → testing → implementing → review → done
-                       ↑           ↑            ↑        │
-                    Murdock      B.A.        Lynch       │
-                                          (per-feature)  │
-                                                         ▼
-                                               ┌─────────────────┐
-                                               │  Final Review   │
-                                               │    (Lynch)      │
-                                               └─────────────────┘
+briefings → ready → testing → implementing → review → probing → done
+                       ↑           ↑            ↑         ↑       │
+                    Murdock      B.A.        Lynch      Amy       │
+                                          (per-feature)           │
+                                                                  ▼
+                                                        ┌─────────────────┐
+                                                        │  Final Review   │
+                                                        │    (Lynch)      │
+                                                        └─────────────────┘
 ```
 
 Each feature flows through stages sequentially. Different features can be at different stages simultaneously (pipeline parallelism). WIP limits control how many features are in-flight.
+
+**Two-Level Orchestration:**
+1. **Dependency waves** - Items wait in `ready/` until deps reach `done/` (correct waiting)
+2. **Pipeline flow** - Items advance IMMEDIATELY on completion, no stage batching (critical)
+
+Use `deps-check.js` to see which items are ready. Within a wave, items flow independently through stages.
+
+**True Individual Item Tracking:** Items advance immediately when their agent completes - no waiting for batch completion. Hannibal polls TaskOutput for each background agent individually and agents signal completion via `item-complete.js`.
 
 When ALL features reach `done/`, Lynch performs a **Final Mission Review** of the entire codebase, checking for cross-cutting issues (consistency, race conditions, security, code quality).
 
@@ -36,7 +44,7 @@ When ALL features reach `done/`, Lynch performs a **Final Mission Review** of th
 When the plugin runs, it creates a `mission/` directory (gitignored) containing:
 - `board.json` - State, WIP limits, agent status, assignments
 - `activity.log` - Append-only log for Live Feed
-- Stage folders: `briefings/`, `ready/`, `testing/`, `implementing/`, `review/`, `done/`, `blocked/`
+- Stage folders: `briefings/`, `ready/`, `testing/`, `implementing/`, `review/`, `probing/`, `done/`, `blocked/`
 - `archive/<mission-name>/` - Completed missions (optional, for preserving history)
 
 ### Feature Item Format
@@ -155,12 +163,13 @@ Agents should use CLI scripts for board operations instead of direct file manipu
 | Script | Purpose |
 |--------|---------|
 | `board-read.js` | Read board state as JSON |
-| `board-move.js` | Move item between stages (validates transitions, enforces WIP) |
+| `board-move.js` | Move item between stages (validates transitions, enforces WIP, stores task_id) |
 | `board-claim.js` | Assign agent to item |
 | `board-release.js` | Release agent claim |
 | `item-create.js` | Create new work item |
 | `item-update.js` | Update work item |
 | `item-reject.js` | Record rejection (escalates after 2) |
+| `item-complete.js` | Signal agent completion (enables immediate item advancement) |
 | `item-render.js` | Render item as markdown |
 | `mission-init.js` | Initialize fresh mission (archives existing first) |
 | `mission-archive.js` | Archive completed items and activity log |

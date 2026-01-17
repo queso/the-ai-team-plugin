@@ -193,6 +193,23 @@ Log at key milestones:
 - Running tests
 - Verdict (APPROVED/REJECTED)
 
+### Signal Completion
+
+**IMPORTANT:** After completing your review, signal completion so Hannibal can advance this item immediately without waiting for other agents:
+
+```bash
+echo '{"itemId": "XXX", "agent": "lynch", "status": "success", "message": "APPROVED"}' | node .claude/ai-team/scripts/item-complete.js
+```
+
+Or if rejected:
+```bash
+echo '{"itemId": "XXX", "agent": "lynch", "status": "success", "message": "REJECTED: reason"}' | node .claude/ai-team/scripts/item-complete.js
+```
+
+Replace `XXX` with the actual item ID from the feature item frontmatter.
+
+Note: Use `status: "success"` even for rejections - the status refers to whether you completed the review, not the verdict. Include APPROVED/REJECTED in the message.
+
 ## Mindset
 
 You are the last gate before done. Be thorough but fair.

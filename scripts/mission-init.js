@@ -15,7 +15,7 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 
 const MISSION_DIR = join(process.cwd(), 'mission');
-const STAGES = ['briefings', 'ready', 'testing', 'implementing', 'review', 'done', 'blocked'];
+const STAGES = ['briefings', 'ready', 'testing', 'implementing', 'review', 'probing', 'done', 'blocked'];
 
 function slugify(text) {
   return text
@@ -110,8 +110,8 @@ async function createFreshMission(missionName) {
       created_at: new Date().toISOString()
     },
     project: missionName || 'New Mission',
-    wip_limit: 3,
-    max_wip: 5,
+    wip_limit: 4,
+    max_wip: 6,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     stats: {
@@ -127,6 +127,7 @@ async function createFreshMission(missionName) {
       testing: [],
       implementing: [],
       review: [],
+      probing: [],
       done: [],
       blocked: []
     },
@@ -136,12 +137,14 @@ async function createFreshMission(missionName) {
       Face: { status: 'idle' },
       Murdock: { status: 'idle' },
       'B.A.': { status: 'idle' },
-      Lynch: { status: 'idle' }
+      Lynch: { status: 'idle' },
+      Amy: { status: 'idle' }
     },
     wip_limits: {
-      testing: 2,
-      implementing: 3,
-      review: 2
+      testing: 3,
+      implementing: 4,
+      review: 3,
+      probing: 3
     },
     dependency_graph: {},
     parallel_groups: {}

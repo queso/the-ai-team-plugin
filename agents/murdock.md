@@ -159,4 +159,19 @@ When done:
 - Types file exists at `outputs.types` (if specified)
 - Tests run and fail appropriately (no implementation yet)
 
+### Signal Completion
+
+**IMPORTANT:** After completing your work, signal completion so Hannibal can advance this item immediately without waiting for other agents:
+
+```bash
+echo '{"itemId": "XXX", "agent": "murdock", "status": "success", "message": "Tests created"}' | node .claude/ai-team/scripts/item-complete.js
+```
+
+Replace `XXX` with the actual item ID from the feature item frontmatter.
+
+If you encountered errors that prevented completion:
+```bash
+echo '{"itemId": "XXX", "agent": "murdock", "status": "failed", "message": "Error description"}' | node .claude/ai-team/scripts/item-complete.js
+```
+
 Report back to Hannibal with files created.

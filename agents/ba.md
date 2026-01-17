@@ -138,6 +138,21 @@ Log at key milestones:
 - [ ] Error handling is present
 - [ ] No debug code left behind
 
+### Signal Completion
+
+**IMPORTANT:** After completing your work, signal completion so Hannibal can advance this item immediately without waiting for other agents:
+
+```bash
+echo '{"itemId": "XXX", "agent": "ba", "status": "success", "message": "Implementation complete, all tests passing"}' | node .claude/ai-team/scripts/item-complete.js
+```
+
+Replace `XXX` with the actual item ID from the feature item frontmatter.
+
+If you encountered errors that prevented completion:
+```bash
+echo '{"itemId": "XXX", "agent": "ba", "status": "failed", "message": "Error description"}' | node .claude/ai-team/scripts/item-complete.js
+```
+
 ## Mindset
 
 The tests tell you what to build. The types tell you how to build it. Everything else is noise.
