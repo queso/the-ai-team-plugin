@@ -11,6 +11,7 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 - **Murdock** (QA): Writes tests first (qa-engineer subagent)
 - **B.A.** (Implementer): Implements code to pass tests (clean-code-architect subagent)
 - **Lynch** (Reviewer): Reviews tests + implementation together (code-review-expert subagent)
+- **Amy** (Investigator): Probes for bugs beyond tests, diagnoses rejections (bug-hunter subagent)
 
 ## Architecture
 
@@ -91,6 +92,7 @@ The scripts ensure:
 - **Murdock**: Writes ONLY tests and types. Does NOT write implementation code.
 - **B.A.**: Writes ONLY implementation. Tests already exist from Murdock.
 - **Lynch**: Reviews only. Does NOT write code.
+- **Amy**: Investigates only. Does NOT write production code or tests. Reports findings with proof.
 
 ## Key Conventions
 
@@ -119,6 +121,7 @@ Hannibal dispatches agents using Task tool with `run_in_background: true`:
 - Murdock: `subagent_type: "qa-engineer"`, `model: "sonnet"`
 - B.A.: `subagent_type: "clean-code-architect"`, `model: "sonnet"`
 - Lynch: `subagent_type: "code-review-expert"`
+- Amy: `subagent_type: "bug-hunter"`, `model: "sonnet"` (invoked by Lynch or Hannibal)
 
 ## File Organization
 
@@ -131,7 +134,8 @@ ai-team/
 │   ├── face.md              # Decomposer
 │   ├── murdock.md           # QA Engineer
 │   ├── ba.md                # Implementer
-│   └── lynch.md             # Reviewer
+│   ├── lynch.md             # Reviewer
+│   └── amy.md               # Investigator (bug-hunter)
 ├── commands/                # Slash command definitions
 │   ├── plan.md, run.md, status.md, resume.md, unblock.md
 ├── skills/

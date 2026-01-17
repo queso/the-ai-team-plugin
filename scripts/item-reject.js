@@ -4,6 +4,9 @@
  *
  * Usage:
  *   echo '{"itemId": "007", "agent": "lynch", "reason": "Missing edge case"}' | node item-reject.js
+ *
+ * With optional diagnosis from Amy (Investigator):
+ *   echo '{"itemId": "007", "agent": "lynch", "reason": "Missing edge case", "diagnosis": "Root cause at src/file.ts:45"}' | node item-reject.js
  */
 
 import {
@@ -27,7 +30,7 @@ async function main() {
     const input = await readJsonInput();
     assertValid(input, 'itemReject');
 
-    const { itemId, agent, reason, issues } = input;
+    const { itemId, agent, reason, issues, diagnosis } = input;
 
     const result = await withLock(MISSION_DIR, async () => {
       // Find the item
@@ -54,6 +57,7 @@ async function main() {
       item.frontmatter.rejection_history.push({
         reason,
         issues: issues || [],
+        diagnosis: diagnosis || null,
         agent: agent || 'Lynch',
         date: new Date().toISOString()
       });

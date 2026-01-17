@@ -245,6 +245,55 @@ The script automatically:
 
 If `escalate: true`, announce to the user that human intervention is needed.
 
+## On Rejection: Optional Diagnosis
+
+Before moving a rejected item back to `ready/`, you can optionally spawn Amy to diagnose the root cause. This provides B.A. with better guidance for the retry.
+
+### When to Use Amy for Diagnosis
+
+- Rejection reason is vague or unclear
+- Same item has been rejected before
+- Complex integration issues suspected
+- B.A. might benefit from specific debugging guidance
+
+### How to Diagnose
+
+```
+Task(
+  subagent_type: "bug-hunter",
+  model: "sonnet",
+  description: "Amy: Diagnose {feature title}",
+  prompt: "[Amy prompt from agents/amy.md]
+
+  Feature Item:
+  [Full content of the work item file]
+
+  DIAGNOSIS MODE: This item was rejected by Lynch.
+
+  Rejection reason: {reason from Lynch}
+
+  Investigate:
+  - Test: {outputs.test}
+  - Implementation: {outputs.impl}
+  - Types (if exists): {outputs.types}
+
+  Find the ROOT CAUSE of the rejection. Provide specific:
+  - File and line number of the issue
+  - Steps to reproduce
+  - Suggested fix approach (without writing the code)"
+)
+```
+
+### Record Diagnosis
+
+Add Amy's findings to the rejection record:
+
+```bash
+echo '{"itemId":"001","agent":"lynch","reason":"Missing error handling","diagnosis":"Root cause: Promise rejection not caught at src/services/auth.ts:45. Fix: Add try/catch around fetchUser call."}' | node .claude/ai-team/scripts/item-reject.js
+```
+
+B.A. will see this diagnosis when picking up the item for retry.
+
 ## Handling Approvals
 
 When Lynch approves:
