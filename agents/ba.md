@@ -115,6 +115,20 @@ Report back to Hannibal with the file created.
 - **God objects**: Split large classes
 - **Stringly typed**: Use proper types
 
+## Logging Progress
+
+Log your progress to the Live Feed:
+
+```bash
+node .claude/ai-team/scripts/activity-log.js --agent=B.A. --message="Implementing order sync service"
+node .claude/ai-team/scripts/activity-log.js --agent=B.A. --message="All tests passing"
+```
+
+Log at key milestones:
+- Starting implementation
+- Tests passing
+- Implementation complete
+
 ## Completion Checklist
 
 - [ ] All tests pass

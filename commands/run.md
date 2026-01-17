@@ -28,6 +28,8 @@ briefings → ready → testing → implementing → review → done
 2. `testing → implementing`: B.A. implements to pass tests
 3. `implementing → review`: Lynch reviews ALL outputs together
 4. `review → done`: Feature complete (or back to ready if rejected)
+5. `all done → final review`: Lynch reviews entire codebase holistically
+6. `final review → complete`: Mission complete (or items back to ready if rejected)
 
 ## Pipeline Parallelism
 
@@ -60,8 +62,15 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
    - Start new features if under WIP limit
    - Update board.json after every change
 
-4. **Completion:**
-   - All items in `done/` → "I love it when a plan comes together."
+4. **Final Mission Review:**
+   - When ALL items reach `done/`, trigger final review
+   - Lynch reviews entire codebase for cross-cutting issues
+   - Focus: readability, security, race conditions, code quality
+   - If FINAL APPROVED → proceed to completion
+   - If FINAL REJECTED → specified items return to pipeline
+
+5. **Completion:**
+   - Final review approved → "I love it when a plan comes together."
    - Items in `blocked/` → Needs human intervention
 
 ## Progress Updates
@@ -77,6 +86,11 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
 [Lynch] 001 APPROVED
 [Hannibal] Feature 001 → done
 ...
+[Hannibal] All features complete. Dispatching final review.
+[Lynch] FINAL MISSION REVIEW - reviewing 12 files
+[Lynch] VERDICT: FINAL APPROVED
+[Hannibal] Final review passed.
+"I love it when a plan comes together."
 ```
 
 ## Example

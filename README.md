@@ -18,7 +18,7 @@ A self-orchestrating Claude Code plugin that transforms a PRD into working, test
 | **Face** | Decomposer | opus | Breaks impossible missions into achievable objectives. |
 | **Murdock** | QA Engineer | `qa-engineer` | Writes tests for critical paths. Move fast. |
 | **B.A.** | Implementer | `clean-code-architect` | Builds solid, reliable code. No jibber-jabber. |
-| **Lynch** | Reviewer | `general-purpose` | Reviews tests + implementation together. |
+| **Lynch** | Reviewer | `code-review-expert` | Reviews tests + implementation together. |
 
 ## Installation
 
@@ -71,8 +71,15 @@ Each feature flows through stages sequentially:
 
 ```
 briefings → ready → testing → implementing → review → done
-                       ↑           ↑            ↑
-                    Murdock      B.A.        Lynch
+                       ↑           ↑            ↑        │
+                    Murdock      B.A.        Lynch       │
+                                          (per-feature)  │
+                                                         ▼
+                                               ┌─────────────────┐
+                                               │  Final Review   │
+                                               │  (Lynch - all   │
+                                               │   code at once) │
+                                               └─────────────────┘
 ```
 
 **Stage transitions:**
@@ -80,6 +87,8 @@ briefings → ready → testing → implementing → review → done
 2. `testing → implementing`: B.A. implements to pass tests
 3. `implementing → review`: Lynch reviews ALL outputs together
 4. `review → done`: Feature complete (or back to ready if rejected)
+5. `all done → final review`: Lynch reviews entire codebase holistically
+6. `final review → complete`: Mission complete (or items back to ready if rejected)
 
 ## Pipeline Parallelism
 
@@ -132,14 +141,17 @@ WIP limit controls how many features are in-flight.
 
 ```
 mission/
-├── board.json               # State, WIP limits, assignments
+├── board.json               # State, WIP limits, agent status, assignments
+├── activity.log             # Append-only log for Live Feed
 ├── briefings/               # Backlog (feature items)
 ├── ready/                   # Dependencies met, awaiting work
 ├── testing/                 # Murdock writing tests
 ├── implementing/            # B.A. implementing
 ├── review/                  # Lynch reviewing
 ├── done/                    # Completed features
-└── blocked/                 # Needs human intervention
+├── blocked/                 # Needs human intervention
+└── archive/                 # Completed missions (optional)
+    └── <mission-name>/      # Archived work items from previous missions
 ```
 
 ## Feature Item Format
@@ -183,6 +195,17 @@ Each feature flows: **Murdock → B.A. → Lynch**
 1. Murdock writes tests first (defines acceptance criteria)
 2. B.A. implements to pass those tests
 3. Lynch reviews tests + implementation together
+
+### Final Mission Review
+
+When ALL features are complete, Lynch performs a holistic review of the entire codebase:
+- **Readability & consistency** across all files
+- **Race conditions & async issues** in concurrent code
+- **Security vulnerabilities** (injection, auth gaps, input validation)
+- **Code quality** (DRY violations, coupling, performance)
+- **Integration issues** between modules
+
+If issues are found, specific items return to the pipeline for fixes.
 
 ### Testing Philosophy
 
@@ -232,12 +255,13 @@ Unblock a stuck work item with optional guidance.
 ```
 ai-team/                     # Add as .claude/ai-team submodule
 ├── plugin.json              # Plugin configuration
+├── package.json             # Node.js dependencies
 ├── agents/
 │   ├── hannibal.md          # Orchestrator (main context)
 │   ├── face.md              # Decomposer
 │   ├── murdock.md           # QA Engineer (qa-engineer)
 │   ├── ba.md                # Implementer (clean-code-architect)
-│   └── lynch.md             # Reviewer (general-purpose)
+│   └── lynch.md             # Reviewer (code-review-expert)
 ├── commands/
 │   ├── plan.md              # Initialize mission
 │   ├── run.md               # Execute mission
@@ -246,9 +270,99 @@ ai-team/                     # Add as .claude/ai-team submodule
 │   └── unblock.md           # Unblock failed items
 ├── skills/
 │   └── tdd-workflow.md      # TDD guidance
-├── docs/
-│   └── kanban-ui-prd.md     # Example PRD
+├── scripts/                 # CLI scripts for board management
+│   ├── board-read.js
+│   ├── board-move.js
+│   └── ...
+├── lib/                     # Shared libraries
+│   ├── board.js
+│   ├── lock.js
+│   └── validate.js
+├── docs/                    # Documentation (optional)
 └── README.md
+```
+
+## CLI Scripts
+
+The plugin includes Node.js CLI scripts for atomic board operations. Agents use these scripts instead of directly manipulating files.
+
+### Installation
+
+```bash
+# In the plugin directory (e.g., .claude/ai-team/)
+npm install
+```
+
+### Scripts
+
+| Script | Purpose | Example |
+|--------|---------|---------|
+| `board-read.js` | Read board state | `node .claude/ai-team/scripts/board-read.js --agents` |
+| `board-move.js` | Move item between stages | `echo '{"itemId":"001","to":"testing"}' \| node .claude/ai-team/scripts/board-move.js` |
+| `board-claim.js` | Assign agent to item | `echo '{"itemId":"001","agent":"murdock"}' \| node .claude/ai-team/scripts/board-claim.js` |
+| `board-release.js` | Release agent claim | `echo '{"itemId":"001"}' \| node .claude/ai-team/scripts/board-release.js` |
+| `item-create.js` | Create work item | `echo '{"title":"...","type":"feature",...}' \| node .claude/ai-team/scripts/item-create.js` |
+| `item-update.js` | Update work item | `echo '{"itemId":"001","updates":{...}}' \| node .claude/ai-team/scripts/item-update.js` |
+| `item-reject.js` | Record rejection | `echo '{"itemId":"001","reason":"..."}' \| node .claude/ai-team/scripts/item-reject.js` |
+| `item-render.js` | Render as markdown | `node .claude/ai-team/scripts/item-render.js --item=001` |
+| `mission-archive.js` | Archive completed items | `node .claude/ai-team/scripts/mission-archive.js --complete` |
+| `mission-init.js` | Initialize fresh mission | `node .claude/ai-team/scripts/mission-init.js --force` |
+| `deps-check.js` | Validate dependency graph | `node .claude/ai-team/scripts/deps-check.js` |
+| `activity-log.js` | Log to Live Feed | `node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Writing tests"` |
+
+### Input/Output
+
+- **Input:** JSON via stdin or `--input` flag
+- **Output:** JSON to stdout (except `item-render.js` which outputs markdown)
+- **Errors:** JSON to stderr, exit code 1
+
+### Key Features
+
+- **Atomic operations:** File locking prevents race conditions between concurrent agents
+- **Dual updates:** `board-move.js` updates both filesystem and `board.json`
+- **Transition validation:** Invalid stage transitions are rejected
+- **WIP limits:** Enforced when moving items to active stages
+- **Escalation:** Items rejected twice are moved to `blocked/`
+
+## Troubleshooting
+
+### Board shows items in wrong columns
+**Symptom:** `board.json` says items are in one stage, but UI shows them elsewhere.
+
+**Cause:** Hannibal updated `board.json` but didn't `mv` the actual files.
+
+**Fix:** Sync filesystem to match `board.json`:
+```bash
+# Move files to correct stage folders based on board.json phases
+mv mission/briefings/001-*.md mission/done/
+```
+
+### Agents not creating files
+**Symptom:** Murdock/B.A. complete but no test/impl files appear.
+
+**Cause:** Work items missing `outputs:` field in YAML frontmatter.
+
+**Fix:** Ensure every work item has:
+```yaml
+outputs:
+  test: "src/__tests__/feature.test.ts"
+  impl: "src/services/feature.ts"
+```
+
+### Murdock writing implementation code
+**Symptom:** Murdock creates both tests AND implementation instead of just tests.
+
+**Cause:** Murdock's boundaries weren't clear enough.
+
+**Fix:** Murdock should only create files at `outputs.test` and `outputs.types`. Implementation (`outputs.impl`) is B.A.'s job.
+
+### Starting a new mission with old items in done/
+**Symptom:** New mission shows old completed items in DONE column.
+
+**Fix:** Archive old mission items before starting new mission:
+```bash
+mkdir -p mission/archive/old-mission-name
+mv mission/done/*.md mission/archive/old-mission-name/
 ```
 
 ---

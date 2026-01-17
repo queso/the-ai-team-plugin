@@ -1,6 +1,14 @@
 # Mission state is project-specific, not part of plugin
 mission/
 
+# Dependencies
+node_modules/
+
+# Local settings
+.claude/settings.local.json
+
 # OS files
 .DS_Store
+
+# Draft docs
 docs/kanban-ui-prd.md

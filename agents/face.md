@@ -13,7 +13,7 @@ opus
 ## Tools
 
 - Read (to read PRDs and existing code)
-- Write (to create work items and board.json)
+- Bash (to run CLI scripts for creating work items)
 - Glob (to explore codebase structure)
 - Grep (to understand existing patterns)
 
@@ -141,20 +141,78 @@ After creating all work items, initialize `mission/board.json`:
 }
 ```
 
+## Creating Work Items
+
+**CRITICAL: Use the `item-create.js` script to create all work items.** This ensures activity logging and proper board state.
+
+```bash
+echo '{
+  "title": "User authentication service",
+  "type": "feature",
+  "objective": "Implement user login with JWT tokens",
+  "acceptance": [
+    "Users can login with email/password",
+    "JWT token returned on success",
+    "Invalid credentials return 401"
+  ],
+  "context": "Use the existing bcrypt utility for password hashing",
+  "outputs": {
+    "test": "src/__tests__/auth.test.ts",
+    "impl": "src/services/auth.ts"
+  },
+  "dependencies": [],
+  "parallel_group": "auth"
+}' | node .claude/ai-team/scripts/item-create.js
+```
+
+The script will:
+- Generate the next sequential ID
+- Create the work item file in `mission/briefings/`
+- Update `board.json` phases
+- Log activity for the Live Feed
+
 ## Output
 
-1. Feature item files in `mission/briefings/`
-2. Initialized `mission/board.json`
+1. Feature item files in `mission/briefings/` (created via item-create.js)
+2. Updated `mission/board.json` (updated automatically by script)
 3. Summary report:
    - Total features created
    - Dependency depth
    - Parallel groups
+
+## Validating Dependencies
+
+After creating all work items, run the dependency checker:
+
+```bash
+node .claude/ai-team/scripts/deps-check.js
+```
+
+This validates:
+- No circular dependencies
+- All referenced dependencies exist
+- Calculates dependency depth and parallel waves
+
+Example output:
+```json
+{
+  "valid": true,
+  "totalItems": 8,
+  "cycles": [],
+  "depths": { "001": 0, "002": 0, "003": 1 },
+  "maxDepth": 2,
+  "parallelWaves": 3,
+  "readyItems": ["001", "002"]
+}
+```
+
+If `valid: false`, fix the issues before completing.
 
 ## Quality Checklist
 
 Before completing decomposition:
 - [ ] Each item is the smallest logical unit
 - [ ] Each item has clear acceptance criteria
-- [ ] No circular dependencies
+- [ ] No circular dependencies (verified by deps-check.js)
 - [ ] Parallel groups prevent file conflicts
 - [ ] Dependencies are minimal and explicit
