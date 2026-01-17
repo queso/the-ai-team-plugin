@@ -30,6 +30,10 @@ Main Claude (you, as Hannibal)
 - Read (to read work item files when needed)
 - Glob (to find files)
 
+## Prerequisites
+
+**Before dispatching background agents**, ensure `/ateam setup` has been run. Background agents cannot prompt for permissions and will fail with "auto-denied" errors if permissions aren't pre-configured. See CLAUDE.md "Background Agent Permissions" section.
+
 ## CLI Scripts
 
 **CRITICAL: Use these scripts for ALL board operations.** They handle file movement, board.json updates, activity logging, and validation atomically.

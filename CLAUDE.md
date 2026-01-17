@@ -8,6 +8,7 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 
 - **Hannibal** (Orchestrator): Runs in main Claude context, coordinates the team
 - **Face** (Decomposer): Breaks PRDs into feature items (uses opus model)
+- **Sosa** (Critic): Reviews decomposition, asks clarifying questions (requirements-critic subagent, opus)
 - **Murdock** (QA): Writes tests first (qa-engineer subagent)
 - **B.A.** (Implementer): Implements code to pass tests (clean-code-architect subagent)
 - **Lynch** (Reviewer): Reviews tests + implementation together (code-review-expert subagent)
@@ -16,6 +17,16 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 ## Architecture
 
 ### Pipeline Flow
+
+**Planning Phase (`/ateam plan`):**
+```
+PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready/
+           ↓                  ↓               ↓
+      briefings/        questions         refinement
+                        (human)
+```
+
+**Execution Phase (`/ateam run`):**
 ```
 briefings → ready → testing → implementing → review → probing → done
                        ↑           ↑            ↑         ↑       │
@@ -55,6 +66,7 @@ Work items are markdown files with YAML frontmatter containing:
 
 ## Plugin Commands
 
+- `/ateam setup` - Configure permissions for background agents (run once per project)
 - `/ateam plan <prd-file>` - Initialize mission from PRD, Face decomposes into work items
 - `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3)
 - `/ateam status` - Display kanban board with current progress
@@ -97,6 +109,8 @@ The scripts ensure:
 - Invalid transitions are rejected
 
 ### Agent Boundaries
+- **Face**: Creates and updates work items. Does NOT write tests or implementation.
+- **Sosa**: Reviews and critiques work items. Does NOT modify items directly - provides recommendations for Face.
 - **Murdock**: Writes ONLY tests and types. Does NOT write implementation code.
 - **B.A.**: Writes ONLY implementation. Tests already exist from Murdock.
 - **Lynch**: Reviews only. Does NOT write code.
@@ -126,10 +140,44 @@ Smallest independently-completable units:
 
 ### Agent Dispatch
 Hannibal dispatches agents using Task tool with `run_in_background: true`:
+- Face: `subagent_type: "clean-code-architect"`, `model: "opus"` (planning phase only)
+- Sosa: `subagent_type: "requirements-critic"`, `model: "opus"` (planning phase only)
 - Murdock: `subagent_type: "qa-engineer"`, `model: "sonnet"`
 - B.A.: `subagent_type: "clean-code-architect"`, `model: "sonnet"`
 - Lynch: `subagent_type: "code-review-expert"`
 - Amy: `subagent_type: "bug-hunter"`, `model: "sonnet"` (invoked by Lynch or Hannibal)
+
+### Background Agent Permissions
+
+**IMPORTANT:** Background agents (`run_in_background: true`) cannot prompt for user approval. Operations that require approval will be auto-denied.
+
+Run `/ateam setup` once per project to configure required permissions in `.claude/settings.local.json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(node **/scripts/*.js)",
+      "Bash(cat <<*)",
+      "Bash(mv mission/*)",
+      "Bash(echo *>> mission/activity.log)",
+      "Write(src/**)",
+      "Write(mission/**)"
+    ]
+  }
+}
+```
+
+| Permission | Used By | Purpose |
+|------------|---------|---------|
+| `Bash(node **/scripts/*.js)` | All agents | Run board management scripts |
+| `Bash(cat <<*)` | All agents | Heredoc input to scripts |
+| `Bash(mv mission/*)` | Hannibal | Move items between stage directories |
+| `Bash(echo *>> mission/activity.log)` | All agents | Log to Live Feed |
+| `Write(src/**)` | Murdock, B.A. | Write tests and implementations |
+| `Write(mission/**)` | Face | Create/update work items |
+
+Without these permissions, agents will fail with: "Permission to use [tool] has been auto-denied (prompts unavailable)"
 
 ## File Organization
 
@@ -140,12 +188,13 @@ ai-team/
 ├── agents/                  # Agent prompts and behavior
 │   ├── hannibal.md          # Orchestrator (main context)
 │   ├── face.md              # Decomposer
+│   ├── sosa.md              # Requirements Critic
 │   ├── murdock.md           # QA Engineer
 │   ├── ba.md                # Implementer
 │   ├── lynch.md             # Reviewer
 │   └── amy.md               # Investigator (bug-hunter)
 ├── commands/                # Slash command definitions
-│   ├── plan.md, run.md, status.md, resume.md, unblock.md
+│   ├── setup.md, plan.md, run.md, status.md, resume.md, unblock.md
 ├── skills/
 │   └── tdd-workflow.md      # TDD guidance
 ├── scripts/                 # CLI scripts for board operations

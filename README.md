@@ -16,6 +16,7 @@ A self-orchestrating Claude Code plugin that transforms a PRD into working, test
 |-------|------|---------------|-----------|
 | **Hannibal** | Orchestrator | *(main context)* | The man with the plan. Coordinates the team. |
 | **Face** | Decomposer | opus | Breaks impossible missions into achievable objectives. |
+| **Sosa** | Critic | `requirements-critic` | Challenges Face's breakdown. Finds gaps before work begins. |
 | **Murdock** | QA Engineer | `qa-engineer` | Writes tests for critical paths. Move fast. |
 | **B.A.** | Implementer | `clean-code-architect` | Builds solid, reliable code. No jibber-jabber. |
 | **Lynch** | Reviewer | `code-review-expert` | Reviews tests + implementation together. |
@@ -50,6 +51,9 @@ git submodule update --remote .claude/ai-team
 ## Quick Start
 
 ```bash
+# First time: configure permissions for background agents
+/ateam setup
+
 # Plan a mission from a PRD
 /ateam plan ./docs/my-feature-prd.md
 
@@ -67,6 +71,25 @@ git submodule update --remote .claude/ai-team
 ```
 
 ## Pipeline Flow
+
+### Planning Phase (`/ateam plan`)
+
+Two-pass refinement ensures quality before work begins:
+
+```
+PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready/
+           ↓                  ↓               ↓
+      briefings/        questions         refinement
+                        (human)
+```
+
+1. **Face (First Pass)**: Decomposes PRD into work items in `briefings/`
+2. **Sosa (Review)**: Challenges the breakdown, asks human questions via `AskUserQuestion`
+3. **Face (Second Pass)**: Applies Sosa's recommendations, moves Wave 0 items to `ready/`
+
+Use `--skip-refinement` to bypass Sosa for simple PRDs.
+
+### Execution Phase (`/ateam run`)
 
 Each feature flows through stages sequentially:
 
@@ -129,7 +152,17 @@ This is achieved through:
 │      │                                                              │
 │      ▼                                                              │
 │  ┌────────┐                                                         │
-│  │  Face  │ ──── Decompose PRD into feature items                   │
+│  │  Face  │ ──── First Pass: Decompose PRD into feature items       │
+│  └───┬────┘                                                         │
+│      │                                                              │
+│      ▼                                                              │
+│  ┌────────┐                                                         │
+│  │  Sosa  │ ──── Review: Challenge breakdown, ask human questions   │
+│  └───┬────┘                                                         │
+│      │                                                              │
+│      ▼                                                              │
+│  ┌────────┐                                                         │
+│  │  Face  │ ──── Second Pass: Refine items, move Wave 0 to ready/   │
 │  └───┬────┘                                                         │
 │      │                                                              │
 │      ▼                                                              │
@@ -154,7 +187,7 @@ This is achieved through:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key:** Hannibal runs in the main Claude context (visible to you), dispatching Murdock, B.A., Lynch, and Amy as subagents.
+**Key:** Hannibal runs in the main Claude context (visible to you), dispatching Murdock, B.A., Lynch, and Amy as subagents. Sosa reviews during planning before Hannibal takes over.
 
 ## Mission Directory Structure
 
@@ -251,9 +284,25 @@ If issues are found, specific items return to the pipeline for fixes.
 
 ## Commands
 
-### `/ateam plan <prd-file>`
+### `/ateam setup`
 
-Initialize a mission from a PRD file.
+Configure Claude Code permissions for background agents. **Run this once per project** before using `/ateam run`.
+
+Background agents can't prompt for approval, so this pre-approves:
+- `Bash(node **/scripts/*.js)` - board scripts
+- `Bash(mv mission/*)` - moving items between stages
+- `Bash(echo *>> mission/activity.log)` - activity logging
+- `Write(src/**)` - tests and implementations
+- `Write(mission/**)` - work items
+
+### `/ateam plan <prd-file> [--skip-refinement]`
+
+Initialize a mission from a PRD file with two-pass refinement:
+1. Face decomposes PRD into work items
+2. Sosa reviews and asks clarifying questions
+3. Face refines based on feedback and moves Wave 0 to `ready/`
+
+Use `--skip-refinement` to bypass Sosa's review for simple PRDs.
 
 ### `/ateam run [--wip N] [--max-wip M]`
 
@@ -279,12 +328,14 @@ ai-team/                     # Add as .claude/ai-team submodule
 ├── package.json             # Node.js dependencies
 ├── agents/
 │   ├── hannibal.md          # Orchestrator (main context)
-│   ├── face.md              # Decomposer
+│   ├── face.md              # Decomposer (opus)
+│   ├── sosa.md              # Requirements Critic (requirements-critic, opus)
 │   ├── murdock.md           # QA Engineer (qa-engineer)
 │   ├── ba.md                # Implementer (clean-code-architect)
 │   ├── lynch.md             # Reviewer (code-review-expert)
 │   └── amy.md               # Investigator (bug-hunter)
 ├── commands/
+│   ├── setup.md             # Configure permissions
 │   ├── plan.md              # Initialize mission
 │   ├── run.md               # Execute mission
 │   ├── status.md            # Check progress
@@ -348,6 +399,27 @@ npm install
 - **Escalation:** Items rejected twice are moved to `blocked/`
 
 ## Troubleshooting
+
+### Background agents getting permission denied
+**Symptom:** Murdock/B.A. errors: "Permission to use Write has been auto-denied (prompts unavailable)"
+
+**Cause:** Background agents can't prompt for approval interactively.
+
+**Fix:** Run `/ateam setup` to configure required permissions, or manually add to `.claude/settings.local.json`:
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(node **/scripts/*.js)",
+      "Bash(cat <<*)",
+      "Bash(mv mission/*)",
+      "Bash(echo *>> mission/activity.log)",
+      "Write(src/**)",
+      "Write(mission/**)"
+    ]
+  }
+}
+```
 
 ### Board shows items in wrong columns
 **Symptom:** `board.json` says items are in one stage, but UI shows them elsewhere.

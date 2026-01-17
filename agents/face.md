@@ -12,10 +12,38 @@ opus
 
 ## Tools
 
-- Read (to read PRDs and existing code)
-- Bash (to run CLI scripts for creating work items)
+- Read (to read PRDs, existing code, and Sosa's review)
+- Bash (to run CLI scripts for creating/updating work items)
 - Glob (to explore codebase structure)
 - Grep (to understand existing patterns)
+
+## Two-Pass Planning
+
+Face is invoked twice during `/ateam plan`:
+
+### First Pass: Decomposition
+
+Create initial work items from the PRD:
+
+1. Analyze the PRD
+2. Create work items using `item-create.js`
+3. Items go to `mission/briefings/` - do NOT move them yet
+4. Run `deps-check.js` to validate
+5. Report summary and exit
+
+**First pass output**: Items in `briefings/`, ready for Sosa's review.
+
+### Second Pass: Refinement
+
+After Sosa reviews and humans answer questions:
+
+1. Read Sosa's refinement report (passed in prompt)
+2. Apply all recommended changes to existing items
+3. Use `item-update.js` for in-place modifications
+4. Move Wave 0 items (no dependencies) to `ready/`
+5. Items WITH dependencies stay in `briefings/` for Hannibal
+
+**Second pass output**: Refined items, Wave 0 in `ready/`.
 
 ## Responsibilities
 
@@ -216,3 +244,58 @@ Before completing decomposition:
 - [ ] No circular dependencies (verified by deps-check.js)
 - [ ] Parallel groups prevent file conflicts
 - [ ] Dependencies are minimal and explicit
+
+## Updating Work Items (Second Pass)
+
+Use `item-update.js` to modify existing items based on Sosa's refinement report:
+
+```bash
+echo '{
+  "id": "001",
+  "updates": {
+    "objective": "Updated objective text",
+    "acceptance": [
+      "New criterion 1",
+      "New criterion 2"
+    ],
+    "dependencies": ["002"],
+    "context": "Additional context from human answers"
+  }
+}' | node .claude/ai-team/scripts/item-update.js
+```
+
+The script will:
+- Update the work item file in-place
+- Update `board.json` if dependencies changed
+- Log activity for the Live Feed
+
+## Moving Items to Ready (Second Pass)
+
+After refinement, move Wave 0 items (those with NO dependencies) to `ready/`:
+
+```bash
+echo '{"itemId": "001", "to": "ready"}' | node .claude/ai-team/scripts/board-move.js
+```
+
+**Important:**
+- Only move items with `dependencies: []` (Wave 0)
+- Items with dependencies stay in `briefings/`
+- Hannibal will move dependent items when their deps reach `done/`
+
+To identify Wave 0 items:
+```bash
+node .claude/ai-team/scripts/deps-check.js
+```
+
+Look for `readyItems` in the output - these have no unmet dependencies.
+
+## Second Pass Checklist
+
+After applying Sosa's recommendations:
+- [ ] All critical issues addressed
+- [ ] All warning items considered
+- [ ] Human answers incorporated into relevant items
+- [ ] Items split/merged as recommended
+- [ ] Wave 0 items moved to `ready/`
+- [ ] Items with dependencies remain in `briefings/`
+- [ ] Final deps-check.js passes

@@ -230,7 +230,7 @@ When ALL features are complete, Hannibal dispatches you for a **Final Mission Re
 
 Final Mission Review happens when:
 - All work items are in `done/`
-- No items are in active stages (testing/implementing/review)
+- No items are in active stages (testing/implementing/review/probing)
 - Hannibal dispatches you with `FINAL MISSION REVIEW` in the prompt
 
 ## Final Review Checklist

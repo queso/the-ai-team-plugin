@@ -63,16 +63,20 @@ target-repo/
 
 ## Two-Stage Execution
 
-### Stage 1: Planning
+### Stage 1: Planning (IMPLEMENTED)
 
 ```bash
 claude "/ateam plan ./prd.md"
 ```
 
-- Face (opus model) decomposes PRD into work items
-- Creates dependency graph
-- Populates `mission/ready/` with item files
-- **Output:** Structured work breakdown
+**Now includes two-pass refinement with Sosa:**
+1. Face (opus) decomposes PRD into work items in `briefings/`
+2. Sosa (requirements-critic, opus) reviews and asks human questions
+3. Face (opus) refines based on feedback, moves Wave 0 to `ready/`
+
+Use `--skip-refinement` to bypass Sosa for simple PRDs.
+
+- **Output:** Refined work items, Wave 0 in `ready/`, rest in `briefings/`
 
 ### Stage 2: Execution
 
@@ -142,10 +146,27 @@ PRD
  │
  ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Face (Decomposer)                                       │
+│ Face (Decomposer) - First Pass                          │
 │ - Breaks PRD into smallest completable units            │
 │ - Defines dependency graph                              │
-│ - CRITICAL: Bad breakdown = bad everything downstream   │
+│ - Creates items in briefings/                           │
+└─────────────────────────────────────────────────────────┘
+ │
+ ▼
+┌─────────────────────────────────────────────────────────┐
+│ Sosa (Requirements Critic) - IMPLEMENTED                │
+│ - Reviews Face's breakdown                              │
+│ - Identifies ambiguities, sizing issues, dep problems   │
+│ - Asks human questions via AskUserQuestion              │
+│ - CRITICAL: Catches issues BEFORE work begins           │
+└─────────────────────────────────────────────────────────┘
+ │
+ ▼
+┌─────────────────────────────────────────────────────────┐
+│ Face (Decomposer) - Second Pass                         │
+│ - Applies Sosa's recommendations                        │
+│ - Refines items based on human answers                  │
+│ - Moves Wave 0 items to ready/                          │
 └─────────────────────────────────────────────────────────┘
  │
  ▼
@@ -204,19 +225,21 @@ The A(i)-Team maps almost directly to traditional Scrum/Kanban:
 | Scrum Master | Hannibal | Orchestrates, removes blockers |
 | Dev Team | Murdock, B.A., Amy | QA, Implementation, Bug Hunting |
 | Sprint Planning | Face decomposition | Breaking work into items |
-| **Backlog Refinement** | **Currently missing** | The gap we need to fill |
+| **Backlog Refinement** | **Sosa + Face two-pass** | **IMPLEMENTED** |
 | Daily Standup | Kanban board / Live Feed | Visibility into progress |
 | Code Review | Lynch (per-feature) | Quality gate |
 | Sprint Review | Lynch Final Mission Review | Holistic review |
 | Retrospective | Learning loop (future) | Improve over time |
 
-The missing piece is **Backlog Refinement** - the iterative Q&A process that happens before work begins.
+**Backlog Refinement is now implemented** via Sosa (requirements-critic) who reviews Face's breakdown and asks clarifying questions before work begins.
 
 ---
 
-## Backlog Refinement: Two-Pass Decomposition
+## Backlog Refinement: Two-Pass Decomposition (IMPLEMENTED)
 
-Face's decomposition is currently single-pass. In real teams, backlog refinement is conversational - the team asks questions, clarifies edge cases, and refines stories before committing to them.
+> **Status: IMPLEMENTED** - Sosa now reviews Face's decomposition during `/ateam plan`.
+
+Face's decomposition was previously single-pass. Now, backlog refinement is conversational - Sosa asks questions, clarifies edge cases, and refines stories before the team commits to them.
 
 ### Option A: Face → Human Q&A → Face Refines
 
@@ -287,20 +310,24 @@ Face's decomposition is currently single-pass. In real teams, backlog refinement
 **Pros:** Mimics what a good BA/architect does - asks before building
 **Cons:** Requires upfront human time (but probably saves time overall)
 
-### Recommendation: Option B (AI-Assisted Refinement)
+### Recommendation: Option B (AI-Assisted Refinement) - IMPLEMENTED
 
-Option B provides the best balance:
+> **Status: IMPLEMENTED** - This is now the default behavior of `/ateam plan`.
+
+Option B was chosen and implemented:
 - AI does the heavy lifting on both decomposition AND critique
 - Human time is focused on high-value decisions, not discovery
 - Mirrors real team dynamics: architect proposes, team critiques, PO decides
 
 ---
 
-## Sosa: The Critic Agent
+## Sosa: The Critic Agent (IMPLEMENTED)
 
-**Character:** General Russell Morrison "Sosa" - In the A-Team universe, the antagonist who relentlessly pursues and challenges the team. Perfect for a critic role.
+> **Status: IMPLEMENTED** - See `agents/sosa.md` for the full agent prompt.
 
-**Subagent Type:** `code-review-expert` or new `requirements-critic` type
+**Character:** Captain Charissa Sosa - Face's ex, CIA officer, relentless challenger. Holds Face's work to a higher standard because she knows what he's capable of.
+
+**Subagent Type:** `requirements-critic` (opus model)
 
 **Purpose:** Review Face's decomposition and surface problems BEFORE work begins.
 
@@ -357,7 +384,7 @@ Option B provides the best balance:
 - Consider parallel_group for Items 009-011 (independent features)
 ```
 
-### Refinement Flow (Detailed)
+### Refinement Flow (Detailed) - IMPLEMENTED
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -396,30 +423,37 @@ Option B provides the best balance:
                     Stage 1: Execution (/ateam run)
 ```
 
-### Command Flow
+### Command Flow - IMPLEMENTED
 
 ```bash
-# New unified command with refinement built-in
+# Unified command with refinement built-in
 claude "/ateam plan ./prd.md"
 
-# Flow:
-# 1. Face reads PRD, produces draft breakdown
-# 2. Sosa reviews breakdown, produces critique
-# 3. Human presented with both:
-#    - "Here's the proposed breakdown (15 items)"
-#    - "Here are Sosa's concerns (3 critical, 5 warnings, 4 questions)"
-# 4. Human answers questions, approves or requests changes
-# 5. If changes requested, Face refines and Sosa re-reviews
-# 6. Loop until approved
-# 7. Items written to mission/ready/
+# Current implemented flow:
+# 1. Face reads PRD, produces draft breakdown in briefings/
+# 2. Sosa reviews breakdown, asks questions via AskUserQuestion
+# 3. Human answers questions interactively
+# 4. Face refines based on Sosa's report
+# 5. Wave 0 items (no deps) moved to ready/
+# 6. Items with deps stay in briefings/ for Hannibal
 
 # Then execute as normal
 claude "/ateam run --wip 3"
 ```
 
-### Refinement Artifacts
+### Skip Refinement Option - IMPLEMENTED
 
-Stored in `mission/` for traceability:
+For simple PRDs or when you trust the breakdown:
+
+```bash
+claude "/ateam plan ./prd.md --skip-refinement"
+# → Face decomposes directly, no Sosa review, no human Q&A
+# → Use for small/simple projects or when iterating quickly
+```
+
+### Refinement Artifacts (Future Enhancement)
+
+Stored in `mission/` for traceability (not yet implemented):
 
 ```
 mission/
@@ -433,16 +467,6 @@ mission/
 │   └── approved-breakdown.json   # Final approved version
 ├── ready/                        # Work items created from approved breakdown
 ├── ...
-```
-
-### Skip Refinement Option
-
-For simple PRDs or when you trust the breakdown:
-
-```bash
-claude "/ateam plan ./prd.md --skip-refinement"
-# → Face decomposes directly, no Sosa review, no human Q&A
-# → Use for small/simple projects or when iterating quickly
 ```
 
 ---

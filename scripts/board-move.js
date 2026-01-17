@@ -9,16 +9,16 @@
  * This script performs:
  * 1. Moves the file on disk
  * 2. Updates board.json phases
- * 3. Auto-claims agent when moving to WIP stages (testing, implementing, review)
+ * 3. Auto-claims agent when moving to WIP stages (testing, implementing, review, probing)
  * 4. Releases previous agent claim when moving out of WIP stages
  * 5. Stores task_id in assignment (if provided) for TaskOutput polling
  *
- * The "agent" parameter is REQUIRED when moving to testing, implementing, or review.
+ * The "agent" parameter is REQUIRED when moving to testing, implementing, review, or probing.
  * The "task_id" parameter is OPTIONAL - used by Hannibal to track background agents.
  */
 
 // WIP stages that require agent assignment
-const WIP_STAGES = ['testing', 'implementing', 'review'];
+const WIP_STAGES = ['testing', 'implementing', 'review', 'probing'];
 
 import {
   readBoard,

@@ -145,7 +145,7 @@ cd .claude/ai-team && npm install
   - `review` → `done`, `ready` (on rejection)
   - `blocked` → `ready` (after unblock)
 
-- **WIP Limit Enforcement** - `board-move.js` checks WIP limits before allowing moves to `testing`, `implementing`, or `review` stages
+- **WIP Limit Enforcement** - `board-move.js` checks WIP limits before allowing moves to `testing`, `implementing`, `review`, or `probing` stages
 
 - **Rejection Escalation** - Items rejected twice are automatically moved to `blocked/` stage
 
