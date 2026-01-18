@@ -2,6 +2,11 @@
 name: ba
 description: Implementer - writes code to pass tests
 hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-echo-log.js"
   Stop:
     - hooks:
         - type: command

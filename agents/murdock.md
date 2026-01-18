@@ -2,6 +2,11 @@
 name: murdock
 description: QA Engineer - writes tests before implementation
 hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-echo-log.js"
   Stop:
     - hooks:
         - type: command

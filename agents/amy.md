@@ -2,6 +2,11 @@
 name: amy
 description: Investigator - probes for bugs beyond tests
 hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-echo-log.js"
   Stop:
     - hooks:
         - type: command
