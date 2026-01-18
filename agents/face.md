@@ -38,12 +38,16 @@ Create initial work items from the PRD:
 After Sosa reviews and humans answer questions:
 
 1. Read Sosa's refinement report (passed in prompt)
-2. Apply all recommended changes to existing items
-3. Use `item-update.js` for in-place modifications
-4. Move Wave 0 items (no dependencies) to `ready/`
-5. Items WITH dependencies stay in `briefings/` for Hannibal
+2. **Handle consolidations first** (if Sosa flagged over-splitting):
+   - Update the target item with merged objective/acceptance criteria
+   - Delete the absorbed items: `rm mission/briefings/XXX-*.md`
+   - Update board.json to remove deleted item IDs from phases
+3. Apply all other recommended changes to existing items
+4. Use `item-update.js` for in-place modifications
+5. Move Wave 0 items (no dependencies) to `ready/`
+6. Items WITH dependencies stay in `briefings/` for Hannibal
 
-**Second pass output**: Refined items, Wave 0 in `ready/`.
+**Second pass output**: Refined items (consolidated if needed), Wave 0 in `ready/`.
 
 ## Responsibilities
 
@@ -51,12 +55,14 @@ Given a PRD, decompose it into feature items - the smallest independently-comple
 
 ## Work Item Sizing
 
-**Goal:** Smallest independently-completable units.
+**Goal:** Smallest independently-completable units - but not smaller.
 
 - One logical unit of functionality per item
 - If you can split it further without creating artificial boundaries, split it
 - Each item should be describable in 1-2 sentences
 - No arbitrary time limits - focus on logical cohesion
+
+**Watch for over-splitting:** Most PRDs decompose to 5-15 items. If you're creating 20+, you're likely splitting too fine. Sosa will catch this and require consolidation, so save yourself the rework.
 
 **Good splits:**
 - "User authentication service" → separate items for login, logout, token refresh, password reset
@@ -251,7 +257,7 @@ Use `item-update.js` to modify existing items based on Sosa's refinement report:
 
 ```bash
 echo '{
-  "id": "001",
+  "itemId": "001",
   "updates": {
     "objective": "Updated objective text",
     "acceptance": [

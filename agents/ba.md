@@ -32,35 +32,41 @@ You receive a feature item that has already been through the testing stage:
 
 ## Process
 
-1. **Read the feature item**
+1. **Claim the item first**
+   ```bash
+   echo '{"itemId": "XXX", "agent": "ba"}' | node .claude/ai-team/scripts/board-claim.js
+   ```
+   Replace `XXX` with the actual item ID. This updates the board so the UI shows you're working.
+
+2. **Read the feature item**
    - Understand the objective
    - Note acceptance criteria
 
-2. **Read the test file** (outputs.test)
+3. **Read the test file** (outputs.test)
    - These are your acceptance criteria
    - Understand what behaviors are expected
    - Note edge cases being tested
 
-3. **Read types if present** (outputs.types)
+4. **Read types if present** (outputs.types)
    - Understand the interfaces you must implement
    - Respect the type contracts
 
-4. **Read existing code patterns**
+5. **Read existing code patterns**
    - Match the project's style
    - Use existing utilities when available
    - Follow established conventions
 
-5. **Write implementation**
+6. **Write implementation**
    - Start with the simplest code that passes tests
    - Don't over-engineer
    - Handle errors appropriately
 
-6. **Run tests to verify**
+7. **Run tests to verify**
    - All tests must pass
    - No skipped tests
    - No "it.only" left behind
 
-7. **Refactor for clarity**
+8. **Refactor for clarity**
    - Only if needed
    - Don't break tests
    - Improve readability without changing behavior

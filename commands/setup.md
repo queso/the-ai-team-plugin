@@ -34,6 +34,7 @@ This command pre-approves the necessary permissions so agents can work autonomou
    {
      "permissions": {
        "allow": [
+         "Bash(echo * | node **/scripts/*.js)",
          "Bash(node **/scripts/*.js)",
          "Bash(cat <<*)",
          "Bash(mv mission/*)",
@@ -55,7 +56,8 @@ This command pre-approves the necessary permissions so agents can work autonomou
 
 | Permission | Purpose |
 |------------|---------|
-| `Bash(node **/scripts/*.js)` | Run board management scripts |
+| `Bash(echo * \| node **/scripts/*.js)` | Pipe JSON to board scripts |
+| `Bash(node **/scripts/*.js)` | Run board management scripts directly |
 | `Bash(cat <<*)` | Heredoc input to scripts |
 | `Bash(mv mission/*)` | Move items between stage directories |
 | `Bash(echo *>> mission/activity.log)` | Log to Live Feed |
@@ -68,6 +70,7 @@ This command pre-approves the necessary permissions so agents can work autonomou
 // Pseudocode for setup logic
 
 const REQUIRED_PERMISSIONS = [
+  'Bash(echo * | node **/scripts/*.js)',
   'Bash(node **/scripts/*.js)',
   'Bash(cat <<*)',
   'Bash(mv mission/*)',
@@ -123,6 +126,7 @@ Checking permissions...
 Current settings: .claude/settings.local.json
 
 Adding permissions for background agents:
+  + Bash(echo * | node **/scripts/*.js)
   + Bash(node **/scripts/*.js)
   + Bash(cat <<*)
   + Bash(mv mission/*)

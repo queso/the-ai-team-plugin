@@ -23,7 +23,8 @@
 import {
   readBoard,
   writeBoard,
-  logActivity
+  logActivity,
+  normalizeAgentName
 } from '../lib/board.js';
 import { withLock } from '../lib/lock.js';
 import { readJsonInput, writeJsonOutput, writeError, assertValid } from '../lib/validate.js';
@@ -65,7 +66,7 @@ async function main() {
       await writeBoard(MISSION_DIR, board);
 
       // Log activity
-      const agentDisplay = agent.charAt(0).toUpperCase() + agent.slice(1);
+      const agentDisplay = normalizeAgentName(agent);
       const statusEmoji = status === 'success' ? '✓' : '✗';
       const logMessage = message
         ? `${statusEmoji} Feature ${itemId} complete: ${message}`

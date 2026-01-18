@@ -54,20 +54,26 @@ Systematically probe for weaknesses:
 
 ## Process
 
-1. **Read the feature item and outputs**
+1. **Claim the item first**
+   ```bash
+   echo '{"itemId": "XXX", "agent": "amy"}' | node .claude/ai-team/scripts/board-claim.js
+   ```
+   Replace `XXX` with the actual item ID. This updates the board so the UI shows you're working.
+
+2. **Read the feature item and outputs**
    - Understand what was built
    - Note the test file and implementation paths
 
-2. **Run existing tests**
+3. **Run existing tests**
    - All tests should pass
    - Note any flaky behavior
 
-3. **Execute Raptor Protocol**
+4. **Execute Raptor Protocol**
    - Run actual code, not just tests
    - Hit real endpoints if applicable
    - Try edge cases the tests might miss
 
-4. **Document findings with proof**
+5. **Document findings with proof**
    - Screenshots, curl output, error messages
    - File and line numbers for issues
    - Steps to reproduce

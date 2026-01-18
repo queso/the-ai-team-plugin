@@ -51,24 +51,30 @@ Review them as a cohesive unit, not separately.
 
 ## Process
 
-1. **Read the feature item**
+1. **Claim the item first**
+   ```bash
+   echo '{"itemId": "XXX", "agent": "lynch"}' | node .claude/ai-team/scripts/board-claim.js
+   ```
+   Replace `XXX` with the actual item ID. This updates the board so the UI shows you're working.
+
+2. **Read the feature item**
    - Note the objective and acceptance criteria
 
-2. **Read ALL output files together**
+3. **Read ALL output files together**
    - Test file
    - Implementation file
    - Types file (if exists)
 
-3. **Run tests**
+4. **Run tests**
    - All must pass
    - Note any flaky behavior
 
-4. **Verify coherence**
+5. **Verify coherence**
    - Tests actually test the implementation
    - Types are used correctly
    - Files work together as a unit
 
-5. **Render verdict**
+6. **Render verdict**
 
 ## Deep Investigation (Optional)
 

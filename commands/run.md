@@ -18,26 +18,27 @@ Execute the mission with the pipeline flow.
 Each feature flows through stages:
 
 ```
-briefings → ready → testing → implementing → review → done
-                       ↑           ↑            ↑
-                    Murdock      B.A.        Lynch
+briefings → ready → testing → implementing → review → probing → done
+                       ↑           ↑            ↑         ↑
+                    Murdock      B.A.        Lynch      Amy
 ```
 
 **Stage transitions:**
 1. `ready → testing`: Murdock writes tests (and types if specified)
 2. `testing → implementing`: B.A. implements to pass tests
 3. `implementing → review`: Lynch reviews ALL outputs together
-4. `review → done`: Feature complete (or back to ready if rejected)
-5. `all done → final review`: Lynch reviews entire codebase holistically
-6. `final review → complete`: Mission complete (or items back to ready if rejected)
+4. `review → probing`: Lynch approves, Amy investigates for bugs beyond tests
+5. `probing → done`: Amy verifies (or back to ready if bugs found)
+6. `all done → final review`: Lynch reviews entire codebase holistically
+7. `final review → complete`: Mission complete (or items back to ready if rejected)
 
 ## Pipeline Parallelism
 
 Different features can be at different stages simultaneously:
 
 ```
-Feature 001: [testing]  →  [implementing]  →  [review]  →  done
-Feature 002:      [testing]  →  [implementing]  →  [review]  →  done
+Feature 001: [testing]  →  [implementing]  →  [review]  →  [probing]  →  done
+Feature 002:      [testing]  →  [implementing]  →  [review]  →  [probing]
 Feature 003:            [testing]  →  [implementing]  →  [review]
 ```
 

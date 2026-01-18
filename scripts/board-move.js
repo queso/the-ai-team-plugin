@@ -29,7 +29,8 @@ import {
   moveItemFile,
   updateBoardPhases,
   checkDependencies,
-  logActivity
+  logActivity,
+  normalizeAgentName
 } from '../lib/board.js';
 import { withLock } from '../lib/lock.js';
 import { readJsonInput, writeJsonOutput, writeError, assertValid } from '../lib/validate.js';
@@ -184,7 +185,7 @@ async function main() {
       await writeBoard(MISSION_DIR, board);
 
       // Log activity
-      await logActivity(MISSION_DIR, agent || 'Hannibal', `Feature ${itemId} → ${to}`);
+      await logActivity(MISSION_DIR, normalizeAgentName(agent || 'Hannibal'), `Feature ${itemId} → ${to}`);
 
       // Check if final review is needed (all items in done)
       let finalReviewReady = false;

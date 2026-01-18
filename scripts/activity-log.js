@@ -12,6 +12,7 @@
 import { appendFile } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { normalizeAgentName } from '../lib/board.js';
 
 const MISSION_DIR = join(process.cwd(), 'mission');
 
@@ -73,7 +74,8 @@ async function main() {
 
     // Format and append log entry
     const timestamp = new Date().toISOString();
-    const entry = `${timestamp} [${input.agent}] ${input.message}\n`;
+    const agent = normalizeAgentName(input.agent);
+    const entry = `${timestamp} [${agent}] ${input.message}\n`;
 
     await appendFile(logPath, entry);
 
@@ -81,7 +83,7 @@ async function main() {
       success: true,
       logged: {
         timestamp,
-        agent: input.agent,
+        agent,
         message: input.message
       }
     }));

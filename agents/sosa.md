@@ -38,31 +38,51 @@ For each work item in `mission/briefings/`, evaluate:
 - Is there enough context for Murdock to write tests?
 - Are edge cases mentioned that should be covered?
 
-### 2. Sizing
+### 2. Sizing (Individual)
 - Is this the smallest independently-completable unit?
 - Could it be split further without artificial boundaries?
 - Is it too small (would create excessive overhead)?
 
-### 3. Dependencies
+### 3. Sizing (Mission-Wide) - CRITICAL
+**Over-splitting is a common failure mode.** Review the total decomposition:
+- **Item count**: 5-15 items is typical. 20+ is a red flag. 30+ is almost certainly over-split.
+- **Consolidation candidates**: Items that share the same file, same parallel_group, or are sequential steps of one feature should likely be ONE item.
+- **Artificial granularity**: If 5 items could be described as "build the X component", they should be 1-2 items, not 5.
+- **Test overhead**: Each item means a separate test file. 40 test files for one PRD is excessive.
+
+**When you detect over-splitting:**
+1. Flag as CRITICAL issue
+2. Identify consolidation groups (which items should merge)
+3. Provide specific merge instructions for Face's second pass
+
+Example consolidation instruction:
+```
+**Consolidate items 004, 005, 006 into single item "Board Column Component"**
+- These are all parts of rendering a single component
+- One test file, one impl file is sufficient
+- Merge acceptance criteria from all three
+```
+
+### 4. Dependencies
 - Are all dependencies explicit?
 - Are any dependencies missing?
 - Is the dependency direction correct?
 - Will circular dependencies emerge from this structure?
 
-### 4. Output Paths
+### 5. Output Paths
 - Do `outputs.test` and `outputs.impl` paths make sense?
 - Do paths follow project conventions?
 - Will any paths conflict between items?
 
-### 5. Parallel Groups
+### 6. Parallel Groups
 - Are items that modify the same files in the same group?
 - Are independent items in separate groups?
 
-### 6. Testability
+### 7. Testability
 - Can Murdock write tests from this specification?
 - Are there implicit requirements that should be explicit?
 
-### 7. Architectural Fit
+### 8. Architectural Fit
 - Does this align with existing code patterns?
 - Are there existing utilities that should be leveraged?
 - Will this integrate cleanly with the codebase?
@@ -107,6 +127,11 @@ For each work item in `mission/briefings/`, evaluate:
 
 ### Critical Issues (Must Fix)
 
+#### Over-Splitting Assessment
+- Total items: N (OK / RED FLAG / EXCESSIVE)
+- Consolidation needed: Yes/No
+- Consolidation groups: [see below]
+
 1. **[item-id] Issue Title**
    - Problem: What's wrong
    - Impact: Why this matters
@@ -126,6 +151,13 @@ For each work item in `mission/briefings/`, evaluate:
 
 ### Refinement Instructions for Face
 
+#### Consolidations (if over-split)
+**Merge items 004, 005, 006 → new item "Board Column Component"**
+- Combined objective: "..."
+- Combined acceptance criteria from all three
+- Delete items 005, 006 after merging into 004
+
+#### Individual Item Changes
 For each item needing changes, specific instructions:
 
 **Item 001 - [title]**

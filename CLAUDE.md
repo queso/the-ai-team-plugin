@@ -158,6 +158,7 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 {
   "permissions": {
     "allow": [
+      "Bash(echo * | node **/scripts/*.js)",
       "Bash(node **/scripts/*.js)",
       "Bash(cat <<*)",
       "Bash(mv mission/*)",
@@ -171,6 +172,7 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 
 | Permission | Used By | Purpose |
 |------------|---------|---------|
+| `Bash(echo * \| node **/scripts/*.js)` | All agents | Pipe JSON to board scripts |
 | `Bash(node **/scripts/*.js)` | All agents | Run board management scripts |
 | `Bash(cat <<*)` | All agents | Heredoc input to scripts |
 | `Bash(mv mission/*)` | Hannibal | Move items between stage directories |

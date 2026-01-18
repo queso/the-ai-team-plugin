@@ -41,22 +41,28 @@ Write ONLY tests and type definitions. **Do NOT write implementation code** - th
 
 ## Process
 
-1. **Read the feature item**
+1. **Claim the item first**
+   ```bash
+   echo '{"itemId": "XXX", "agent": "murdock"}' | node .claude/ai-team/scripts/board-claim.js
+   ```
+   Replace `XXX` with the actual item ID. This updates the board so the UI shows you're working.
+
+2. **Read the feature item**
    - Understand the objective
    - Note acceptance criteria
    - Identify key behaviors to test
 
-2. **Read existing code patterns**
+3. **Read existing code patterns**
    - Match the project's testing style
    - Use the same assertion library
    - Follow naming conventions
 
-3. **Create types if specified**
+4. **Create types if specified**
    - If `outputs.types` is in the feature item, create it first
    - Define interfaces and types needed by the feature
    - Keep types minimal and focused
 
-4. **Write focused tests:**
+5. **Write focused tests:**
 
    ```typescript
    describe('FeatureName', () => {
@@ -76,7 +82,7 @@ Write ONLY tests and type definitions. **Do NOT write implementation code** - th
    });
    ```
 
-5. **Verify tests fail appropriately**
+6. **Verify tests fail appropriately**
    - Run the test suite
    - Confirm failures are for the right reason (missing implementation)
 
