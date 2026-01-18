@@ -109,6 +109,7 @@ The scripts ensure:
 - Invalid transitions are rejected
 
 ### Agent Boundaries
+- **Hannibal**: Orchestrates ONLY. NEVER uses Write/Edit on `src/**` or test files. Delegates ALL coding to subagents. If pipeline is stuck, reports status and waits for human intervention - never codes a workaround.
 - **Face**: Creates and updates work items. Does NOT write tests or implementation.
 - **Sosa**: Reviews and critiques work items. Does NOT modify items directly - provides recommendations for Face.
 - **Murdock**: Writes ONLY tests and types. Does NOT write implementation code.

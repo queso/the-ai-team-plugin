@@ -112,6 +112,7 @@ async function main() {
       if (!board.assignments) board.assignments = {};
       if (!board.history) board.history = {};
       if (!board.history[itemId]) board.history[itemId] = [];
+      if (!board.mission) board.mission = {};
 
       const timestamp = new Date().toISOString();
 
@@ -176,6 +177,7 @@ async function main() {
       // Track mission started_at (first time ANY item enters a WIP stage)
       if (WIP_STAGES.includes(to) && !board.mission.started_at) {
         board.mission.started_at = timestamp;
+        board.mission.status = 'active';
       }
 
       // Write board
@@ -195,6 +197,7 @@ async function main() {
 
         if (finalReviewReady && !board.mission.completed_at) {
           board.mission.completed_at = timestamp;
+          board.mission.status = 'completed';
 
           // Calculate total mission duration
           if (board.mission.started_at) {
