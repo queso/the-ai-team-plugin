@@ -199,10 +199,12 @@ VERDICT: APPROVED/REJECTED
 Log your progress to the Live Feed:
 
 ```bash
-node .claude/ai-team/scripts/activity-log.js --agent=Lynch --message="Reviewing feature 001"
-node .claude/ai-team/scripts/activity-log.js --agent=Lynch --message="Running test suite"
-node .claude/ai-team/scripts/activity-log.js --agent=Lynch --message="APPROVED - all checks pass"
+node scripts/log.js Lynch "Reviewing feature 001"
+node scripts/log.js Lynch "Running test suite"
+node scripts/log.js Lynch "APPROVED - all checks pass"
 ```
+
+**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
 
 Log at key milestones:
 - Starting review

@@ -230,10 +230,12 @@ Amy is part of the **standard pipeline** - every feature passes through her:
 Log your investigation to the Live Feed:
 
 ```bash
-node .claude/ai-team/scripts/activity-log.js --agent=Amy --message="Investigating feature 001"
-node .claude/ai-team/scripts/activity-log.js --agent=Amy --message="Running Raptor Protocol"
-node .claude/ai-team/scripts/activity-log.js --agent=Amy --message="VERIFIED - all probes pass"
+node scripts/log.js Amy "Investigating feature 001"
+node scripts/log.js Amy "Running Raptor Protocol"
+node scripts/log.js Amy "VERIFIED - all probes pass"
 ```
+
+**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
 
 Log at key milestones:
 - Starting investigation

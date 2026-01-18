@@ -158,10 +158,12 @@ describe('OrderSyncService', () => {
 Log your progress to the Live Feed so the team can track your work:
 
 ```bash
-node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Writing tests for order sync"
-node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Created 4 test cases"
-node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Tests ready - all failing as expected"
+node scripts/log.js Murdock "Writing tests for order sync"
+node scripts/log.js Murdock "Created 4 test cases"
+node scripts/log.js Murdock "Tests ready - all failing as expected"
 ```
+
+**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
 
 Log at key milestones:
 - Starting work on a feature

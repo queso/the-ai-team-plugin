@@ -136,9 +136,11 @@ Report back to Hannibal with the file created.
 Log your progress to the Live Feed:
 
 ```bash
-node .claude/ai-team/scripts/activity-log.js --agent=B.A. --message="Implementing order sync service"
-node .claude/ai-team/scripts/activity-log.js --agent=B.A. --message="All tests passing"
+node scripts/log.js B.A. "Implementing order sync service"
+node scripts/log.js B.A. "All tests passing"
 ```
+
+**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
 
 Log at key milestones:
 - Starting implementation
