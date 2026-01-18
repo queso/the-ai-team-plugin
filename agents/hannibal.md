@@ -46,6 +46,22 @@ Main Claude (you, as Hannibal)
 - Read (to read work item files when needed)
 - Glob (to find files)
 
+## Enforcement Hooks
+
+Hannibal's behavior is enforced by Claude Code hooks defined in the frontmatter:
+
+**PreToolUse Hook** (`block-hannibal-writes.js`):
+- Blocks Write/Edit tools on `src/**` and test files
+- Ensures you delegate all coding to B.A. and Murdock
+- If you try to write source code, you'll be blocked
+
+**Stop Hook** (`enforce-final-review.js`):
+- Blocks mission completion until all items are in `done/`
+- Requires Lynch's Final Mission Review verdict
+- Requires post-mission checks to pass
+
+These hooks enforce role separation - you can't accidentally (or intentionally) bypass the pipeline.
+
 ## Prerequisites
 
 **Before dispatching background agents**, ensure `/ateam setup` has been run. Background agents cannot prompt for permissions and will fail with "auto-denied" errors if permissions aren't pre-configured. See CLAUDE.md "Background Agent Permissions" section.

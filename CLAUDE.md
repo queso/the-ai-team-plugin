@@ -213,9 +213,11 @@ ai-team/
 │   ├── item-*.js            # Work item operations
 │   ├── mission-*.js         # Mission lifecycle
 │   ├── deps-check.js        # Dependency validation
-│   ├── activity-log.js      # Activity logging
+│   ├── activity-log.js      # Activity logging (JSON input)
+│   ├── log.js               # Simple activity logger (positional args)
 │   └── hooks/               # Agent lifecycle hooks
-│       ├── enforce-completion-log.js    # SubagentStop hook for working agents
+│       ├── enforce-completion-log.js    # Stop hook for working agents
+│       ├── block-raw-echo-log.js        # PreToolUse hook for working agents
 │       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal
 │       └── enforce-final-review.js      # Stop hook for Hannibal
 ├── lib/                     # Shared utilities
@@ -246,7 +248,8 @@ Agents should use CLI scripts for board operations instead of direct file manipu
 | `mission-postcheck.js` | Run post-mission checks (lint, unit, e2e) based on `ateam.config.json` |
 | `mission-archive.js` | Archive completed items and activity log |
 | `deps-check.js` | Validate dependency graph, detect cycles |
-| `activity-log.js` | Log progress to Live Feed |
+| `activity-log.js` | Log progress to Live Feed (JSON input) |
+| `log.js` | **Simple activity logger**: `node scripts/log.js Agent "message"` |
 
 ### Agent Lifecycle Hooks
 
@@ -291,8 +294,21 @@ The plugin uses Claude Code's hook system to enforce workflow discipline:
 
 ### Working Agent Hooks (Murdock, B.A., Lynch, Amy)
 
-All working agents have a **SubagentStop hook** that enforces completion logging:
+All working agents have two hooks:
 
+**PreToolUse Hook** - Blocks raw echo to activity log:
+```yaml
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-echo-log.js"
+```
+
+**Purpose:** Prevents agents from using raw `echo >> mission/activity.log` commands. Agents must use `node scripts/log.js` instead for proper formatting.
+
+**Stop Hook** - Enforces completion logging:
 ```yaml
 hooks:
   Stop:

@@ -359,10 +359,10 @@ ai-team/                     # Add as .claude/ai-team submodule
 │   ├── hannibal.md          # Orchestrator (PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer (opus)
 │   ├── sosa.md              # Requirements Critic (requirements-critic, opus)
-│   ├── murdock.md           # QA Engineer (SubagentStop hook)
-│   ├── ba.md                # Implementer (SubagentStop hook)
-│   ├── lynch.md             # Reviewer (SubagentStop hook)
-│   └── amy.md               # Investigator (SubagentStop hook)
+│   ├── murdock.md           # QA Engineer (PreToolUse + Stop hooks)
+│   ├── ba.md                # Implementer (PreToolUse + Stop hooks)
+│   ├── lynch.md             # Reviewer (PreToolUse + Stop hooks)
+│   └── amy.md               # Investigator (PreToolUse + Stop hooks)
 ├── commands/
 │   ├── setup.md             # Configure permissions + create config
 │   ├── plan.md              # Initialize mission
@@ -377,9 +377,11 @@ ai-team/                     # Add as .claude/ai-team submodule
 │   ├── item-*.js            # Work item operations
 │   ├── mission-*.js         # Mission lifecycle (init, precheck, postcheck, archive)
 │   ├── deps-check.js
-│   ├── activity-log.js
+│   ├── activity-log.js      # Activity logging (JSON input)
+│   ├── log.js               # Simple activity logger (positional args)
 │   └── hooks/               # Agent lifecycle hooks
-│       ├── enforce-completion-log.js    # SubagentStop for working agents
+│       ├── enforce-completion-log.js    # Stop hook for working agents
+│       ├── block-raw-echo-log.js        # PreToolUse for working agents
 │       ├── block-hannibal-writes.js     # PreToolUse for Hannibal
 │       └── enforce-final-review.js      # Stop for Hannibal
 ├── lib/                     # Shared libraries
@@ -421,7 +423,8 @@ npm install
 | `mission-postcheck.js` | **Post-mission checks**: Lint + unit + e2e | `node .claude/ai-team/scripts/mission-postcheck.js` |
 | `mission-archive.js` | Archive completed items | `node .claude/ai-team/scripts/mission-archive.js --complete` |
 | `deps-check.js` | Validate dependency graph | `node .claude/ai-team/scripts/deps-check.js` |
-| `activity-log.js` | Log to Live Feed | `node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Writing tests"` |
+| `activity-log.js` | Log to Live Feed (JSON input) | `node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Writing tests"` |
+| `log.js` | **Simple activity logger** (positional args) | `node scripts/log.js Murdock "Created 5 test cases"` |
 
 ### Input/Output
 
@@ -445,7 +448,14 @@ The plugin uses Claude Code's hook system to enforce workflow discipline:
 
 ### Working Agent Hooks (Murdock, B.A., Lynch, Amy)
 
-All working agents have a **SubagentStop hook** (`enforce-completion-log.js`) that:
+All working agents have two hooks:
+
+**PreToolUse Hook** (`block-raw-echo-log.js`):
+- Blocks raw `echo >> mission/activity.log` commands
+- Forces agents to use `node scripts/log.js` for proper formatting
+- Ensures consistent activity logging format
+
+**Stop Hook** (`enforce-completion-log.js`):
 - Prevents agents from finishing without calling `item-agent-stop.js`
 - Ensures work summaries are recorded in the work item's `work_log`
 - Blocks stop and prompts agent if completion logging is missing
