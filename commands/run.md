@@ -53,26 +53,44 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
        exit
    ```
 
-2. **Main Claude becomes Hannibal**
+2. **Run pre-mission checks**
+   ```bash
+   node .claude/ai-team/scripts/mission-precheck.js
+   ```
+   - Ensures codebase is in clean state (lint, unit tests passing)
+   - Establishes baseline before mission work begins
+   - If checks fail, abort mission and report to user
+
+3. **Main Claude becomes Hannibal**
    - Orchestration runs in the main context (visible to user)
    - Worker agents dispatched as direct subagents
 
-3. **Orchestration loop:**
+4. **Orchestration loop:**
    - Check for completed agents, advance items to next stage
    - Move eligible items from briefings → ready
    - Start new features if under WIP limit
    - Update board.json after every change
 
-4. **Final Mission Review:**
+5. **Final Mission Review:**
    - When ALL items reach `done/`, trigger final review
    - Lynch reviews entire codebase for cross-cutting issues
    - Focus: readability, security, race conditions, code quality
-   - If FINAL APPROVED → proceed to completion
+   - If FINAL APPROVED → proceed to post-checks
    - If FINAL REJECTED → specified items return to pipeline
 
-5. **Completion:**
-   - Final review approved → "I love it when a plan comes together."
+6. **Post-Mission Checks:**
+   ```bash
+   node .claude/ai-team/scripts/mission-postcheck.js
+   ```
+   - Run after final review approves
+   - Verifies lint, unit tests, and e2e tests all pass
+   - Updates `board.json` with results
+   - Required for mission completion (enforced by Hannibal's Stop hook)
+
+7. **Completion:**
+   - Final review approved AND post-checks pass → "I love it when a plan comes together."
    - Items in `blocked/` → Needs human intervention
+   - Post-checks fail → Fix issues before mission can complete
 
 ## Progress Updates
 

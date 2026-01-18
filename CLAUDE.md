@@ -63,12 +63,14 @@ Work items are markdown files with YAML frontmatter containing:
 - `id`, `title`, `type`, `status`, `rejection_count`
 - `outputs.test`, `outputs.impl`, `outputs.types` (file paths)
 - `dependencies`, `parallel_group`
+- `assigned_agent` (set by `item-agent-start.js`, cleared by `item-agent-stop.js`)
+- `work_log` (array of work summaries from each agent, appended by `item-agent-stop.js`)
 
 ## Plugin Commands
 
-- `/ateam setup` - Configure permissions for background agents (run once per project)
+- `/ateam setup` - Configure permissions, create `ateam.config.json`, check plugin dependencies (run once per project)
 - `/ateam plan <prd-file>` - Initialize mission from PRD, Face decomposes into work items
-- `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3)
+- `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3), runs precheck before starting
 - `/ateam status` - Display kanban board with current progress
 - `/ateam resume` - Resume interrupted mission from saved state
 - `/ateam unblock <item-id> [--guidance "hint"]` - Unblock stuck items
@@ -90,6 +92,12 @@ dependencies: []
 parallel_group: "group-name"
 status: "pending"
 rejection_count: 0
+assigned_agent: "Murdock"                   # Set by start hook, cleared by stop hook
+work_log:                                   # Populated by stop hook
+  - agent: "Murdock"
+    timestamp: "2024-01-15T10:30:00Z"
+    status: "success"
+    summary: "Created 5 test cases"
 ---
 ```
 Without `outputs:`, Murdock and B.A. don't know where to create files.
@@ -188,20 +196,28 @@ Without these permissions, agents will fail with: "Permission to use [tool] has 
 ai-team/
 ├── plugin.json              # Plugin configuration
 ├── package.json             # Node.js dependencies (run `npm install`)
-├── agents/                  # Agent prompts and behavior
-│   ├── hannibal.md          # Orchestrator (main context)
+├── agents/                  # Agent prompts and behavior (with frontmatter hooks)
+│   ├── hannibal.md          # Orchestrator (main context, has PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer
 │   ├── sosa.md              # Requirements Critic
-│   ├── murdock.md           # QA Engineer
-│   ├── ba.md                # Implementer
-│   ├── lynch.md             # Reviewer
-│   └── amy.md               # Investigator (bug-hunter)
+│   ├── murdock.md           # QA Engineer (has SubagentStop hook)
+│   ├── ba.md                # Implementer (has SubagentStop hook)
+│   ├── lynch.md             # Reviewer (has SubagentStop hook)
+│   └── amy.md               # Investigator (has SubagentStop hook)
 ├── commands/                # Slash command definitions
 │   ├── setup.md, plan.md, run.md, status.md, resume.md, unblock.md
 ├── skills/
 │   └── tdd-workflow.md      # TDD guidance
 ├── scripts/                 # CLI scripts for board operations
-│   ├── board-read.js, board-move.js, board-claim.js, ...
+│   ├── board-*.js           # Board management
+│   ├── item-*.js            # Work item operations
+│   ├── mission-*.js         # Mission lifecycle
+│   ├── deps-check.js        # Dependency validation
+│   ├── activity-log.js      # Activity logging
+│   └── hooks/               # Agent lifecycle hooks
+│       ├── enforce-completion-log.js    # SubagentStop hook for working agents
+│       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal
+│       └── enforce-final-review.js      # Stop hook for Hannibal
 ├── lib/                     # Shared utilities
 │   ├── board.js, lock.js, validate.js
 └── docs/
@@ -216,19 +232,163 @@ Agents should use CLI scripts for board operations instead of direct file manipu
 |--------|---------|
 | `board-read.js` | Read board state as JSON |
 | `board-move.js` | Move item between stages (validates transitions, enforces WIP, stores task_id) |
-| `board-claim.js` | Assign agent to item |
+| `board-claim.js` | Assign agent to item (board.json only) |
 | `board-release.js` | Release agent claim |
 | `item-create.js` | Create new work item |
 | `item-update.js` | Update work item |
 | `item-reject.js` | Record rejection (escalates after 2) |
-| `item-complete.js` | Signal agent completion (enables immediate item advancement) |
+| `item-complete.js` | Signal agent completion (board.json only, DEPRECATED - use `item-agent-stop.js`) |
+| `item-agent-start.js` | **START HOOK**: Claim item + write `assigned_agent` to frontmatter |
+| `item-agent-stop.js` | **STOP HOOK**: Signal completion + add work summary to `work_log` in frontmatter |
 | `item-render.js` | Render item as markdown |
 | `mission-init.js` | Initialize fresh mission (archives existing first) |
+| `mission-precheck.js` | Run pre-mission checks (lint, unit tests) based on `ateam.config.json` |
+| `mission-postcheck.js` | Run post-mission checks (lint, unit, e2e) based on `ateam.config.json` |
 | `mission-archive.js` | Archive completed items and activity log |
 | `deps-check.js` | Validate dependency graph, detect cycles |
 | `activity-log.js` | Log progress to Live Feed |
 
+### Agent Lifecycle Hooks
+
+Working agents (Murdock, B.A., Lynch, Amy) should use the lifecycle hooks instead of the lower-level scripts:
+
+**Start Hook** (`item-agent-start.js`):
+```bash
+echo '{"itemId": "007", "agent": "murdock"}' | node .claude/ai-team/scripts/item-agent-start.js
+```
+- Claims the item in `board.json`
+- Writes `assigned_agent: "Murdock"` to work item frontmatter
+- The kanban UI reads this field to show which agent is working on each card
+
+**Stop Hook** (`item-agent-stop.js`):
+```bash
+echo '{"itemId": "007", "agent": "murdock", "status": "success", "summary": "Created 5 test cases", "files_created": ["src/__tests__/feature.test.ts"]}' | node .claude/ai-team/scripts/item-agent-stop.js
+```
+- Marks completion in `board.json`
+- Clears `assigned_agent` from frontmatter
+- Appends work summary to `work_log` array in frontmatter
+
+**Work Log Format** (in work item frontmatter):
+```yaml
+work_log:
+  - agent: "Murdock"
+    timestamp: "2024-01-15T10:30:00Z"
+    status: "success"
+    summary: "Created 5 test cases covering happy path and error handling"
+    files_created: ["src/__tests__/order-sync.test.ts"]
+  - agent: "B.A."
+    timestamp: "2024-01-15T11:45:00Z"
+    status: "success"
+    summary: "Implemented OrderSyncService, all tests passing"
+    files_created: ["src/services/order-sync.ts"]
+```
+
 All scripts accept JSON via stdin and output JSON to stdout. See README for full usage examples.
+
+## Agent Lifecycle Hooks
+
+The plugin uses Claude Code's hook system to enforce workflow discipline:
+
+### Working Agent Hooks (Murdock, B.A., Lynch, Amy)
+
+All working agents have a **SubagentStop hook** that enforces completion logging:
+
+```yaml
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/enforce-completion-log.js"
+```
+
+**Purpose:** Prevents agents from finishing without calling `item-agent-stop.js` to record their work.
+
+**Behavior:** If the agent hasn't logged completion via `item-agent-stop.js`, the hook blocks the stop and injects a message telling the agent to call the script.
+
+### Hannibal Hooks
+
+Hannibal has two hooks to maintain orchestrator boundaries:
+
+**PreToolUse Hook** - Blocks writes to source code:
+```yaml
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-hannibal-writes.js"
+```
+
+**Purpose:** Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
+
+**Stop Hook** - Enforces final review and post-checks:
+```yaml
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/enforce-final-review.js"
+```
+
+**Purpose:** Prevents mission from ending without:
+1. All items reaching `done/`
+2. Final Mission Review being completed by Lynch
+3. Post-mission checks passing (lint, tests, e2e)
+
+## Project Configuration
+
+The `/ateam setup` command creates `ateam.config.json` with project-specific settings:
+
+```json
+{
+  "packageManager": "npm",
+  "checks": {
+    "lint": "npm run lint",
+    "unit": "npm test",
+    "e2e": "npm run test:e2e"
+  },
+  "precheck": ["lint", "unit"],
+  "postcheck": ["lint", "unit", "e2e"],
+  "devServer": {
+    "url": "http://localhost:3000",
+    "start": "npm run dev",
+    "restart": "docker compose restart",
+    "managed": false
+  }
+}
+```
+
+**Dev server** (`devServer`):
+- `url`: Where Amy should point Playwright for browser testing
+- `start`: Command to start the server (for user reference)
+- `restart`: Command to restart the server (e.g., to pick up code changes)
+- `managed`: If false, user manages server; Amy checks if running but doesn't start/restart it
+
+**Pre-mission checks** (`mission-precheck.js`):
+- Run before `/ateam run` starts execution
+- Ensures codebase is in clean state (no existing lint/test failures)
+- Establishes baseline for mission work
+
+**Post-mission checks** (`mission-postcheck.js`):
+- Run after Lynch completes Final Mission Review
+- Proves all code works together (lint + unit + e2e all passing)
+- Required for mission completion (enforced by Hannibal's Stop hook)
+- Updates `board.json` with results so the Stop hook can verify
+
+## Plugin Dependencies
+
+**Playwright Plugin (Recommended):**
+Amy uses Playwright MCP tools for browser-based testing. The `/ateam setup` command checks for this dependency.
+
+Without Playwright, Amy can still:
+- Run curl commands for API testing
+- Execute Node.js test scripts
+- Analyze code and logs
+
+But she won't be able to:
+- Open browsers for UI testing
+- Take screenshots
+- Test interactive flows
 
 ## Installation as Submodule
 

@@ -91,6 +91,9 @@ Use `--skip-refinement` to bypass Sosa for simple PRDs.
 
 ### Execution Phase (`/ateam run`)
 
+**Before starting execution:**
+- **Pre-Mission Checks**: Runs `mission-precheck.js` to verify lint and tests pass (establishes baseline)
+
 Each feature flows through stages sequentially:
 
 ```
@@ -113,7 +116,8 @@ briefings → ready → testing → implementing → review → probing → done
 4. `review → probing`: Amy probes for bugs beyond tests (APPROVED)
 5. `probing → done`: Feature complete (VERIFIED), or back to ready (FLAG)
 6. `all done → final review`: Lynch reviews entire codebase holistically
-7. `final review → complete`: Mission complete (or items back to ready if rejected)
+7. `final review → post-checks`: Run `mission-postcheck.js` (lint, unit, e2e)
+8. `post-checks pass → complete`: Mission complete (or items back to ready if rejected)
 
 ## Pipeline Parallelism
 
@@ -261,6 +265,21 @@ When ALL features are complete, Lynch performs a holistic review of the entire c
 
 If issues are found, specific items return to the pipeline for fixes.
 
+### Mission Lifecycle Checks
+
+**Pre-Mission Checks** (`mission-precheck.js`):
+- Run before `/ateam run` starts execution
+- Configured via `ateam.config.json` (typically lint + unit tests)
+- Ensures codebase is in clean state before mission begins
+- Establishes baseline - if tests are already failing, mission can't determine what it broke
+
+**Post-Mission Checks** (`mission-postcheck.js`):
+- Run after Lynch's Final Mission Review approves
+- Configured via `ateam.config.json` (typically lint + unit + e2e)
+- Proves all code works together
+- Required for mission completion (enforced by Hannibal's Stop hook)
+- Updates `board.json` so the Stop hook can verify checks passed
+
 ### Testing Philosophy
 
 **Move fast, test what matters:**
@@ -288,12 +307,22 @@ If issues are found, specific items return to the pipeline for fixes.
 
 Configure Claude Code permissions for background agents. **Run this once per project** before using `/ateam run`.
 
-Background agents can't prompt for approval, so this pre-approves:
-- `Bash(node **/scripts/*.js)` - board scripts
-- `Bash(mv mission/*)` - moving items between stages
-- `Bash(echo *>> mission/activity.log)` - activity logging
-- `Write(src/**)` - tests and implementations
-- `Write(mission/**)` - work items
+This command:
+1. **Configures permissions** - Background agents can't prompt for approval, so this pre-approves:
+   - `Bash(node **/scripts/*.js)` - board scripts
+   - `Bash(mv mission/*)` - moving items between stages
+   - `Bash(echo *>> mission/activity.log)` - activity logging
+   - `Write(src/**)` - tests and implementations
+   - `Write(mission/**)` - work items
+
+2. **Creates `ateam.config.json`** - Project-specific settings via interactive prompts:
+   - Package manager (npm, yarn, pnpm, bun)
+   - Test commands (unit, e2e)
+   - Lint command
+   - Pre-mission checks (what runs before `/ateam run`)
+   - Post-mission checks (what runs after final review)
+
+3. **Checks plugin dependencies** - Verifies Playwright plugin is available for Amy's browser testing
 
 ### `/ateam plan <prd-file> [--skip-refinement]`
 
@@ -326,27 +355,33 @@ Unblock a stuck work item with optional guidance.
 ai-team/                     # Add as .claude/ai-team submodule
 ├── plugin.json              # Plugin configuration
 ├── package.json             # Node.js dependencies
-├── agents/
-│   ├── hannibal.md          # Orchestrator (main context)
+├── agents/                  # Agent prompts with lifecycle hooks
+│   ├── hannibal.md          # Orchestrator (PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer (opus)
 │   ├── sosa.md              # Requirements Critic (requirements-critic, opus)
-│   ├── murdock.md           # QA Engineer (qa-engineer)
-│   ├── ba.md                # Implementer (clean-code-architect)
-│   ├── lynch.md             # Reviewer (code-review-expert)
-│   └── amy.md               # Investigator (bug-hunter)
+│   ├── murdock.md           # QA Engineer (SubagentStop hook)
+│   ├── ba.md                # Implementer (SubagentStop hook)
+│   ├── lynch.md             # Reviewer (SubagentStop hook)
+│   └── amy.md               # Investigator (SubagentStop hook)
 ├── commands/
-│   ├── setup.md             # Configure permissions
+│   ├── setup.md             # Configure permissions + create config
 │   ├── plan.md              # Initialize mission
-│   ├── run.md               # Execute mission
+│   ├── run.md               # Execute mission (with pre/post checks)
 │   ├── status.md            # Check progress
 │   ├── resume.md            # Resume interrupted
 │   └── unblock.md           # Unblock failed items
 ├── skills/
 │   └── tdd-workflow.md      # TDD guidance
 ├── scripts/                 # CLI scripts for board management
-│   ├── board-read.js
-│   ├── board-move.js
-│   └── ...
+│   ├── board-*.js           # Board operations
+│   ├── item-*.js            # Work item operations
+│   ├── mission-*.js         # Mission lifecycle (init, precheck, postcheck, archive)
+│   ├── deps-check.js
+│   ├── activity-log.js
+│   └── hooks/               # Agent lifecycle hooks
+│       ├── enforce-completion-log.js    # SubagentStop for working agents
+│       ├── block-hannibal-writes.js     # PreToolUse for Hannibal
+│       └── enforce-final-review.js      # Stop for Hannibal
 ├── lib/                     # Shared libraries
 │   ├── board.js
 │   ├── lock.js
@@ -377,10 +412,14 @@ npm install
 | `item-create.js` | Create work item | `echo '{"title":"...","type":"feature",...}' \| node .claude/ai-team/scripts/item-create.js` |
 | `item-update.js` | Update work item | `echo '{"itemId":"001","updates":{...}}' \| node .claude/ai-team/scripts/item-update.js` |
 | `item-reject.js` | Record rejection | `echo '{"itemId":"001","reason":"..."}' \| node .claude/ai-team/scripts/item-reject.js` |
-| `item-complete.js` | Signal agent completion | `echo '{"itemId":"001","agent":"murdock","status":"success"}' \| node .claude/ai-team/scripts/item-complete.js` |
+| `item-agent-start.js` | **Lifecycle hook**: Claim item + set `assigned_agent` | `echo '{"itemId":"001","agent":"murdock"}' \| node .claude/ai-team/scripts/item-agent-start.js` |
+| `item-agent-stop.js` | **Lifecycle hook**: Log completion + add to `work_log` | `echo '{"itemId":"001","agent":"murdock","status":"success","summary":"..."}' \| node .claude/ai-team/scripts/item-agent-stop.js` |
+| `item-complete.js` | Signal agent completion (DEPRECATED) | `echo '{"itemId":"001","agent":"murdock","status":"success"}' \| node .claude/ai-team/scripts/item-complete.js` |
 | `item-render.js` | Render as markdown | `node .claude/ai-team/scripts/item-render.js --item=001` |
-| `mission-archive.js` | Archive completed items | `node .claude/ai-team/scripts/mission-archive.js --complete` |
 | `mission-init.js` | Initialize fresh mission | `node .claude/ai-team/scripts/mission-init.js --force` |
+| `mission-precheck.js` | **Pre-mission checks**: Lint + unit tests | `node .claude/ai-team/scripts/mission-precheck.js` |
+| `mission-postcheck.js` | **Post-mission checks**: Lint + unit + e2e | `node .claude/ai-team/scripts/mission-postcheck.js` |
+| `mission-archive.js` | Archive completed items | `node .claude/ai-team/scripts/mission-archive.js --complete` |
 | `deps-check.js` | Validate dependency graph | `node .claude/ai-team/scripts/deps-check.js` |
 | `activity-log.js` | Log to Live Feed | `node .claude/ai-team/scripts/activity-log.js --agent=Murdock --message="Writing tests"` |
 
@@ -397,6 +436,51 @@ npm install
 - **Transition validation:** Invalid stage transitions are rejected
 - **WIP limits:** Enforced when moving items to active stages
 - **Escalation:** Items rejected twice are moved to `blocked/`
+- **Lifecycle hooks:** Agent start/stop scripts enforce completion logging
+- **Mission checks:** Pre/post checks ensure clean baseline and working output
+
+## Agent Lifecycle Hooks
+
+The plugin uses Claude Code's hook system to enforce workflow discipline:
+
+### Working Agent Hooks (Murdock, B.A., Lynch, Amy)
+
+All working agents have a **SubagentStop hook** (`enforce-completion-log.js`) that:
+- Prevents agents from finishing without calling `item-agent-stop.js`
+- Ensures work summaries are recorded in the work item's `work_log`
+- Blocks stop and prompts agent if completion logging is missing
+
+### Hannibal Hooks
+
+**PreToolUse Hook** (`block-hannibal-writes.js`):
+- Blocks Hannibal from writing to `src/**` or test files
+- Enforces delegation to B.A. and Murdock
+- Maintains orchestrator boundaries
+
+**Stop Hook** (`enforce-final-review.js`):
+- Prevents mission from ending without all items in `done/`
+- Requires Lynch's Final Mission Review verdict
+- Requires post-mission checks to pass
+- Ensures mission completes properly
+
+## Project Configuration
+
+`ateam.config.json` (created by `/ateam setup`):
+
+```json
+{
+  "packageManager": "npm",
+  "checks": {
+    "lint": "npm run lint",
+    "unit": "npm test",
+    "e2e": "npm run test:e2e"
+  },
+  "precheck": ["lint", "unit"],
+  "postcheck": ["lint", "unit", "e2e"]
+}
+```
+
+Configures which checks run before and after missions.
 
 ## Troubleshooting
 

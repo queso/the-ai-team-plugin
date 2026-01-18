@@ -1,3 +1,13 @@
+---
+name: murdock
+description: QA Engineer - writes tests before implementation
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/enforce-completion-log.js"
+---
+
 # Murdock - QA Engineer
 
 > "You're only crazy if you're wrong. I'm never wrong about tests."
@@ -41,11 +51,11 @@ Write ONLY tests and type definitions. **Do NOT write implementation code** - th
 
 ## Process
 
-1. **Claim the item first**
+1. **Start work (claim the item)**
    ```bash
-   echo '{"itemId": "XXX", "agent": "murdock"}' | node .claude/ai-team/scripts/board-claim.js
+   echo '{"itemId": "XXX", "agent": "murdock"}' | node .claude/ai-team/scripts/item-agent-start.js
    ```
-   Replace `XXX` with the actual item ID. This updates the board so the UI shows you're working.
+   Replace `XXX` with the actual item ID. This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
 
 2. **Read the feature item**
    - Understand the objective
@@ -167,17 +177,20 @@ When done:
 
 ### Signal Completion
 
-**IMPORTANT:** After completing your work, signal completion so Hannibal can advance this item immediately without waiting for other agents:
+**IMPORTANT:** After completing your work, signal completion so Hannibal can advance this item immediately. This also leaves a work summary note in the work item.
 
 ```bash
-echo '{"itemId": "XXX", "agent": "murdock", "status": "success", "message": "Tests created"}' | node .claude/ai-team/scripts/item-complete.js
+echo '{"itemId": "XXX", "agent": "murdock", "status": "success", "summary": "Created N test cases covering happy path and edge cases", "files_created": ["path/to/test.ts"]}' | node .claude/ai-team/scripts/item-agent-stop.js
 ```
 
-Replace `XXX` with the actual item ID from the feature item frontmatter.
+Replace:
+- `XXX` with the actual item ID from the feature item frontmatter
+- The summary with a brief description of what you did
+- The files_created array with the actual paths
 
 If you encountered errors that prevented completion:
 ```bash
-echo '{"itemId": "XXX", "agent": "murdock", "status": "failed", "message": "Error description"}' | node .claude/ai-team/scripts/item-complete.js
+echo '{"itemId": "XXX", "agent": "murdock", "status": "failed", "summary": "Error description"}' | node .claude/ai-team/scripts/item-agent-stop.js
 ```
 
 Report back to Hannibal with files created.
