@@ -87,9 +87,7 @@ async function main() {
         rejection_count: 0
       };
 
-      if (input.outputs) {
-        frontmatter.outputs = input.outputs;
-      }
+      frontmatter.outputs = input.outputs;
       frontmatter.dependencies = input.dependencies || [];
       if (input.parallel_group) {
         frontmatter.parallel_group = input.parallel_group;

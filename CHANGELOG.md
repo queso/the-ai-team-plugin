@@ -5,6 +5,40 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-01-18
+
+### Changed
+
+- **`lib/validate.js`** - Made `outputs` field required for work item creation
+  - `outputs` is now in the required array for `itemCreate` schema
+  - Added nested required validation: `outputs.test` and `outputs.impl` must be provided
+  - Prevents Face from creating work items that are missing critical file path information
+  - Clear error messages: "Missing required field: outputs" or "outputs.test is required"
+
+- **`scripts/item-create.js`** - Removed conditional check for `outputs`
+  - Since `outputs` is now required by validation, the conditional `if (input.outputs)` was removed
+  - Frontmatter always includes `outputs` field
+
+- **`agents/amy.md`** - Strengthened Raptor Protocol to catch integration bugs
+  - Added **Wiring Check** (step 2): Trace full data flow from implementation to UI
+    - Verify components are actually *imported* where needed
+    - Verify components are actually *used*, not just defined
+    - When a callback is added, verify something actually *calls* it
+    - Follow path: implementation → hook → handler → state → UI render
+  - Added **User Perspective** (step 3): Test from the user's point of view
+    - Load the actual app/page (not just run unit tests)
+    - Trigger the feature as a user would
+    - Verify expected visual/behavioral outcome
+  - Updated Investigation Checklist with Wiring, Data flow, and User-visible checks
+  - Updated Output Format with "Wiring Verification" and "User Perspective Test" sections
+
+### Fixed
+
+- Work items created without `outputs` field now fail validation with clear error messages
+- Amy's probing now catches "component exists but isn't wired" integration bugs
+
+---
+
 ## [1.7.0] - 2026-01-16
 
 ### Changed

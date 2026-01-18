@@ -38,13 +38,25 @@ sonnet
 Systematically probe for weaknesses:
 
 1. **Fence Test**: Try the happy path - does it actually work end-to-end?
-2. **Edge Probe**: Hit boundaries - empty inputs, max values, special characters
-3. **Concurrent Poke**: If async, hammer it with parallel requests
-4. **Error Injection**: What happens when dependencies fail?
-5. **Regression Sweep**: Did this break anything that was working?
+2. **Wiring Check**: Trace the full data flow from implementation to UI:
+   - Is the component/function actually *imported* where it needs to be?
+   - Is it actually *used*, not just defined? (grep for usage, not just definition)
+   - When a callback is added, verify something actually *calls* it
+   - Follow the path: implementation → hook → handler → state → UI render
+3. **User Perspective**: Would a real user see this feature working?
+   - Load the actual app/page (not just run unit tests)
+   - Trigger the feature as a user would
+   - Verify the expected visual/behavioral outcome
+4. **Edge Probe**: Hit boundaries - empty inputs, max values, special characters
+5. **Concurrent Poke**: If async, hammer it with parallel requests
+6. **Error Injection**: What happens when dependencies fail?
+7. **Regression Sweep**: Did this break anything that was working?
 
 ## Investigation Checklist
 
+- **Wiring**: Is the implementation actually connected and used? (not just defined)
+- **Data flow**: Can you trace from trigger → handler → state → UI?
+- **User-visible**: Does a real user see this working in the actual app?
 - **Integration**: Does it work with real dependencies (not mocks)?
 - **Regression**: Did we break existing functionality?
 - **Edge cases**: What inputs could break this?
@@ -84,6 +96,16 @@ Systematically probe for weaknesses:
 
 ```markdown
 ## Investigation Report: [feature-id]
+
+### Wiring Verification
+- [PASS/FAIL] Component imported in parent: `grep` shows import in [file]
+- [PASS/FAIL] Component actually used: found usage at [file:line]
+- [PASS/FAIL] Callback connected: handler wired in [file:line]
+- [PASS/FAIL] Data flow traced: trigger → handler → state → UI ✓
+
+### User Perspective Test
+- [PASS/FAIL] Loaded app, triggered feature, observed expected result
+- Evidence: [screenshot / console output / observed behavior]
 
 ### Tests Executed
 - [PASS/FAIL] `curl -X POST /api/endpoint` → 200 OK
