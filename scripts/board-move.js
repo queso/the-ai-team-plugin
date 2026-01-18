@@ -30,7 +30,8 @@ import {
   updateBoardPhases,
   checkDependencies,
   logActivity,
-  normalizeAgentName
+  normalizeAgentName,
+  writeWorkItem
 } from '../lib/board.js';
 import { withLock } from '../lib/lock.js';
 import { readJsonInput, writeJsonOutput, writeError, assertValid } from '../lib/validate.js';
@@ -139,6 +140,10 @@ async function main() {
             board.agents[previousAgent] = { status: 'idle' };
           }
           delete board.assignments[itemId];
+
+          // Clear assigned_agent from work item frontmatter
+          delete item.frontmatter.assigned_agent;
+          await writeWorkItem(newPath, item.frontmatter, item.content);
         }
       }
 
@@ -151,7 +156,7 @@ async function main() {
         const assignment = {
           agent: agentKey,
           started_at: timestamp,
-          status: 'working'
+          status: 'active'
         };
 
         // Store task_id if provided (for TaskOutput polling)
@@ -162,9 +167,13 @@ async function main() {
         board.assignments[itemId] = assignment;
 
         board.agents[agentKey] = {
-          status: 'working',
+          status: 'active',
           current_item: itemId
         };
+
+        // Write assigned_agent to work item frontmatter for UI display
+        item.frontmatter.assigned_agent = agentKey;
+        await writeWorkItem(newPath, item.frontmatter, item.content);
       }
 
       // Record non-WIP stage transitions (briefings→ready, review→done)
