@@ -19,8 +19,25 @@ Each feature flows through stages:
 
 ```
 briefings → ready → testing → implementing → review → probing → done
-                       ↑           ↑            ↑         ↑
-                    Murdock      B.A.        Lynch      Amy
+                       ↑           ↑            ↑         ↑       │
+                    Murdock      B.A.        Lynch      Amy       │
+                                                                  ▼
+                                                        ┌─────────────────┐
+                                                        │  Final Review   │
+                                                        │    (Lynch)      │
+                                                        └────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                        ┌─────────────────┐
+                                                        │  Post-Checks    │
+                                                        │ (lint,unit,e2e) │
+                                                        └────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                        ┌─────────────────┐
+                                                        │  Documentation  │
+                                                        │    (Tawnia)     │
+                                                        └─────────────────┘
 ```
 
 **Stage transitions:**
@@ -30,7 +47,9 @@ briefings → ready → testing → implementing → review → probing → done
 4. `review → probing`: Lynch approves, Amy investigates for bugs beyond tests
 5. `probing → done`: Amy verifies (or back to ready if bugs found)
 6. `all done → final review`: Lynch reviews entire codebase holistically
-7. `final review → complete`: Mission complete (or items back to ready if rejected)
+7. `final review → post-checks`: Run lint, unit, e2e tests
+8. `post-checks → documentation`: Tawnia updates CHANGELOG, README, docs/
+9. `documentation → complete`: Tawnia creates final commit, mission complete
 
 ## Pipeline Parallelism
 
@@ -84,13 +103,25 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
    ```
    - Run after final review approves
    - Verifies lint, unit tests, and e2e tests all pass
-   - Updates `board.json` with results
-   - Required for mission completion (enforced by Hannibal's Stop hook)
+   - Updates `board.json` with `postChecks.passed: true`
+   - If checks fail, items return to pipeline for fixes
 
-7. **Completion:**
-   - Final review approved AND post-checks pass → "I love it when a plan comes together."
+7. **Documentation Phase (Tawnia):**
+   - Dispatch Tawnia when ALL three conditions are met:
+     1. All items in `done/`
+     2. `finalReview.passed: true` in board.json
+     3. `postChecks.passed: true` in board.json
+   - Tawnia updates CHANGELOG.md (always)
+   - Tawnia updates README.md (if user-facing changes)
+   - Tawnia creates/updates docs/ entries (for complex features)
+   - Tawnia makes the **final commit** bundling all mission work + documentation
+   - Updates `board.json` with `documentation.completed: true` and `commit.hash`
+
+8. **Completion:**
+   - Documentation complete → "I love it when a plan comes together."
    - Items in `blocked/` → Needs human intervention
-   - Post-checks fail → Fix issues before mission can complete
+   - Post-checks fail → Fix issues before documentation can run
+   - Mission is NOT complete until Tawnia commits
 
 ## Progress Updates
 
@@ -103,12 +134,20 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
 [Hannibal] Feature 001 → review, dispatching Lynch
 [Murdock] 002 complete - test file created
 [Lynch] 001 APPROVED
+[Hannibal] Feature 001 → probing, dispatching Amy
+[Amy] 001 VERIFIED - no bugs found
 [Hannibal] Feature 001 → done
 ...
 [Hannibal] All features complete. Dispatching final review.
 [Lynch] FINAL MISSION REVIEW - reviewing 12 files
 [Lynch] VERDICT: FINAL APPROVED
-[Hannibal] Final review passed.
+[Hannibal] Running post-mission checks...
+[Hannibal] Post-checks PASSED (lint ✓, unit ✓, e2e ✓)
+[Hannibal] Dispatching Tawnia for documentation and final commit.
+[Tawnia] Updated CHANGELOG.md with 4 entries
+[Tawnia] Updated README.md
+[Tawnia] COMMITTED a1b2c3d - feat: Mission Name
+[Hannibal] Documentation complete.
 "I love it when a plan comes together."
 ```
 
@@ -135,7 +174,9 @@ The main Claude session becomes Hannibal and orchestrates directly:
 Main Claude (as Hannibal)
     ├── Task → Murdock (testing stage)
     ├── Task → B.A. (implementing stage)
-    └── Task → Lynch (review stage)
+    ├── Task → Lynch (review stage, final review)
+    ├── Task → Amy (probing stage)
+    └── Task → Tawnia (documentation, after post-checks pass)
 ```
 
 This flat structure:

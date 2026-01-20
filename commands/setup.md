@@ -10,13 +10,31 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 
 ## What This Command Does
 
-1. Configures permissions for background agents
-2. Creates `ateam.config.json` with project-specific settings
-3. Checks for required plugin dependencies (Playwright)
+1. **Auto-detects** project settings from CLAUDE.md and package.json
+2. Configures permissions for background agents
+3. Creates `ateam.config.json` with project-specific settings
+4. Checks for required plugin dependencies (Playwright)
 
 ## Behavior
 
-### Step 1: Configure Permissions
+### Step 1: Auto-Detect Project Settings
+
+**IMPORTANT:** Before asking questions, inspect the project's existing documentation to auto-detect settings.
+
+1. **Read CLAUDE.md** (if exists)
+   - Look for package manager mentions: `npm`, `yarn`, `pnpm`, `bun`
+   - Look for test commands: `npm test`, `vitest`, `jest`, `pnpm test`, etc.
+   - Look for lint commands: `npm run lint`, `eslint`, `biome`, etc.
+   - Look for dev server URLs: `localhost:3000`, `localhost:5173`, etc.
+   - Look for docker commands: `docker compose up`, etc.
+
+2. **Read package.json** (if exists)
+   - Check `scripts` for: `test`, `test:unit`, `test:e2e`, `lint`, `dev`, `start`
+   - Detect package manager from lock files: `package-lock.json` → npm, `yarn.lock` → yarn, `pnpm-lock.yaml` → pnpm, `bun.lockb` → bun
+
+3. **Build detected config** from findings
+
+### Step 2: Configure Permissions
 
 Background agents (`run_in_background: true`) cannot prompt for user approval, so we pre-approve necessary permissions.
 
@@ -25,14 +43,50 @@ Background agents (`run_in_background: true`) cannot prompt for user approval, s
    - Or `.claude/settings.json` (project-level, committed)
 
 2. **Determine project structure**
-   - Ask user about their source directory (default: `src/`)
-   - Ask about test directory pattern (default: `__tests__`)
+   - Use detected source directory or default to `src/`
+   - Use detected test pattern or default to `__tests__`
 
-### Step 2: Create Project Config
+### Step 3: Confirm Detected Settings
 
-Use `AskUserQuestion` to gather project-specific settings, then write to `ateam.config.json`:
+If settings were auto-detected from CLAUDE.md/package.json, **confirm them** instead of asking from scratch:
 
-**Question 1: Package Manager**
+**Example confirmation flow:**
+```
+I detected the following settings from your project:
+
+  Package manager: pnpm (detected from pnpm-lock.yaml)
+  Lint command:    pnpm run lint (from package.json scripts.lint)
+  Unit tests:      pnpm test:unit (from package.json scripts.test:unit)
+  E2E tests:       pnpm exec playwright test (from CLAUDE.md)
+  Dev server:      http://localhost:3000 (from CLAUDE.md)
+  Dev start:       docker compose up (from CLAUDE.md)
+
+Does this look correct?
+```
+
+Then use `AskUserQuestion` with detected values as the recommended option:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "I detected pnpm as your package manager. Is this correct?",
+    header: "Package mgr",
+    options: [
+      { label: "pnpm (Recommended)", description: "Detected from pnpm-lock.yaml" },
+      { label: "npm", description: "Node Package Manager" },
+      { label: "yarn", description: "Yarn package manager" },
+      { label: "bun", description: "Fast JavaScript runtime" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+### Step 4: Fill Gaps with Questions
+
+Only ask questions for settings that **could not be detected**. Use `AskUserQuestion` for missing settings:
+
+**Fallback Question 1: Package Manager** (if no lock file detected)
 ```
 AskUserQuestion({
   questions: [{
@@ -49,7 +103,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 2: Test Commands**
+**Fallback Question 2: Test Commands** (if not in package.json scripts)
 ```
 AskUserQuestion({
   questions: [{
@@ -66,7 +120,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 3: Lint Command**
+**Fallback Question 3: Lint Command** (if not in package.json scripts)
 ```
 AskUserQuestion({
   questions: [{
@@ -83,7 +137,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 4: E2E Tests**
+**Fallback Question 4: E2E Tests** (if not in package.json scripts)
 ```
 AskUserQuestion({
   questions: [{
@@ -100,7 +154,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 5: Pre-Mission Checks**
+**Fallback Question 5: Pre-Mission Checks** (always ask - preference)
 ```
 AskUserQuestion({
   questions: [{
@@ -117,7 +171,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 6: Post-Mission Checks**
+**Fallback Question 6: Post-Mission Checks** (always ask - preference)
 ```
 AskUserQuestion({
   questions: [{
@@ -134,7 +188,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 7: Dev Server (for Amy's browser testing)**
+**Fallback Question 7: Dev Server** (if not detected in CLAUDE.md)
 ```
 AskUserQuestion({
   questions: [{
@@ -151,7 +205,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 8: Dev Server Start Command (optional)**
+**Fallback Question 8: Dev Server Start** (if not detected)
 ```
 AskUserQuestion({
   questions: [{
@@ -168,7 +222,7 @@ AskUserQuestion({
 })
 ```
 
-**Question 9: Dev Server Restart Command (optional)**
+**Fallback Question 9: Dev Server Restart** (if not detected)
 ```
 AskUserQuestion({
   questions: [{
@@ -185,7 +239,7 @@ AskUserQuestion({
 })
 ```
 
-### Step 3: Write Config File
+### Step 5: Write Config File
 
 Based on answers, create `ateam.config.json` in project root:
 
@@ -212,7 +266,7 @@ Based on answers, create `ateam.config.json` in project root:
 - `devServer.restart`: Command to restart the server (Amy can suggest this if changes need to be picked up)
 - `devServer.managed`: If false, user manages server; Amy checks if running but doesn't start/restart it herself
 
-### Step 4: Check Plugin Dependencies
+### Step 6: Check Plugin Dependencies
 
 Check for Playwright plugin availability (see Plugin Dependencies section below).
 
@@ -229,6 +283,8 @@ Add these permissions to `.claude/settings.local.json`:
          "Bash(cat <<*)",
          "Bash(mv mission/*)",
          "Bash(echo *>> mission/activity.log)",
+         "Bash(git add *)",
+         "Bash(git commit *)",
          "Write(src/**)",
          "Write(mission/**)"
        ]
@@ -251,6 +307,8 @@ Add these permissions to `.claude/settings.local.json`:
 | `Bash(cat <<*)` | Heredoc input to scripts |
 | `Bash(mv mission/*)` | Move items between stage directories |
 | `Bash(echo *>> mission/activity.log)` | Log to Live Feed |
+| `Bash(git add *)` | Tawnia stages files for final commit |
+| `Bash(git commit *)` | Tawnia creates final commit |
 | `Write(src/**)` | Murdock writes tests, B.A. writes implementations |
 | `Write(mission/**)` | Face creates/updates work items |
 
@@ -265,6 +323,8 @@ const REQUIRED_PERMISSIONS = [
   'Bash(cat <<*)',
   'Bash(mv mission/*)',
   'Bash(echo *>> mission/activity.log)',
+  'Bash(git add *)',
+  'Bash(git commit *)',
   'Write(src/**)',
   'Write(mission/**)'
 ];
@@ -321,6 +381,8 @@ Adding permissions for background agents:
   + Bash(cat <<*)
   + Bash(mv mission/*)
   + Bash(echo *>> mission/activity.log)
+  + Bash(git add *)
+  + Bash(git commit *)
   + Write(src/**)
   + Write(mission/**)
 
@@ -333,6 +395,7 @@ Background agents can now:
   - Write test files
   - Write implementation files
   - Manage work items
+  - Create git commits (Tawnia)
 
 Ready to run /ateam plan
 ```

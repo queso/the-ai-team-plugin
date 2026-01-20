@@ -21,6 +21,7 @@ A self-orchestrating Claude Code plugin that transforms a PRD into working, test
 | **B.A.** | Implementer | `clean-code-architect` | Builds solid, reliable code. No jibber-jabber. |
 | **Lynch** | Reviewer | `code-review-expert` | Reviews tests + implementation together. |
 | **Amy** | Investigator | `bug-hunter` | Probes every feature for bugs beyond tests. |
+| **Tawnia** | Documentation | `clean-code-architect` | Updates docs and makes the final commit. |
 
 ## Installation
 
@@ -106,6 +107,18 @@ briefings → ready → testing → implementing → review → probing → done
                                                         │  Final Review   │
                                                         │  (Lynch - all   │
                                                         │   code at once) │
+                                                        └────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                        ┌─────────────────┐
+                                                        │  Post-Checks    │
+                                                        │ (lint,unit,e2e) │
+                                                        └────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                        ┌─────────────────┐
+                                                        │  Documentation  │
+                                                        │    (Tawnia)     │
                                                         └─────────────────┘
 ```
 
@@ -117,7 +130,8 @@ briefings → ready → testing → implementing → review → probing → done
 5. `probing → done`: Feature complete (VERIFIED), or back to ready (FLAG)
 6. `all done → final review`: Lynch reviews entire codebase holistically
 7. `final review → post-checks`: Run `mission-postcheck.js` (lint, unit, e2e)
-8. `post-checks pass → complete`: Mission complete (or items back to ready if rejected)
+8. `post-checks → documentation`: Tawnia updates CHANGELOG, README, docs/
+9. `documentation → complete`: Tawnia creates final commit with all co-authors
 
 ## Pipeline Parallelism
 
@@ -191,7 +205,7 @@ This is achieved through:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Key:** Hannibal runs in the main Claude context (visible to you), dispatching Murdock, B.A., Lynch, and Amy as subagents. Sosa reviews during planning before Hannibal takes over.
+**Key:** Hannibal runs in the main Claude context (visible to you), dispatching Murdock, B.A., Lynch, Amy, and Tawnia as subagents. Sosa reviews during planning before Hannibal takes over.
 
 ## Mission Directory Structure
 
@@ -308,21 +322,39 @@ If issues are found, specific items return to the pipeline for fixes.
 Configure Claude Code permissions for background agents. **Run this once per project** before using `/ateam run`.
 
 This command:
-1. **Configures permissions** - Background agents can't prompt for approval, so this pre-approves:
+1. **Auto-detects project settings** from:
+   - `CLAUDE.md` - Package manager, test commands, lint commands, dev server URLs
+   - `package.json` - Scripts for test, lint, dev, start
+   - Lock files - `pnpm-lock.yaml` → pnpm, `yarn.lock` → yarn, etc.
+
+2. **Confirms detected settings** - Presents findings for confirmation rather than asking from scratch:
+   ```
+   I detected the following settings from your project:
+
+     Package manager: pnpm (detected from pnpm-lock.yaml)
+     Lint command:    pnpm run lint (from package.json)
+     Unit tests:      pnpm test:unit (from package.json)
+
+   Does this look correct?
+   ```
+   Only asks fallback questions for settings that couldn't be detected.
+
+3. **Configures permissions** - Background agents can't prompt for approval, so this pre-approves:
    - `Bash(node **/scripts/*.js)` - board scripts
+   - `Bash(cat <<*)` - heredoc input to scripts
    - `Bash(mv mission/*)` - moving items between stages
-   - `Bash(echo *>> mission/activity.log)` - activity logging
    - `Write(src/**)` - tests and implementations
    - `Write(mission/**)` - work items
 
-2. **Creates `ateam.config.json`** - Project-specific settings via interactive prompts:
+4. **Creates `ateam.config.json`** - Stores detected/confirmed settings:
    - Package manager (npm, yarn, pnpm, bun)
    - Test commands (unit, e2e)
    - Lint command
+   - Dev server settings (URL, start/restart commands)
    - Pre-mission checks (what runs before `/ateam run`)
    - Post-mission checks (what runs after final review)
 
-3. **Checks plugin dependencies** - Verifies Playwright plugin is available for Amy's browser testing
+5. **Checks plugin dependencies** - Verifies Playwright plugin is available for Amy's browser testing
 
 ### `/ateam plan <prd-file> [--skip-refinement]`
 
@@ -349,6 +381,25 @@ Resume an interrupted mission.
 
 Unblock a stuck work item with optional guidance.
 
+### Standalone Skills
+
+#### `/perspective-test <feature>`
+
+Test a feature from a real user's perspective. Combines static code analysis with browser-based verification to catch integration bugs that unit tests miss.
+
+```bash
+/perspective-test "the login form"
+/perspective-test "project name display in header"
+/perspective-test src/components/UserProfile.tsx
+```
+
+**The Three-Layer Verification:**
+1. **Static Analysis** - Trace data flow through the codebase
+2. **Wiring Check** - Verify code is imported AND actually used (not just defined)
+3. **Browser Test** - Load the app and verify from user's perspective via Playwright
+
+**Why this matters:** Unit tests often pass while features are broken because tests mock the integration points. This skill catches "wiring bugs" like missing props, orphan imports, and dead callbacks.
+
 ## Plugin Structure
 
 ```
@@ -362,16 +413,19 @@ ai-team/                     # Add as .claude/ai-team submodule
 │   ├── murdock.md           # QA Engineer (PreToolUse + Stop hooks)
 │   ├── ba.md                # Implementer (PreToolUse + Stop hooks)
 │   ├── lynch.md             # Reviewer (PreToolUse + Stop hooks)
-│   └── amy.md               # Investigator (PreToolUse + Stop hooks)
+│   ├── amy.md               # Investigator (PreToolUse + Stop hooks)
+│   └── tawnia.md            # Documentation writer (PreToolUse + Stop hooks)
 ├── commands/
 │   ├── setup.md             # Configure permissions + create config
 │   ├── plan.md              # Initialize mission
 │   ├── run.md               # Execute mission (with pre/post checks)
 │   ├── status.md            # Check progress
 │   ├── resume.md            # Resume interrupted
-│   └── unblock.md           # Unblock failed items
+│   ├── unblock.md           # Unblock failed items
+│   └── perspective-test.md  # Standalone user perspective testing
 ├── skills/
-│   └── tdd-workflow.md      # TDD guidance
+│   ├── tdd-workflow.md      # TDD guidance
+│   └── perspective-test.md  # User perspective testing methodology
 ├── scripts/                 # CLI scripts for board management
 │   ├── board-*.js           # Board operations
 │   ├── item-*.js            # Work item operations
@@ -383,6 +437,7 @@ ai-team/                     # Add as .claude/ai-team submodule
 │       ├── enforce-completion-log.js    # Stop hook for working agents
 │       ├── block-raw-echo-log.js        # PreToolUse for working agents
 │       ├── block-hannibal-writes.js     # PreToolUse for Hannibal
+│       ├── block-raw-mv.js              # PreToolUse for Hannibal (blocks raw mv)
 │       └── enforce-final-review.js      # Stop for Hannibal
 ├── lib/                     # Shared libraries
 │   ├── board.js
@@ -446,7 +501,7 @@ npm install
 
 The plugin uses Claude Code's hook system to enforce workflow discipline:
 
-### Working Agent Hooks (Murdock, B.A., Lynch, Amy)
+### Working Agent Hooks (Murdock, B.A., Lynch, Amy, Tawnia)
 
 All working agents have two hooks:
 
@@ -467,6 +522,11 @@ All working agents have two hooks:
 - Enforces delegation to B.A. and Murdock
 - Maintains orchestrator boundaries
 
+**PreToolUse Hook** (`block-raw-mv.js`):
+- Blocks raw `mv` commands on mission files
+- Hannibal must use `board-move.js` to move items
+- Ensures board.json stays in sync with filesystem
+
 **Stop Hook** (`enforce-final-review.js`):
 - Prevents mission from ending without all items in `done/`
 - Requires Lynch's Final Mission Review verdict
@@ -475,22 +535,28 @@ All working agents have two hooks:
 
 ## Project Configuration
 
-`ateam.config.json` (created by `/ateam setup`):
+`ateam.config.json` (auto-detected and created by `/ateam setup`):
 
 ```json
 {
-  "packageManager": "npm",
+  "packageManager": "pnpm",
   "checks": {
-    "lint": "npm run lint",
-    "unit": "npm test",
-    "e2e": "npm run test:e2e"
+    "lint": "pnpm run lint",
+    "unit": "pnpm test:unit",
+    "e2e": "pnpm exec playwright test"
   },
   "precheck": ["lint", "unit"],
-  "postcheck": ["lint", "unit", "e2e"]
+  "postcheck": ["lint", "unit", "e2e"],
+  "devServer": {
+    "url": "http://localhost:3000",
+    "start": "docker compose up",
+    "restart": "docker compose restart",
+    "managed": false
+  }
 }
 ```
 
-Configures which checks run before and after missions.
+Setup auto-detects these values from `CLAUDE.md`, `package.json`, and lock files, then confirms with you before writing.
 
 ## Troubleshooting
 
@@ -508,6 +574,8 @@ Configures which checks run before and after missions.
       "Bash(cat <<*)",
       "Bash(mv mission/*)",
       "Bash(echo *>> mission/activity.log)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
       "Write(src/**)",
       "Write(mission/**)"
     ]

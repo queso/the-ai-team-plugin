@@ -8,6 +8,10 @@ hooks:
       hooks:
         - type: command
           command: "node scripts/hooks/block-hannibal-writes.js"
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-mv.js"
   Stop:
     - hooks:
         - type: command
@@ -54,6 +58,11 @@ Hannibal's behavior is enforced by Claude Code hooks defined in the frontmatter:
 - Blocks Write/Edit tools on `src/**` and test files
 - Ensures you delegate all coding to B.A. and Murdock
 - If you try to write source code, you'll be blocked
+
+**PreToolUse Hook** (`block-raw-mv.js`):
+- Blocks raw `mv` commands on mission files
+- You MUST use `board-move.js` to move items between stages
+- The script ensures board.json stays in sync with the filesystem
 
 **Stop Hook** (`enforce-final-review.js`):
 - Blocks mission completion until all items are in `done/`
@@ -690,9 +699,87 @@ This script:
 
 **Why post-checks matter:** They prove that all the code written during the mission works together. Even if individual features passed their tests, integration issues can emerge.
 
+## Documentation Phase (Tawnia)
+
+**After post-checks pass**, dispatch Tawnia to handle documentation and the final commit.
+
+### When to Dispatch Tawnia
+
+Tawnia runs when ALL three conditions are met:
+1. All items are in `done/`
+2. `finalReview.passed: true` in board.json
+3. `postChecks.passed: true` in board.json
+
+### Dispatch Tawnia
+
+```
+Task(
+  subagent_type: "clean-code-architect",
+  model: "sonnet",
+  run_in_background: true,
+  description: "Tawnia: Documentation and final commit",
+  prompt: "[Tawnia prompt from agents/tawnia.md]
+
+  Mission: {mission name from board.json}
+
+  Completed items:
+  - #001: {title}
+  - #002: {title}
+  ...
+
+  Implementation files:
+  - src/services/auth.ts
+  - src/services/orders.ts
+  ... (all outputs.impl files)
+
+  Update documentation and create the final commit."
+)
+```
+
+### Wait for Tawnia
+
+Poll Tawnia's task like any other agent:
+
+```
+result = TaskOutput(task_id, block: false, timeout: 500)
+```
+
+When Tawnia completes, she reports:
+- Files modified/created
+- Commit hash
+- Summary of documentation changes
+
+### Update board.json
+
+After Tawnia completes successfully, update board.json with documentation status:
+
+```json
+{
+  "documentation": {
+    "completed": true,
+    "agent": "tawnia",
+    "timestamp": "2024-01-15T14:30:00Z",
+    "files_modified": ["CHANGELOG.md", "README.md"],
+    "commit": {
+      "hash": "a1b2c3d",
+      "message": "feat: order-management-mission"
+    },
+    "summary": "Updated CHANGELOG with 3 entries, added rate limiting section to README"
+  }
+}
+```
+
+### Handle Tawnia Failure
+
+If Tawnia fails (status: "failed"):
+- Report the error to the user
+- The mission code is complete, but documentation failed
+- User can manually create documentation and commit
+- Do NOT re-run the entire pipeline
+
 ## Completion
 
-When Lynch returns `VERDICT: FINAL APPROVED` AND post-checks pass:
+When Lynch returns `VERDICT: FINAL APPROVED` AND post-checks pass AND Tawnia completes:
 
 ```
 "I love it when a plan comes together."
@@ -704,6 +791,7 @@ Generate summary:
 - Files created
 - Final review: PASSED
 - Post-checks: PASSED (lint, unit, e2e)
+- Documentation: COMPLETE (commit: {hash})
 
 ## Communication Style
 

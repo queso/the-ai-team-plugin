@@ -13,6 +13,7 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 - **B.A.** (Implementer): Implements code to pass tests (clean-code-architect subagent)
 - **Lynch** (Reviewer): Reviews tests + implementation together (code-review-expert subagent)
 - **Amy** (Investigator): Probes every feature for bugs beyond tests (bug-hunter subagent)
+- **Tawnia** (Documentation): Updates docs and makes final commit (clean-code-architect subagent)
 
 ## Architecture
 
@@ -36,6 +37,18 @@ briefings → ready → testing → implementing → review → probing → done
                                                         ┌─────────────────┐
                                                         │  Final Review   │
                                                         │    (Lynch)      │
+                                                        └────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                        ┌─────────────────┐
+                                                        │  Post-Checks    │
+                                                        │ (lint,unit,e2e) │
+                                                        └────────┬────────┘
+                                                                 │
+                                                                 ▼
+                                                        ┌─────────────────┐
+                                                        │  Documentation  │
+                                                        │    (Tawnia)     │
                                                         └─────────────────┘
 ```
 
@@ -68,12 +81,16 @@ Work items are markdown files with YAML frontmatter containing:
 
 ## Plugin Commands
 
-- `/ateam setup` - Configure permissions, create `ateam.config.json`, check plugin dependencies (run once per project)
+### Mission Commands
+- `/ateam setup` - Auto-detect settings from CLAUDE.md/package.json, configure permissions, create `ateam.config.json` (run once per project)
 - `/ateam plan <prd-file>` - Initialize mission from PRD, Face decomposes into work items
 - `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3), runs precheck before starting
 - `/ateam status` - Display kanban board with current progress
 - `/ateam resume` - Resume interrupted mission from saved state
 - `/ateam unblock <item-id> [--guidance "hint"]` - Unblock stuck items
+
+### Standalone Skills
+- `/perspective-test <feature>` - Test a feature from user's perspective (static analysis + browser verification)
 
 ## Critical Requirements
 
@@ -124,6 +141,7 @@ The scripts ensure:
 - **B.A.**: Writes ONLY implementation. Tests already exist from Murdock.
 - **Lynch**: Reviews only. Does NOT write code.
 - **Amy**: Investigates only. Does NOT write production code or tests. Reports findings with proof.
+- **Tawnia**: Writes documentation only (CHANGELOG, README, docs/). Does NOT modify source code or tests. Makes the final commit.
 
 ## Key Conventions
 
@@ -155,6 +173,7 @@ Hannibal dispatches agents using Task tool with `run_in_background: true`:
 - B.A.: `subagent_type: "clean-code-architect"`, `model: "sonnet"`
 - Lynch: `subagent_type: "code-review-expert"`
 - Amy: `subagent_type: "bug-hunter"`, `model: "sonnet"` (invoked by Lynch or Hannibal)
+- Tawnia: `subagent_type: "clean-code-architect"`, `model: "sonnet"` (after post-checks pass)
 
 ### Background Agent Permissions
 
@@ -171,6 +190,8 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
       "Bash(cat <<*)",
       "Bash(mv mission/*)",
       "Bash(echo *>> mission/activity.log)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
       "Write(src/**)",
       "Write(mission/**)"
     ]
@@ -185,6 +206,8 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 | `Bash(cat <<*)` | All agents | Heredoc input to scripts |
 | `Bash(mv mission/*)` | Hannibal | Move items between stage directories |
 | `Bash(echo *>> mission/activity.log)` | All agents | Log to Live Feed |
+| `Bash(git add *)` | Tawnia | Stage files for final commit |
+| `Bash(git commit *)` | Tawnia | Create final mission commit |
 | `Write(src/**)` | Murdock, B.A. | Write tests and implementations |
 | `Write(mission/**)` | Face | Create/update work items |
 
@@ -203,11 +226,14 @@ ai-team/
 │   ├── murdock.md           # QA Engineer (has SubagentStop hook)
 │   ├── ba.md                # Implementer (has SubagentStop hook)
 │   ├── lynch.md             # Reviewer (has SubagentStop hook)
-│   └── amy.md               # Investigator (has SubagentStop hook)
+│   ├── amy.md               # Investigator (has SubagentStop hook)
+│   └── tawnia.md            # Documentation writer (has SubagentStop hook)
 ├── commands/                # Slash command definitions
 │   ├── setup.md, plan.md, run.md, status.md, resume.md, unblock.md
+│   └── perspective-test.md  # Standalone user perspective testing
 ├── skills/
-│   └── tdd-workflow.md      # TDD guidance
+│   ├── tdd-workflow.md      # TDD guidance
+│   └── perspective-test.md  # User perspective testing methodology
 ├── scripts/                 # CLI scripts for board operations
 │   ├── board-*.js           # Board management
 │   ├── item-*.js            # Work item operations
@@ -219,6 +245,7 @@ ai-team/
 │       ├── enforce-completion-log.js    # Stop hook for working agents
 │       ├── block-raw-echo-log.js        # PreToolUse hook for working agents
 │       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal
+│       ├── block-raw-mv.js              # PreToolUse hook for Hannibal (blocks raw mv)
 │       └── enforce-final-review.js      # Stop hook for Hannibal
 ├── lib/                     # Shared utilities
 │   ├── board.js, lock.js, validate.js
@@ -292,7 +319,7 @@ All scripts accept JSON via stdin and output JSON to stdout. See README for full
 
 The plugin uses Claude Code's hook system to enforce workflow discipline:
 
-### Working Agent Hooks (Murdock, B.A., Lynch, Amy)
+### Working Agent Hooks (Murdock, B.A., Lynch, Amy, Tawnia)
 
 All working agents have two hooks:
 
@@ -323,7 +350,7 @@ hooks:
 
 ### Hannibal Hooks
 
-Hannibal has two hooks to maintain orchestrator boundaries:
+Hannibal has three hooks to maintain orchestrator boundaries:
 
 **PreToolUse Hook** - Blocks writes to source code:
 ```yaml
@@ -336,6 +363,18 @@ hooks:
 ```
 
 **Purpose:** Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
+
+**PreToolUse Hook** - Blocks raw `mv` on mission files:
+```yaml
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-mv.js"
+```
+
+**Purpose:** Prevents Hannibal from using raw `mv` commands on mission files. All item movements must use `board-move.js` to keep board.json in sync.
 
 **Stop Hook** - Enforces final review and post-checks:
 ```yaml
@@ -353,7 +392,44 @@ hooks:
 
 ## Project Configuration
 
-The `/ateam setup` command creates `ateam.config.json` with project-specific settings:
+The `/ateam setup` command **auto-detects** project settings and creates `ateam.config.json`:
+
+### Auto-Detection Sources
+
+1. **CLAUDE.md** - Scans for:
+   - Package manager mentions (`npm`, `yarn`, `pnpm`, `bun`)
+   - Test commands (`npm test`, `vitest`, `pnpm test:unit`, etc.)
+   - Lint commands (`npm run lint`, `eslint`, `biome`, etc.)
+   - Dev server URLs (`localhost:3000`, `localhost:5173`, etc.)
+   - Docker commands (`docker compose up`, etc.)
+
+2. **package.json** - Checks `scripts` for:
+   - `test`, `test:unit`, `test:e2e`, `lint`, `dev`, `start`
+
+3. **Lock files** - Detects package manager:
+   - `package-lock.json` → npm
+   - `yarn.lock` → yarn
+   - `pnpm-lock.yaml` → pnpm
+   - `bun.lockb` → bun
+
+### Confirmation Flow
+
+Setup presents detected values for confirmation rather than asking from scratch:
+```
+I detected the following settings from your project:
+
+  Package manager: pnpm (detected from pnpm-lock.yaml)
+  Lint command:    pnpm run lint (from package.json scripts.lint)
+  Unit tests:      pnpm test:unit (from package.json scripts.test:unit)
+  E2E tests:       pnpm exec playwright test (from CLAUDE.md)
+  Dev server:      http://localhost:3000 (from CLAUDE.md)
+
+Does this look correct?
+```
+
+Only asks fallback questions for settings that couldn't be detected.
+
+### Config File Format
 
 ```json
 {
