@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## About This Repository
+
+**This is the source repository for the A(i)-Team Claude Code plugin.**
+
+This plugin will be published and added to user projects as a submodule (typically at `.claude/ai-team/`). The CLAUDE.md in the user's project root is what Claude Code reads at runtime - this file exists to help with plugin development.
+
 ## Overview
 
 The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It transforms PRDs into working, tested code through a TDD pipeline with specialized agents:
@@ -145,13 +151,23 @@ The scripts ensure:
 
 ## Key Conventions
 
-### TDD Workflow
-1. Murdock writes tests first (defines acceptance criteria)
-2. B.A. implements to pass those tests
-3. Lynch reviews all outputs together (per-feature)
-4. If rejected (max 2 times), item goes to `blocked/` for human intervention
-5. When ALL features complete, Lynch performs **Final Mission Review** (holistic codebase review)
-6. Final review may reject specific items back to `ready/` for fixes
+### TDD Workflow (MANDATORY STAGES - NO EXCEPTIONS)
+
+Every feature MUST flow through ALL stages. Skipping stages is NOT permitted.
+
+**Per-Feature Pipeline (each item, in order):**
+1. **Murdock** writes tests first (defines acceptance criteria)
+2. **B.A.** implements to pass those tests
+3. **Lynch** reviews tests + implementation together
+4. **Amy** probes for bugs beyond tests (Raptor Protocol) ← MANDATORY, NOT OPTIONAL
+5. If rejected at any stage (max 2 times), item goes to `blocked/`
+
+**Mission Completion (after ALL items reach done/):**
+6. **Lynch** performs **Final Mission Review** (holistic codebase review)
+7. **Post-checks** run (lint, unit, e2e)
+8. **Tawnia** updates documentation and creates final commit ← MANDATORY, NOT OPTIONAL
+
+⚠️ **A mission is NOT complete until Tawnia commits.** No shortcuts.
 
 ### Testing Philosophy
 - Cover happy paths, negative paths, and key edge cases
@@ -167,13 +183,19 @@ Smallest independently-completable units:
 
 ### Agent Dispatch
 Hannibal dispatches agents using Task tool with `run_in_background: true`:
-- Face: `subagent_type: "clean-code-architect"`, `model: "opus"` (planning phase only)
-- Sosa: `subagent_type: "requirements-critic"`, `model: "opus"` (planning phase only)
-- Murdock: `subagent_type: "qa-engineer"`, `model: "sonnet"`
-- B.A.: `subagent_type: "clean-code-architect"`, `model: "sonnet"`
-- Lynch: `subagent_type: "code-review-expert"`
-- Amy: `subagent_type: "bug-hunter"`, `model: "sonnet"` (invoked by Lynch or Hannibal)
-- Tawnia: `subagent_type: "clean-code-architect"`, `model: "sonnet"` (after post-checks pass)
+
+**Planning Phase:**
+- Face: `subagent_type: "clean-code-architect"`, `model: "opus"`
+- Sosa: `subagent_type: "requirements-critic"`, `model: "opus"`
+
+**Per-Feature Pipeline (ALL MANDATORY for each item):**
+- Murdock: `subagent_type: "qa-engineer"`, `model: "sonnet"` → testing stage
+- B.A.: `subagent_type: "clean-code-architect"`, `model: "sonnet"` → implementing stage
+- Lynch: `subagent_type: "code-review-expert"` → review stage
+- Amy: `subagent_type: "bug-hunter"`, `model: "sonnet"` → probing stage (EVERY feature, no exceptions)
+
+**Mission Completion (MANDATORY):**
+- Tawnia: `subagent_type: "clean-code-architect"`, `model: "sonnet"` → after post-checks pass
 
 ### Background Agent Permissions
 
@@ -280,7 +302,7 @@ Agents should use CLI scripts for board operations instead of direct file manipu
 
 ### Agent Lifecycle Hooks
 
-Working agents (Murdock, B.A., Lynch, Amy) should use the lifecycle hooks instead of the lower-level scripts:
+Working agents (Murdock, B.A., Lynch, Amy, Tawnia) should use the lifecycle hooks instead of the lower-level scripts:
 
 **Start Hook** (`item-agent-start.js`):
 ```bash
@@ -482,10 +504,31 @@ But she won't be able to:
 - Take screenshots
 - Test interactive flows
 
-## Installation as Submodule
+## Installation
 
-The plugin is designed to be added as a git submodule to any project:
+When published, users can install this plugin via several methods:
+
+### Option 1: Claude Code Plugin Command (Recommended)
+```
+/plugin install ai-team
+```
+
+Or from a marketplace:
+```
+/plugin marketplace add anthropics/claude-plugins-official
+/plugin install ai-team
+```
+
+### Option 2: Git Submodule
 ```bash
 git submodule add git@github.com:yourorg/ai-team.git .claude/ai-team
 echo "mission/" >> .gitignore
 ```
+
+### Development Testing
+Use the `--plugin-dir` flag to test during development:
+```bash
+claude --plugin-dir /path/to/ai-team
+```
+
+Once installed, the plugin's slash commands (`/ateam plan`, `/ateam run`, etc.) become available.

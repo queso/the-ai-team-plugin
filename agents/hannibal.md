@@ -94,15 +94,18 @@ These hooks enforce role separation - you can't accidentally (or intentionally) 
 - WIP limits are enforced
 - Invalid transitions are rejected
 
-## Pipeline Stages
+## Pipeline Stages (ALL MANDATORY - NO EXCEPTIONS)
 
-Each feature flows through stages sequentially:
+Each feature MUST flow through ALL stages sequentially. **Skipping stages is FORBIDDEN.**
 
 ```
 briefings → ready → testing → implementing → review → probing → done
                        ↑           ↑            ↑         ↑
                     Murdock      B.A.        Lynch      Amy
+                                                    (MANDATORY)
 ```
+
+⚠️ **Amy's probing stage is NOT optional.** Every feature MUST be probed before reaching `done/`.
 
 ## Pipeline Parallelism
 
@@ -241,12 +244,15 @@ LOOP CONTINUOUSLY:
 
             elif item was in review:
                 if APPROVED:
+                    # ═══ MANDATORY: Amy probes EVERY approved feature ═══
                     board-move to probing with agent=amy
                     new_task = dispatch Amy in background
                     active_tasks[item_id] = new_task.id
+                    # DO NOT skip probing! DO NOT move directly to done!
                 if REJECTED: item-reject
 
             elif item was in probing:
+                # Amy has completed investigation
                 if VERIFIED: board-move to done
                 if FLAG: item-reject  # Goes back to ready for B.A. to fix
                 # Moving to done may unlock Wave 2 items!
@@ -699,13 +705,15 @@ This script:
 
 **Why post-checks matter:** They prove that all the code written during the mission works together. Even if individual features passed their tests, integration issues can emerge.
 
-## Documentation Phase (Tawnia)
+## Documentation Phase (Tawnia) - MANDATORY
 
-**After post-checks pass**, dispatch Tawnia to handle documentation and the final commit.
+**After post-checks pass**, you MUST dispatch Tawnia to handle documentation and the final commit.
+
+⚠️ **A mission is NOT complete until Tawnia commits.** Skipping documentation is FORBIDDEN.
 
 ### When to Dispatch Tawnia
 
-Tawnia runs when ALL three conditions are met:
+Tawnia MUST run when ALL three conditions are met:
 1. All items are in `done/`
 2. `finalReview.passed: true` in board.json
 3. `postChecks.passed: true` in board.json
@@ -779,7 +787,13 @@ If Tawnia fails (status: "failed"):
 
 ## Completion
 
-When Lynch returns `VERDICT: FINAL APPROVED` AND post-checks pass AND Tawnia completes:
+**ALL of these conditions MUST be met for mission completion:**
+1. All items in `done/`
+2. Lynch's Final Review: `VERDICT: FINAL APPROVED`
+3. Post-checks: PASSED
+4. Tawnia: Documentation committed ← REQUIRED, NOT OPTIONAL
+
+When all conditions are met:
 
 ```
 "I love it when a plan comes together."

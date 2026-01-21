@@ -13,14 +13,15 @@ Execute the mission with the pipeline flow.
 - `--wip N` (optional): Set WIP limit (default: 3)
 - `--max-wip M` (optional): Set maximum WIP for adaptive scaling (default: 5)
 
-## Pipeline Flow
+## Pipeline Flow (ALL STAGES MANDATORY)
 
-Each feature flows through stages:
+Each feature MUST flow through ALL stages. **No shortcuts. No exceptions.**
 
 ```
 briefings → ready → testing → implementing → review → probing → done
                        ↑           ↑            ↑         ↑       │
                     Murdock      B.A.        Lynch      Amy       │
+                                                   (MANDATORY)    │
                                                                   ▼
                                                         ┌─────────────────┐
                                                         │  Final Review   │
@@ -37,18 +38,19 @@ briefings → ready → testing → implementing → review → probing → done
                                                         ┌─────────────────┐
                                                         │  Documentation  │
                                                         │    (Tawnia)     │
+                                                        │   (MANDATORY)   │
                                                         └─────────────────┘
 ```
 
-**Stage transitions:**
+**Stage transitions (ALL REQUIRED):**
 1. `ready → testing`: Murdock writes tests (and types if specified)
 2. `testing → implementing`: B.A. implements to pass tests
 3. `implementing → review`: Lynch reviews ALL outputs together
-4. `review → probing`: Lynch approves, Amy investigates for bugs beyond tests
+4. `review → probing`: Lynch approves → **Amy MUST investigate** (NOT optional)
 5. `probing → done`: Amy verifies (or back to ready if bugs found)
 6. `all done → final review`: Lynch reviews entire codebase holistically
 7. `final review → post-checks`: Run lint, unit, e2e tests
-8. `post-checks → documentation`: Tawnia updates CHANGELOG, README, docs/
+8. `post-checks → documentation`: **Tawnia MUST run** (NOT optional)
 9. `documentation → complete`: Tawnia creates final commit, mission complete
 
 ## Pipeline Parallelism
@@ -117,11 +119,17 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
    - Tawnia makes the **final commit** bundling all mission work + documentation
    - Updates `board.json` with `documentation.completed: true` and `commit.hash`
 
-8. **Completion:**
-   - Documentation complete → "I love it when a plan comes together."
+8. **Completion (ALL conditions required):**
+   - ✓ All items in `done/`
+   - ✓ Final review passed
+   - ✓ Post-checks passed
+   - ✓ Tawnia documentation committed ← **REQUIRED**
+   - Then and ONLY then: "I love it when a plan comes together."
+
+   **Mission is NOT complete until Tawnia commits. No exceptions.**
+
    - Items in `blocked/` → Needs human intervention
    - Post-checks fail → Fix issues before documentation can run
-   - Mission is NOT complete until Tawnia commits
 
 ## Progress Updates
 
