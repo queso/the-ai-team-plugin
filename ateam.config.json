@@ -1,0 +1,11 @@
+{
+  "packageManager": "npm",
+  "checks": {
+    "lint": "cd mcp-server && npm run lint",
+    "unit": "cd mcp-server && npm test",
+    "e2e": null
+  },
+  "precheck": [],
+  "postcheck": ["lint", "unit"],
+  "devServer": null
+}

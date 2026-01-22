@@ -400,12 +400,81 @@ Test a feature from a real user's perspective. Combines static code analysis wit
 
 **Why this matters:** Unit tests often pass while features are broken because tests mock the integration points. This skill catches "wiring bugs" like missing props, orphan imports, and dead callbacks.
 
+## MCP Server Integration
+
+The plugin includes an MCP (Model Context Protocol) server that exposes board operations as tools that Claude Code can invoke directly. This enables programmatic access to all mission management functionality.
+
+### Setup
+
+1. **Build the MCP server:**
+   ```bash
+   cd mcp-server
+   npm install
+   npm run build
+   ```
+
+2. **Configure Claude Code** (already done via `.mcp.json`):
+   ```json
+   {
+     "mcpServers": {
+       "ateam": {
+         "command": "node",
+         "args": ["mcp-server/dist/index.js"],
+         "env": {
+           "ATEAM_API_URL": "http://localhost:3001"
+         }
+       }
+     }
+   }
+   ```
+
+### Available Tools
+
+The MCP server provides 20 tools across 5 modules:
+
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **Board** | `board_read`, `board_move`, `board_claim`, `board_release` | Board state and item movement |
+| **Items** | `item_create`, `item_update`, `item_get`, `item_list`, `item_reject`, `item_render` | Work item CRUD operations |
+| **Agents** | `agent_start`, `agent_stop` | Agent lifecycle hooks |
+| **Missions** | `mission_init`, `mission_current`, `mission_precheck`, `mission_postcheck`, `mission_archive` | Mission lifecycle management |
+| **Utils** | `deps_check`, `activity_log`, `log` | Dependency validation and logging |
+
+### Configuration
+
+Environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ATEAM_API_URL` | `http://localhost:3001` | Kanban API server URL |
+| `ATEAM_API_TIMEOUT` | `30000` | Request timeout in ms (max 300000) |
+| `ATEAM_API_RETRIES` | `3` | Max retry attempts (max 10) |
+
+---
+
 ## Plugin Structure
 
 ```
 ai-team/                     # Add as .claude/ai-team submodule
 ├── plugin.json              # Plugin configuration
 ├── package.json             # Node.js dependencies
+├── .mcp.json                # MCP server configuration for Claude Code
+├── mcp-server/              # MCP server implementation
+│   ├── src/
+│   │   ├── index.ts         # Entry point (stdio transport)
+│   │   ├── server.ts        # McpServer instance
+│   │   ├── config.ts        # Environment configuration
+│   │   ├── client/          # HTTP client with retry logic
+│   │   ├── lib/             # Error handling utilities
+│   │   └── tools/           # Tool implementations
+│   │       ├── board.ts     # Board operations (4 tools)
+│   │       ├── items.ts     # Item operations (6 tools)
+│   │       ├── agents.ts    # Agent lifecycle (2 tools)
+│   │       ├── missions.ts  # Mission lifecycle (5 tools)
+│   │       ├── utils.ts     # Utilities (3 tools)
+│   │       └── index.ts     # Tool registration
+│   ├── package.json
+│   └── tsconfig.json
 ├── agents/                  # Agent prompts with lifecycle hooks
 │   ├── hannibal.md          # Orchestrator (PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer (opus)

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ateam": {
+      "command": "node",
+      "args": [
+        "mcp-server/dist/index.js"
+      ],
+      "env": {
+        "ATEAM_API_URL": "http://localhost:3001"
+      }
+    }
+  }
+}

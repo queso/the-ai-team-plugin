@@ -5,6 +5,36 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-22
+
+### Added
+
+- **MCP Server** - New Model Context Protocol server for Claude Code plugin integration
+  - Server core (`mcp-server/src/server.ts`) with stdio transport using `@modelcontextprotocol/sdk`
+  - HTTP client (`mcp-server/src/client/index.ts`) with exponential backoff retry logic (1s/2s/4s delays)
+  - Error utilities (`mcp-server/src/lib/errors.ts`) for MCP-compatible error responses
+  - Configuration module with environment variable support and validation
+
+- **20 MCP Tools** across 5 modules:
+  - **Board tools** (`board.ts`): `board_read`, `board_move`, `board_claim`, `board_release`
+  - **Item tools** (`items.ts`): `item_create`, `item_update`, `item_get`, `item_list`, `item_reject`, `item_render`
+  - **Agent tools** (`agents.ts`): `agent_start`, `agent_stop`
+  - **Mission tools** (`missions.ts`): `mission_init`, `mission_current`, `mission_precheck`, `mission_postcheck`, `mission_archive`
+  - **Utility tools** (`utils.ts`): `deps_check`, `activity_log`, `log`
+
+- **Tool Registration** (`mcp-server/src/tools/index.ts`) - Wires all tools to MCP server with proper schemas
+
+- **Plugin Configuration** (`.mcp.json`) - Registers MCP server with Claude Code
+
+### Technical Details
+
+- All tools use Zod schemas for input validation
+- Comprehensive error handling with HTTP status code mapping
+- Type-safe TypeScript implementation throughout
+- 355 tests with full coverage
+
+---
+
 ## [1.8.0] - 2026-01-18
 
 ### Changed

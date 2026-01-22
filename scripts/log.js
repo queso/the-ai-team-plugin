@@ -7,7 +7,7 @@
  *   node scripts/log.js Murdock "Created 5 test cases"
  *
  * This is simpler than activity-log.js and doesn't require JSON piping.
- * Covered by permission: Bash(node **/scripts/*.js)
+ * Covered by permission: Bash(node scripts/log.js)
  */
 
 import { appendFileSync, existsSync, mkdirSync } from 'fs';
