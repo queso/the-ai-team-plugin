@@ -3,11 +3,8 @@
     "ateam": {
       "command": "node",
       "args": [
-        "mcp-server/dist/index.js"
-      ],
-      "env": {
-        "ATEAM_API_URL": "http://localhost:3001"
-      }
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"
+      ]
     }
   }
 }

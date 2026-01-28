@@ -1,10 +1,11 @@
 # PRD: A(i)-Team MCP Server
 
-**Version:** 1.0.0  
-**Status:** Draft  
-**Author:** Josh / Claude  
-**Date:** 2026-01-21  
-**Repo:** `ateam-mcp-server` (new) or bundled in `ateam-plugin`
+**Version:** 1.0.0
+**Status:** Implemented
+**Author:** Josh / Claude
+**Date:** 2026-01-21
+**Implementation Date:** 2026-01-22
+**Repo:** Bundled in `ateam-plugin` at `mcp-server/`
 
 ---
 
@@ -961,51 +962,55 @@ npx @modelcontextprotocol/inspector build/index.js
 ## 10. Implementation Checklist
 
 ### Phase 1: Project Setup
-- [ ] Initialize package with TypeScript
-- [ ] Add MCP SDK dependency
-- [ ] Create config module
-- [ ] Create API client with retry logic
+- [x] Initialize package with TypeScript
+- [x] Add MCP SDK dependency
+- [x] Create config module
+- [x] Create API client with retry logic
 
 ### Phase 2: Core Tools
-- [ ] `board_read`
-- [ ] `board_move`
-- [ ] `board_claim`
-- [ ] `board_release`
+- [x] `board_read`
+- [x] `board_move`
+- [x] `board_claim`
+- [x] `board_release`
 
 ### Phase 3: Item Tools
-- [ ] `item_create`
-- [ ] `item_update`
-- [ ] `item_get`
-- [ ] `item_list`
-- [ ] `item_reject`
-- [ ] `item_render`
+- [x] `item_create`
+- [x] `item_update`
+- [x] `item_get`
+- [x] `item_list`
+- [x] `item_reject`
+- [x] `item_render`
 
 ### Phase 4: Agent Tools
-- [ ] `agent_start`
-- [ ] `agent_stop`
+- [x] `agent_start`
+- [x] `agent_stop`
 
 ### Phase 5: Mission Tools
-- [ ] `mission_init`
-- [ ] `mission_current`
-- [ ] `mission_precheck`
-- [ ] `mission_postcheck`
-- [ ] `mission_archive`
+- [x] `mission_init`
+- [x] `mission_current`
+- [x] `mission_precheck`
+- [x] `mission_postcheck`
+- [x] `mission_archive`
 
 ### Phase 6: Utility Tools
-- [ ] `deps_check`
-- [ ] `activity_log`
-- [ ] `log`
+- [x] `deps_check`
+- [x] `activity_log`
+- [x] `log`
 
 ### Phase 7: Integration
-- [ ] Add `.mcp.json` to plugin
-- [ ] Update skill docs
-- [ ] Update subagent prompts
-- [ ] Test with Claude Code
+- [x] Add `.mcp.json` to plugin
+- [x] Update skill docs
+- [x] Update subagent prompts
+- [x] Test with Claude Code
 
-### Phase 8: Cleanup
-- [ ] Remove deprecated scripts
-- [ ] Update CLAUDE.md
-- [ ] Documentation
+### Phase 8: Documentation
+- [x] Update CLAUDE.md
+- [x] Update README.md
+- [x] Update CHANGELOG.md
+- [x] Update command docs (plan.md, run.md, setup.md)
+- [x] Update PRD status
+
+**Note:** CLI scripts in `scripts/` directory are retained for internal use by hook enforcement, but all agent-facing operations now use MCP tools.
 
 ---
 
@@ -1055,8 +1060,10 @@ npx @modelcontextprotocol/inspector build/index.js
 
 ---
 
-## 13. Open Questions
+## 13. Implementation Notes
 
-1. **Bundled vs standalone**: Ship MCP server with plugin or separate package?
-2. **NPM publish**: Publish as `@pairhq/ateam-mcp` for npx usage?
-3. **Versioning**: Lock MCP server version to plugin version?
+1. **Bundled vs standalone**: ✅ **Resolved** - MCP server is bundled with plugin at `mcp-server/` directory
+2. **NPM publish**: 🔜 **Future** - Can publish as `@pairhq/ateam-mcp` for standalone usage later
+3. **Versioning**: ✅ **Resolved** - MCP server version tracks plugin version (both at 2.0.0)
+4. **Script deprecation**: ✅ **Resolved** - CLI scripts retained for hook enforcement but not directly called by agents
+5. **Testing coverage**: ✅ **Complete** - 355 tests covering all 20 tools with full coverage
