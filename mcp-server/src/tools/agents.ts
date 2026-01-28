@@ -8,11 +8,12 @@
 
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
+import { config } from '../config.js';
 
 /**
- * Valid agent names (lowercase, normalized).
+ * Valid agent names (lowercase for input validation).
  */
-const VALID_AGENTS = [
+const VALID_AGENTS_LOWER = [
   'murdock',
   'ba',
   'lynch',
@@ -23,18 +24,41 @@ const VALID_AGENTS = [
   'tawnia',
 ] as const;
 
-type ValidAgent = (typeof VALID_AGENTS)[number];
+type ValidAgentLower = (typeof VALID_AGENTS_LOWER)[number];
+
+/**
+ * Map from lowercase agent names to API-expected format.
+ */
+const AGENT_NAME_MAP: Record<ValidAgentLower, string> = {
+  murdock: 'Murdock',
+  ba: 'B.A.',
+  lynch: 'Lynch',
+  amy: 'Amy',
+  hannibal: 'Hannibal',
+  face: 'Face',
+  sosa: 'Sosa',
+  tawnia: 'Tawnia',
+};
+
+/**
+ * Normalize agent name to lowercase key format.
+ * Handles special cases like "B.A." -> "ba"
+ */
+function normalizeAgentName(val: string): string {
+  return val.toLowerCase().replace(/\./g, '');
+}
 
 /**
  * Zod schema for agent name validation.
- * Accepts case-insensitive input but validates against lowercase values.
+ * Accepts case-insensitive input, validates, and transforms to API format.
  */
 const AgentNameSchema = z
   .string()
-  .transform((val) => val.toLowerCase())
-  .refine((val): val is ValidAgent => VALID_AGENTS.includes(val as ValidAgent), {
-    message: `Agent must be one of: ${VALID_AGENTS.join(', ')}`,
-  });
+  .transform((val) => normalizeAgentName(val) as ValidAgentLower)
+  .refine((val): val is ValidAgentLower => VALID_AGENTS_LOWER.includes(val), {
+    message: `Agent must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
+  })
+  .transform((val) => AGENT_NAME_MAP[val]);
 
 /**
  * Input schema for agent_start tool.
@@ -146,7 +170,8 @@ function formatErrorMessage(error: unknown): string {
  */
 function getClient() {
   return createClient({
-    baseUrl: process.env.KANBAN_API_URL || 'http://localhost:3000',
+    baseUrl: config.apiUrl,
+    projectId: config.projectId,
     timeout: 30000,
     retries: 0,
   });
@@ -295,8 +320,9 @@ interface McpToolDefinition {
 
 /**
  * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
-export const agentTools: McpToolDefinition[] = [
+export const agentTools = [
   {
     name: 'agent_start',
     description:
@@ -304,7 +330,7 @@ export const agentTools: McpToolDefinition[] = [
       'Use this at the start of working on an item to signal that the agent has begun work. ' +
       'The item will be marked as claimed in board.json and the frontmatter will be updated.',
     inputSchema: {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         itemId: {
           type: 'string',
@@ -312,8 +338,8 @@ export const agentTools: McpToolDefinition[] = [
         },
         agent: {
           type: 'string',
-          description: `The agent name (one of: ${VALID_AGENTS.join(', ')})`,
-          enum: VALID_AGENTS,
+          description: `The agent name (one of: ${VALID_AGENTS_LOWER.join(', ')})`,
+          enum: VALID_AGENTS_LOWER,
         },
         task_id: {
           type: 'string',
@@ -322,6 +348,8 @@ export const agentTools: McpToolDefinition[] = [
       },
       required: ['itemId', 'agent'],
     },
+    zodSchema: AgentStartSchema,
+    handler: agentStart,
   },
   {
     name: 'agent_stop',
@@ -330,7 +358,7 @@ export const agentTools: McpToolDefinition[] = [
       'Use this when finished working on an item to record what was done. ' +
       'The agent claim will be released and the summary will be appended to the item frontmatter.',
     inputSchema: {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         itemId: {
           type: 'string',
@@ -338,8 +366,8 @@ export const agentTools: McpToolDefinition[] = [
         },
         agent: {
           type: 'string',
-          description: `The agent name (one of: ${VALID_AGENTS.join(', ')})`,
-          enum: VALID_AGENTS,
+          description: `The agent name (one of: ${VALID_AGENTS_LOWER.join(', ')})`,
+          enum: VALID_AGENTS_LOWER,
         },
         status: {
           type: 'string',
@@ -363,5 +391,7 @@ export const agentTools: McpToolDefinition[] = [
       },
       required: ['itemId', 'agent', 'status', 'summary'],
     },
+    zodSchema: AgentStopSchema,
+    handler: agentStop,
   },
 ];

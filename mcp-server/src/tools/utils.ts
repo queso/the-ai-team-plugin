@@ -9,15 +9,16 @@
 
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
+import { config } from '../config.js';
 
 // ============================================================================
 // Valid Agent Names
 // ============================================================================
 
 /**
- * Valid agent names (lowercase).
+ * Valid agent names (lowercase for input validation).
  */
-const VALID_AGENTS = [
+const VALID_AGENTS_LOWER = [
   'murdock',
   'ba',
   'lynch',
@@ -28,16 +29,41 @@ const VALID_AGENTS = [
   'tawnia',
 ] as const;
 
-type ValidAgent = (typeof VALID_AGENTS)[number];
+type ValidAgentLower = (typeof VALID_AGENTS_LOWER)[number];
+
+/**
+ * Map from lowercase agent names to API-expected format.
+ */
+const AGENT_NAME_MAP: Record<ValidAgentLower, string> = {
+  murdock: 'Murdock',
+  ba: 'B.A.',
+  lynch: 'Lynch',
+  amy: 'Amy',
+  hannibal: 'Hannibal',
+  face: 'Face',
+  sosa: 'Sosa',
+  tawnia: 'Tawnia',
+};
+
+/**
+ * Normalize agent name to lowercase key format.
+ * Handles special cases like "B.A." -> "ba"
+ */
+function normalizeAgentName(val: string): string {
+  return val.toLowerCase().replace(/\./g, '');
+}
 
 /**
  * Zod schema for agent name validation.
+ * Accepts case-insensitive input, validates, and transforms to API format.
  */
 const AgentNameSchema = z
   .string()
-  .refine((val): val is ValidAgent => VALID_AGENTS.includes(val.toLowerCase() as ValidAgent), {
-    message: `Agent must be one of: ${VALID_AGENTS.join(', ')}`,
-  });
+  .transform((val) => normalizeAgentName(val) as ValidAgentLower)
+  .refine((val): val is ValidAgentLower => VALID_AGENTS_LOWER.includes(val), {
+    message: `Agent must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
+  })
+  .transform((val) => AGENT_NAME_MAP[val]);
 
 // ============================================================================
 // Zod Schemas for Input Validation
@@ -142,7 +168,8 @@ function formatErrorMessage(error: unknown): string {
 // ============================================================================
 
 const client = createClient({
-  baseUrl: process.env.KANBAN_API_URL ?? 'http://localhost:3000',
+  baseUrl: config.apiUrl,
+  projectId: config.projectId,
   timeout: 30000,
   retries: 3,
 });
@@ -159,7 +186,7 @@ export async function depsCheck(
 ): Promise<ToolResponse<DepsCheckResponse>> {
   try {
     const queryString = input.verbose ? '?verbose=true' : '';
-    const path = `/api/utils/deps-check${queryString}`;
+    const path = `/api/deps/check${queryString}`;
 
     const result = await client.get<DepsCheckResponse>(path);
     return {
@@ -182,7 +209,7 @@ export async function activityLog(
   input: ActivityLogInput
 ): Promise<ToolResponse<ActivityLogResponse>> {
   try {
-    const result = await client.post<ActivityLogResponse>('/api/utils/activity-log', {
+    const result = await client.post<ActivityLogResponse>('/api/activity', {
       agent: input.agent,
       message: input.message,
     });
@@ -206,7 +233,7 @@ export async function log(
   input: LogInput
 ): Promise<ToolResponse<ActivityLogResponse>> {
   try {
-    const result = await client.post<ActivityLogResponse>('/api/utils/log', {
+    const result = await client.post<ActivityLogResponse>('/api/activity', {
       agent: input.agent,
       message: input.message,
     });
@@ -315,24 +342,28 @@ function getPropertySchema(schema: z.ZodTypeAny): object {
 
 /**
  * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export const utilsTools = [
   {
     name: 'deps_check',
     description: 'Validates the dependency graph and detects cycles. Returns analysis including ready items, depths, and any validation errors.',
     inputSchema: zodToJsonSchema(DepsCheckSchema),
+    zodSchema: DepsCheckSchema,
     handler: depsCheck,
   },
   {
     name: 'activity_log',
     description: 'Appends a structured JSON log entry to the activity feed. Requires agent name and message.',
     inputSchema: zodToJsonSchema(ActivityLogSchema),
+    zodSchema: ActivityLogSchema,
     handler: activityLog,
   },
   {
     name: 'log',
     description: 'Simple shorthand for activity logging. Appends a log entry with agent name and message.',
     inputSchema: zodToJsonSchema(LogSchema),
+    zodSchema: LogSchema,
     handler: log,
   },
 ];

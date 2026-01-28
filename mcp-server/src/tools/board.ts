@@ -93,6 +93,7 @@ export interface ToolErrorResponse {
 function getDefaultClient(): KanbanApiClient {
   return createClient({
     baseUrl: config.apiUrl,
+    projectId: config.projectId,
     apiKey: config.apiKey,
     timeout: config.timeout,
     retries: config.retries,
@@ -102,12 +103,13 @@ function getDefaultClient(): KanbanApiClient {
 /**
  * Read the full board state.
  *
- * @param client - Optional HTTP client (uses default if not provided)
+ * @param _input - Unused input parameter (required for MCP handler signature)
  * @returns The full board state as structured JSON
  */
 export async function boardRead(
-  client: KanbanApiClient = getDefaultClient()
+  _input?: BoardReadInput
 ): Promise<ToolResponse<BoardState>> {
+  const client = getDefaultClient();
   const result = await client.get<BoardState>('/api/board');
   return {
     content: [{ type: 'text', text: JSON.stringify(result.data) }],
@@ -138,7 +140,7 @@ export async function boardMove(
 
   const result = await client.post<MoveResult>('/api/board/move', {
     itemId: input.itemId,
-    to: input.to,
+    toStage: input.to,
   });
   return {
     content: [{ type: 'text', text: JSON.stringify(result.data) }],
