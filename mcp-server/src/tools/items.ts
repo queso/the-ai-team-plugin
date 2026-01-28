@@ -12,11 +12,13 @@
 
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
+import { config } from '../config.js';
 import { withErrorBoundary, type McpErrorResponse } from '../lib/errors.js';
 
 // Initialize HTTP client
 const client = createClient({
-  baseUrl: process.env.KANBAN_API_URL ?? 'http://localhost:3000',
+  baseUrl: config.apiUrl,
+  projectId: config.projectId,
   timeout: 30000,
   retries: 3,
 });
@@ -28,15 +30,28 @@ const client = createClient({
 /**
  * Schema for item_create tool input.
  */
+/**
+ * Validates that dependency IDs use the correct WI-XXX format.
+ * This catches common mistakes like using bare numeric IDs ("001" instead of "WI-001").
+ */
+const dependencyIdSchema = z.string().refine(
+  (id) => /^WI-\d{3}[a-z]?$/.test(id),
+  (id) => ({
+    message: `Invalid dependency ID "${id}". Expected format "WI-XXX" (e.g., "WI-001"). Did you forget to use the ID returned from item_create?`,
+  })
+);
+
 export const ItemCreateInputSchema = z.object({
   title: z.string().min(1),
-  type: z.enum(['feature', 'bug', 'task']),
+  description: z.string().min(1),
+  type: z.enum(['feature', 'bug', 'task', 'enhancement']),
+  priority: z.enum(['critical', 'high', 'medium', 'low']),
   status: z.string().optional().default('pending'),
-  dependencies: z.array(z.string()).optional().default([]),
+  dependencies: z.array(dependencyIdSchema).optional().default([]),
   parallel_group: z.string().optional(),
   outputs: z.object({
-    test: z.string(),
-    impl: z.string(),
+    test: z.string().optional(),
+    impl: z.string().optional(),
     types: z.string().optional(),
   }).optional(),
 });
@@ -135,6 +150,19 @@ interface ToolResponse<T = unknown> {
 export async function itemCreate(
   input: ItemCreateInput
 ): Promise<ToolResponse<WorkItem> | McpErrorResponse> {
+  // Validate input (especially dependency IDs) before sending to API
+  const parsed = ItemCreateInputSchema.safeParse(input);
+  if (!parsed.success) {
+    const errorMessage = parsed.error.errors
+      .map((e) => e.message)
+      .join('; ');
+    return {
+      isError: true,
+      code: 'VALIDATION_ERROR',
+      message: errorMessage,
+    };
+  }
+
   const handler = async (args: ItemCreateInput) => {
     const result = await client.post<WorkItem>('/api/items', args);
     return {
@@ -143,7 +171,7 @@ export async function itemCreate(
     };
   };
 
-  return withErrorBoundary(handler)(input);
+  return withErrorBoundary(handler)(parsed.data);
 }
 
 /**
@@ -154,7 +182,7 @@ export async function itemUpdate(
 ): Promise<ToolResponse<WorkItem> | McpErrorResponse> {
   const handler = async (args: ItemUpdateInput) => {
     const { id, ...updateData } = args;
-    const result = await client.put<WorkItem>(`/api/items/${id}`, updateData);
+    const result = await client.patch<WorkItem>(`/api/items/${id}`, updateData);
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result.data) }],
       data: result.data,
@@ -335,42 +363,49 @@ function getPropertySchema(schema: z.ZodTypeAny): object {
 
 /**
  * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export const itemTools = [
   {
     name: 'item_create',
     description: 'Create a new work item with title, type, and optional fields like dependencies and outputs.',
     inputSchema: zodToJsonSchema(ItemCreateInputSchema),
+    zodSchema: ItemCreateInputSchema,
     handler: itemCreate,
   },
   {
     name: 'item_update',
     description: 'Update an existing work item with partial fields. Requires item ID.',
     inputSchema: zodToJsonSchema(ItemUpdateInputSchema),
+    zodSchema: ItemUpdateInputSchema,
     handler: itemUpdate,
   },
   {
     name: 'item_get',
     description: 'Retrieve a single work item by its ID.',
     inputSchema: zodToJsonSchema(ItemGetInputSchema),
+    zodSchema: ItemGetInputSchema,
     handler: itemGet,
   },
   {
     name: 'item_list',
     description: 'List work items with optional filtering by status, stage, or assigned agent.',
     inputSchema: zodToJsonSchema(ItemListInputSchema),
+    zodSchema: ItemListInputSchema,
     handler: itemList,
   },
   {
     name: 'item_reject',
     description: 'Record a rejection for a work item with reason. Handles escalation after max rejections.',
     inputSchema: zodToJsonSchema(ItemRejectInputSchema),
+    zodSchema: ItemRejectInputSchema,
     handler: itemReject,
   },
   {
     name: 'item_render',
     description: 'Get the markdown representation of a work item including frontmatter.',
     inputSchema: zodToJsonSchema(ItemRenderInputSchema),
+    zodSchema: ItemRenderInputSchema,
     handler: itemRender,
   },
 ];
