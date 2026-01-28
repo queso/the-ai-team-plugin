@@ -20,28 +20,28 @@ Initialize a mission from a PRD file with two-pass refinement.
          │
          ▼
 ┌─────────────────────────────────────┐
-│ 1. mission-init.js                  │
-│    Initialize fresh mission         │
+│ 1. mission_init MCP tool            │
+│    Initialize fresh mission in DB   │
 └─────────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────┐
 │ 2. Face (opus) - FIRST PASS         │
 │    • Decompose PRD into items       │
-│    • Create items in briefings/     │
-│    • Do NOT move to ready/          │
+│    • Create items via item_create   │
+│    • Items start in 'briefings'     │
 └─────────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────┐
-│ 3. deps-check.js                    │
+│ 3. deps_check MCP tool              │
 │    Validate dependency graph        │
 └─────────────────────────────────────┘
          │
          ▼ (skip if --skip-refinement)
 ┌─────────────────────────────────────┐
 │ 4. Sosa (opus, requirements-critic) │
-│    • Review all items in briefings/ │
+│    • Review all items in briefings  │
 │    • Identify issues & ambiguities  │
 │    • Ask human questions            │
 │    • Output refinement report       │
@@ -51,9 +51,9 @@ Initialize a mission from a PRD file with two-pass refinement.
 ┌─────────────────────────────────────┐
 │ 5. Face (opus) - SECOND PASS        │
 │    • Apply Sosa's recommendations   │
-│    • Update items in-place          │
-│    • Move Wave 0 items to ready/    │
-│    • Dependent items stay briefings/│
+│    • Update items via item_update   │
+│    • Move Wave 0 → ready stage      │
+│    • Dependent items stay briefings │
 └─────────────────────────────────────┘
          │
          ▼
@@ -73,19 +73,17 @@ if not exists(prd-file):
     exit
 ```
 
-### 2. Initialize mission (archive existing if any)
+### 2. Initialize mission
 
-```bash
-# Extract project name from PRD (first H1 header or filename)
-echo '{"name": "<project-name-from-prd>"}' | node .claude/ai-team/scripts/mission-init.js --force
-```
+Use the `mission_init` MCP tool with parameters:
+- `name`: Project name extracted from PRD (first H1 header or filename)
+- `force`: Set to `true` to archive existing mission
 
-The init script:
-- Archives all existing work items to `mission/archive/<old-mission-name>/`
-- Archives the activity.log (clears Live Feed)
-- Creates fresh stage directories
-- Initializes empty board.json
-- Logs mission start to activity.log
+The tool:
+- Archives existing mission data (if any) in the database
+- Creates fresh mission record for this project
+- Initializes empty board state
+- Logs mission start to activity feed
 
 ### 3. Invoke Face - First Pass
 
@@ -95,23 +93,21 @@ Task(
   model: "opus",
   prompt: "You are Face from the A(i)-Team. [full face.md prompt]
 
-  **THIS IS THE FIRST PASS.** Create work items in briefings/ only.
-  Do NOT move items to ready/ - that happens in the second pass.
+  **THIS IS THE FIRST PASS.** Create work items in briefings stage only.
+  Do NOT move items to ready - that happens in the second pass.
 
   Here is the PRD to decompose:
 
   {prd_content}
 
-  Create work items in mission/briefings/ using the item-create.js script.
-  When done, run deps-check.js and report summary."
+  Create work items using the item_create MCP tool.
+  When done, use deps_check MCP tool and report summary."
 )
 ```
 
 ### 4. Validate dependencies
 
-```bash
-node .claude/ai-team/scripts/deps-check.js
-```
+Use the `deps_check` MCP tool.
 
 Check for:
 - Circular dependencies
@@ -128,7 +124,7 @@ Task(
   model: "opus",
   prompt: "You are Sosa from the A(i)-Team. [full sosa.md prompt]
 
-  Review all work items in mission/briefings/.
+  Review all work items in briefings stage.
 
   Use AskUserQuestion to clarify any ambiguities with the human.
 
@@ -145,7 +141,7 @@ Task(
 ```
 
 Sosa will:
-- Read all items in `briefings/`
+- Read all items using `item_list` with stage filter
 - Identify issues and ambiguities
 - Use `AskUserQuestion` to get human clarification
 - Produce a detailed refinement report
@@ -160,18 +156,23 @@ Task(
 
   **THIS IS THE SECOND PASS.** Apply Sosa's refinements.
 
+  **IMPORTANT: USE MCP TOOLS ONLY.**
+  - DO NOT use Glob, Grep, or Search tools
+  - DO NOT explore any codebase or directories
+  - All information you need is in Sosa's report below
+
   Here is Sosa's refinement report:
 
   {sosa_report}
 
   For each item needing changes:
-  1. Use item-update.js to modify the item
+  1. Use item_update MCP tool to modify the item
   2. Apply the specific recommendations
 
   After all updates:
-  1. Run deps-check.js to get the readyItems list
-  2. Move items with NO dependencies to ready/ using board-move.js
-  3. Leave items WITH dependencies in briefings/
+  1. Use deps_check MCP tool to get the readyItems list
+  2. Move items with NO dependencies to ready stage using board_move
+  3. Leave items WITH dependencies in briefings stage
 
   Report what was updated and moved."
 )
@@ -183,8 +184,8 @@ Task(
 Mission planning complete.
 
 {n} objectives identified:
-- {x} in ready/ (Wave 0 - no dependencies)
-- {y} in briefings/ (waiting on dependencies)
+- {x} in ready stage (Wave 0 - no dependencies)
+- {y} in briefings stage (waiting on dependencies)
 
 Dependency depth: {max_depth}
 Parallel waves: {waves}
@@ -210,10 +211,10 @@ With skip refinement:
 
 ## Output
 
-- `mission/` directory with full structure
-- Work item files in `mission/briefings/` and `mission/ready/`
-- Initialized `mission/board.json`
-- Fresh `mission/activity.log`
+- Mission initialized in the API database
+- Work items created with proper stages
+- Board state ready for execution
+- Activity log started
 - Previous mission archived (if any)
 - Summary of decomposition and refinement
 
@@ -223,16 +224,18 @@ With skip refinement:
 - **Circular dependency detected**: Decomposition has cycles
 - **Invalid work item**: Missing required fields
 - **Refinement blocked**: Critical issues Sosa can't resolve
+- **API unavailable**: Cannot connect to A(i)-Team server
 
-## CLI Scripts Used
+## MCP Tools Used
 
-| Script | Purpose |
-|--------|---------|
-| `mission-init.js` | Archive existing mission, create fresh state |
-| `item-create.js` | Create work items (Face first pass) |
-| `item-update.js` | Update work items (Face second pass) |
-| `board-move.js` | Move items between stages (Face second pass) |
-| `deps-check.js` | Validate dependency graph |
+| Tool | Purpose |
+|------|---------|
+| `mission_init` | Archive existing mission, create fresh state |
+| `item_create` | Create work items (Face first pass) |
+| `item_update` | Update work items (Face second pass) |
+| `item_list` | List items by stage (Sosa review) |
+| `board_move` | Move items between stages (Face second pass) |
+| `deps_check` | Validate dependency graph |
 
 ## Agent Invocations
 
@@ -240,4 +243,4 @@ With skip refinement:
 |-------|------|---------------|-------|---------|
 | Face | First | clean-code-architect | opus | Decompose PRD into items |
 | Sosa | - | requirements-critic | opus | Review and challenge items |
-| Face | Second | clean-code-architect | opus | Refine and move to ready/ |
+| Face | Second | clean-code-architect | opus | Refine and move to ready |

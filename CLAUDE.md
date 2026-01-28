@@ -23,14 +23,45 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 
 ## Architecture
 
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Claude Code                              │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │
+│  │   Hannibal  │     │   Murdock   │     │    B.A.     │   │
+│  │ (main ctx)  │     │ (subagent)  │     │ (subagent)  │   │
+│  └──────┬──────┘     └──────┬──────┘     └──────┬──────┘   │
+│         │                   │                   │           │
+│         └───────────────────┼───────────────────┘           │
+│                             │                               │
+│                    ┌────────▼────────┐                      │
+│                    │   MCP Server    │                      │
+│                    │  (20 tools)     │                      │
+│                    └────────┬────────┘                      │
+└─────────────────────────────┼───────────────────────────────┘
+                              │ HTTP + X-Project-ID header
+                              ▼
+                    ┌─────────────────┐
+                    │  A(i)-Team API  │
+                    │    (Database)   │
+                    └─────────────────┘
+                              │
+                              ▼
+                    ┌─────────────────┐
+                    │   Kanban UI     │
+                    │ (Web Dashboard) │
+                    └─────────────────┘
+```
+
 ### Pipeline Flow
 
 **Planning Phase (`/ateam plan`):**
 ```
-PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready/
+PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready stage
            ↓                  ↓               ↓
-      briefings/        questions         refinement
-                        (human)
+      briefings          questions         refinement
+        stage            (human)
 ```
 
 **Execution Phase (`/ateam run`):**
@@ -61,36 +92,59 @@ briefings → ready → testing → implementing → review → probing → done
 Each feature flows through stages sequentially. Different features can be at different stages simultaneously (pipeline parallelism). WIP limits control how many features are in-flight.
 
 **Two-Level Orchestration:**
-1. **Dependency waves** - Items wait in `ready/` until deps reach `done/` (correct waiting)
+1. **Dependency waves** - Items wait in `briefings` until deps reach `done` (correct waiting)
 2. **Pipeline flow** - Items advance IMMEDIATELY on completion, no stage batching (critical)
 
-Use `deps-check.js` to see which items are ready. Within a wave, items flow independently through stages.
+Use the `deps_check` MCP tool to see which items are ready. Within a wave, items flow independently through stages.
 
-**True Individual Item Tracking:** Items advance immediately when their agent completes - no waiting for batch completion. Hannibal polls TaskOutput for each background agent individually and agents signal completion via `item-complete.js`.
+**True Individual Item Tracking:** Items advance immediately when their agent completes - no waiting for batch completion. Hannibal polls TaskOutput for each background agent individually and agents signal completion via the `agent_stop` MCP tool.
 
-When ALL features reach `done/`, Lynch performs a **Final Mission Review** of the entire codebase, checking for cross-cutting issues (consistency, race conditions, security, code quality).
+When ALL features reach `done`, Lynch performs a **Final Mission Review** of the entire codebase, checking for cross-cutting issues (consistency, race conditions, security, code quality).
 
-### Mission Directory Structure
-When the plugin runs, it creates a `mission/` directory (gitignored) containing:
-- `board.json` - State, WIP limits, agent status, assignments
-- `activity.log` - Append-only log for Live Feed
-- Stage folders: `briefings/`, `ready/`, `testing/`, `implementing/`, `review/`, `probing/`, `done/`, `blocked/`
-- `archive/<mission-name>/` - Completed missions (optional, for preserving history)
+### Data Storage
 
-### Feature Item Format
-Work items are markdown files with YAML frontmatter containing:
-- `id`, `title`, `type`, `status`, `rejection_count`
-- `outputs.test`, `outputs.impl`, `outputs.types` (file paths)
-- `dependencies`, `parallel_group`
-- `assigned_agent` (set by `item-agent-start.js`, cleared by `item-agent-stop.js`)
-- `work_log` (array of work summaries from each agent, appended by `item-agent-stop.js`)
+All mission state is stored in the **A(i)-Team API database**, not on the local filesystem. This enables:
+
+- **Multi-project isolation**: Each project has a unique `ATEAM_PROJECT_ID`
+- **Web-based Kanban UI**: Real-time visibility into mission progress
+- **Activity feeds**: Live logging of agent actions
+- **Persistence**: Mission state survives Claude Code session restarts
+
+The MCP server acts as a bridge between Claude Code and the API, sending the project ID in every request via the `X-Project-ID` HTTP header.
+
+### Work Item Format
+
+Work items are stored in the database with the following structure:
+
+```yaml
+id: "WI-001"  # Generated by API with WI- prefix
+title: "Feature name"
+type: "feature"        # feature | bug | task
+status: "pending"
+stage: "briefings"     # briefings | ready | testing | implementing | review | probing | done | blocked
+outputs:
+  test: "src/__tests__/feature.test.ts"    # REQUIRED
+  impl: "src/services/feature.ts"          # REQUIRED
+  types: "src/types/feature.ts"            # Optional
+dependencies: []
+parallel_group: "group-name"
+rejection_count: 0
+assigned_agent: "Murdock"                   # Set by agent_start, cleared by agent_stop
+work_log:                                   # Populated by agent_stop
+  - agent: "Murdock"
+    timestamp: "2024-01-15T10:30:00Z"
+    status: "success"
+    summary: "Created 5 test cases"
+```
+
+The `outputs` field is critical - without it, Murdock and B.A. don't know where to create files.
 
 ## Plugin Commands
 
 ### Mission Commands
-- `/ateam setup` - Auto-detect settings from CLAUDE.md/package.json, configure permissions, create `ateam.config.json` (run once per project)
+- `/ateam setup` - Configure project ID, permissions, and settings (run once per project)
 - `/ateam plan <prd-file>` - Initialize mission from PRD, Face decomposes into work items
-- `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3), runs precheck before starting
+- `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3)
 - `/ateam status` - Display kanban board with current progress
 - `/ateam resume` - Resume interrupted mission from saved state
 - `/ateam unblock <item-id> [--guidance "hint"]` - Unblock stuck items
@@ -100,54 +154,31 @@ Work items are markdown files with YAML frontmatter containing:
 
 ## Critical Requirements
 
-### Work Item Format (YAML Frontmatter)
-Every work item MUST have YAML frontmatter with the `outputs:` field:
-```yaml
----
-id: "001"
-title: "Feature name"
-type: "feature"
-outputs:
-  test: "src/__tests__/feature.test.ts"    # REQUIRED
-  impl: "src/services/feature.ts"          # REQUIRED
-  types: "src/types/feature.ts"            # Optional
-dependencies: []
-parallel_group: "group-name"
-status: "pending"
-rejection_count: 0
-assigned_agent: "Murdock"                   # Set by start hook, cleared by stop hook
-work_log:                                   # Populated by stop hook
-  - agent: "Murdock"
-    timestamp: "2024-01-15T10:30:00Z"
-    status: "success"
-    summary: "Created 5 test cases"
----
-```
-Without `outputs:`, Murdock and B.A. don't know where to create files.
+### Working Directory
+**All agents work on the TARGET PROJECT, not the ai-team plugin directory.**
 
-### File Movement (Hannibal)
-When moving items between stages, use the CLI scripts which handle both filesystem and board.json atomically:
-
-```bash
-echo '{"itemId": "001", "to": "implementing"}' | node .claude/ai-team/scripts/board-move.js
-```
-
-The scripts ensure:
-- File is moved to the correct stage directory
-- `board.json` phases array is updated
-- Activity is logged to `mission/activity.log`
-- WIP limits are enforced
-- Invalid transitions are rejected
+- The target project is the user's working directory where `/ateam` commands are run
+- NEVER explore, search, or modify files in the ai-team plugin directory (`.claude/ai-team/` or similar)
+- When Face or other agents explore codebases, they explore the TARGET PROJECT's `src/`, `tests/`, etc.
+- The MCP tools handle all communication with the A(i)-Team system - no need to explore plugin internals
 
 ### Agent Boundaries
 - **Hannibal**: Orchestrates ONLY. NEVER uses Write/Edit on `src/**` or test files. Delegates ALL coding to subagents. If pipeline is stuck, reports status and waits for human intervention - never codes a workaround.
-- **Face**: Creates and updates work items. Does NOT write tests or implementation.
+- **Face**: Creates and updates work items via MCP tools. Does NOT write tests or implementation. On second pass, uses MCP tools ONLY (no Glob/Grep).
 - **Sosa**: Reviews and critiques work items. Does NOT modify items directly - provides recommendations for Face.
 - **Murdock**: Writes ONLY tests and types. Does NOT write implementation code.
 - **B.A.**: Writes ONLY implementation. Tests already exist from Murdock.
 - **Lynch**: Reviews only. Does NOT write code.
 - **Amy**: Investigates only. Does NOT write production code or tests. Reports findings with proof.
 - **Tawnia**: Writes documentation only (CHANGELOG, README, docs/). Does NOT modify source code or tests. Makes the final commit.
+
+### Stage Transitions
+
+Use the `board_move` MCP tool for all stage transitions. The tool:
+- Validates the transition is allowed
+- Enforces WIP limits
+- Logs the transition to the activity feed
+- Returns success/error status
 
 ## Key Conventions
 
@@ -160,14 +191,14 @@ Every feature MUST flow through ALL stages. Skipping stages is NOT permitted.
 2. **B.A.** implements to pass those tests
 3. **Lynch** reviews tests + implementation together
 4. **Amy** probes for bugs beyond tests (Raptor Protocol) ← MANDATORY, NOT OPTIONAL
-5. If rejected at any stage (max 2 times), item goes to `blocked/`
+5. If rejected at any stage (max 2 times), item goes to `blocked`
 
-**Mission Completion (after ALL items reach done/):**
+**Mission Completion (after ALL items reach done):**
 6. **Lynch** performs **Final Mission Review** (holistic codebase review)
 7. **Post-checks** run (lint, unit, e2e)
 8. **Tawnia** updates documentation and creates final commit ← MANDATORY, NOT OPTIONAL
 
-⚠️ **A mission is NOT complete until Tawnia commits.** No shortcuts.
+**A mission is NOT complete until Tawnia commits.** No shortcuts.
 
 ### Testing Philosophy
 - Cover happy paths, negative paths, and key edge cases
@@ -182,6 +213,7 @@ Smallest independently-completable units:
 - No arbitrary time limits
 
 ### Agent Dispatch
+
 Hannibal dispatches agents using Task tool with `run_in_background: true`:
 
 **Planning Phase:**
@@ -205,17 +237,14 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 
 ```json
 {
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name"
+  },
   "permissions": {
     "allow": [
-      "Bash(echo * | node **/scripts/*.js)",
-      "Bash(node **/scripts/*.js)",
-      "Bash(cat <<*)",
-      "Bash(mv mission/*)",
-      "Bash(echo *>> mission/activity.log)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Write(src/**)",
-      "Write(mission/**)"
+      "Write(src/**)"
     ]
   }
 }
@@ -223,24 +252,36 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 
 | Permission | Used By | Purpose |
 |------------|---------|---------|
-| `Bash(echo * \| node **/scripts/*.js)` | All agents | Pipe JSON to board scripts |
-| `Bash(node **/scripts/*.js)` | All agents | Run board management scripts |
-| `Bash(cat <<*)` | All agents | Heredoc input to scripts |
-| `Bash(mv mission/*)` | Hannibal | Move items between stage directories |
-| `Bash(echo *>> mission/activity.log)` | All agents | Log to Live Feed |
 | `Bash(git add *)` | Tawnia | Stage files for final commit |
-| `Bash(git commit *)` | Tawnia | Create final mission commit |
+| `Bash(git commit *)` | Tawnia | Create final commit |
 | `Write(src/**)` | Murdock, B.A. | Write tests and implementations |
-| `Write(mission/**)` | Face | Create/update work items |
 
-Without these permissions, agents will fail with: "Permission to use [tool] has been auto-denied (prompts unavailable)"
+**Note:** All board and item operations are handled via MCP tools that communicate with the API server. No filesystem permissions are needed for mission state management.
 
 ## File Organization
 
 ```
 ai-team/
 ├── plugin.json              # Plugin configuration
+├── .mcp.json                # MCP server configuration
 ├── package.json             # Node.js dependencies (run `npm install`)
+├── mcp-server/              # MCP server for Claude Code integration
+│   ├── package.json         # MCP server dependencies
+│   ├── tsconfig.json
+│   ├── src/
+│   │   ├── index.ts         # Entry point (stdio transport)
+│   │   ├── server.ts        # McpServer instance
+│   │   ├── config.ts        # Environment configuration (projectId, apiUrl, etc.)
+│   │   ├── client/          # HTTP client with retry logic
+│   │   ├── lib/             # Error handling utilities
+│   │   └── tools/           # Tool implementations (20 tools)
+│   │       ├── board.ts     # Board operations (4 tools)
+│   │       ├── items.ts     # Item operations (6 tools)
+│   │       ├── agents.ts    # Agent lifecycle (2 tools)
+│   │       ├── missions.ts  # Mission lifecycle (5 tools)
+│   │       ├── utils.ts     # Utilities (3 tools)
+│   │       └── index.ts     # Tool registration
+│   └── dist/                # Compiled JavaScript
 ├── agents/                  # Agent prompts and behavior (with frontmatter hooks)
 │   ├── hannibal.md          # Orchestrator (main context, has PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer
@@ -256,86 +297,81 @@ ai-team/
 ├── skills/
 │   ├── tdd-workflow.md      # TDD guidance
 │   └── perspective-test.md  # User perspective testing methodology
-├── scripts/                 # CLI scripts for board operations
-│   ├── board-*.js           # Board management
-│   ├── item-*.js            # Work item operations
-│   ├── mission-*.js         # Mission lifecycle
-│   ├── deps-check.js        # Dependency validation
-│   ├── activity-log.js      # Activity logging (JSON input)
-│   ├── log.js               # Simple activity logger (positional args)
+├── scripts/                 # Hook enforcement scripts (for internal use)
 │   └── hooks/               # Agent lifecycle hooks
 │       ├── enforce-completion-log.js    # Stop hook for working agents
 │       ├── block-raw-echo-log.js        # PreToolUse hook for working agents
 │       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal
-│       ├── block-raw-mv.js              # PreToolUse hook for Hannibal (blocks raw mv)
 │       └── enforce-final-review.js      # Stop hook for Hannibal
-├── lib/                     # Shared utilities
+├── lib/                     # Shared utilities (used by hooks)
 │   ├── board.js, lock.js, validate.js
 └── docs/
     └── kanban-ui-prd.md     # PRD for web-based kanban board
 ```
 
-## CLI Scripts
+## MCP Tools
 
-Agents should use CLI scripts for board operations instead of direct file manipulation:
+Agents use MCP tools for all board and item operations. The MCP server exposes 20 tools across 5 modules:
 
-| Script | Purpose |
-|--------|---------|
-| `board-read.js` | Read board state as JSON |
-| `board-move.js` | Move item between stages (validates transitions, enforces WIP, stores task_id) |
-| `board-claim.js` | Assign agent to item (board.json only) |
-| `board-release.js` | Release agent claim |
-| `item-create.js` | Create new work item |
-| `item-update.js` | Update work item |
-| `item-reject.js` | Record rejection (escalates after 2) |
-| `item-complete.js` | Signal agent completion (board.json only, DEPRECATED - use `item-agent-stop.js`) |
-| `item-agent-start.js` | **START HOOK**: Claim item + write `assigned_agent` to frontmatter |
-| `item-agent-stop.js` | **STOP HOOK**: Signal completion + add work summary to `work_log` in frontmatter |
-| `item-render.js` | Render item as markdown |
-| `mission-init.js` | Initialize fresh mission (archives existing first) |
-| `mission-precheck.js` | Run pre-mission checks (lint, unit tests) based on `ateam.config.json` |
-| `mission-postcheck.js` | Run post-mission checks (lint, unit, e2e) based on `ateam.config.json` |
-| `mission-archive.js` | Archive completed items and activity log |
-| `deps-check.js` | Validate dependency graph, detect cycles |
-| `activity-log.js` | Log progress to Live Feed (JSON input) |
-| `log.js` | **Simple activity logger**: `node scripts/log.js Agent "message"` |
+| Module | Tools | Description |
+|--------|-------|-------------|
+| **Board** | `board_read`, `board_move`, `board_claim`, `board_release` | Board state and item movement |
+| **Items** | `item_create`, `item_update`, `item_get`, `item_list`, `item_reject`, `item_render` | Work item CRUD operations |
+| **Agents** | `agent_start`, `agent_stop` | Agent lifecycle hooks |
+| **Missions** | `mission_init`, `mission_current`, `mission_precheck`, `mission_postcheck`, `mission_archive` | Mission lifecycle management |
+| **Utils** | `deps_check`, `activity_log`, `log` | Dependency validation and logging |
 
-### Agent Lifecycle Hooks
+### Agent Lifecycle Tools
 
-Working agents (Murdock, B.A., Lynch, Amy, Tawnia) should use the lifecycle hooks instead of the lower-level scripts:
+Working agents (Murdock, B.A., Lynch, Amy, Tawnia) use lifecycle tools:
 
-**Start Hook** (`item-agent-start.js`):
-```bash
-echo '{"itemId": "007", "agent": "murdock"}' | node .claude/ai-team/scripts/item-agent-start.js
+**Start Tool** (`agent_start`):
 ```
-- Claims the item in `board.json`
-- Writes `assigned_agent: "Murdock"` to work item frontmatter
-- The kanban UI reads this field to show which agent is working on each card
-
-**Stop Hook** (`item-agent-stop.js`):
-```bash
-echo '{"itemId": "007", "agent": "murdock", "status": "success", "summary": "Created 5 test cases", "files_created": ["src/__tests__/feature.test.ts"]}' | node .claude/ai-team/scripts/item-agent-stop.js
+Parameters:
+  - itemId: "007"
+  - agent: "murdock"
 ```
-- Marks completion in `board.json`
-- Clears `assigned_agent` from frontmatter
-- Appends work summary to `work_log` array in frontmatter
+- Claims the item in the database
+- Records `assigned_agent` on the work item
+- The kanban UI shows which agent is working on each card
 
-**Work Log Format** (in work item frontmatter):
-```yaml
-work_log:
-  - agent: "Murdock"
-    timestamp: "2024-01-15T10:30:00Z"
-    status: "success"
-    summary: "Created 5 test cases covering happy path and error handling"
-    files_created: ["src/__tests__/order-sync.test.ts"]
-  - agent: "B.A."
-    timestamp: "2024-01-15T11:45:00Z"
-    status: "success"
-    summary: "Implemented OrderSyncService, all tests passing"
-    files_created: ["src/services/order-sync.ts"]
+**Stop Tool** (`agent_stop`):
 ```
+Parameters:
+  - itemId: "007"
+  - agent: "murdock"
+  - status: "success"
+  - summary: "Created 5 test cases"
+  - files_created: ["src/__tests__/feature.test.ts"]
+```
+- Marks completion in the database
+- Clears `assigned_agent` from the item
+- Appends work summary to `work_log` array
 
-All scripts accept JSON via stdin and output JSON to stdout. See README for full usage examples.
+All tools automatically include the `X-Project-ID` header from the `ATEAM_PROJECT_ID` environment variable.
+
+## Environment Variables
+
+The MCP server reads the following environment variables:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ATEAM_PROJECT_ID` | Yes | `default` | Project identifier for multi-project isolation |
+| `ATEAM_API_URL` | No | `http://localhost:3000` | Base URL for the A(i)-Team API |
+| `ATEAM_API_KEY` | No | - | Optional API key for authentication |
+| `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
+| `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
+
+Configure these in `.claude/settings.local.json`:
+
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000"
+  }
+}
+```
 
 ## Agent Lifecycle Hooks
 
@@ -355,7 +391,7 @@ hooks:
           command: "node scripts/hooks/block-raw-echo-log.js"
 ```
 
-**Purpose:** Prevents agents from using raw `echo >> mission/activity.log` commands. Agents must use `node scripts/log.js` instead for proper formatting.
+**Purpose:** Prevents agents from using raw `echo >> activity.log` commands. Agents must use the `log` or `activity_log` MCP tool instead for proper formatting and API integration.
 
 **Stop Hook** - Enforces completion logging:
 ```yaml
@@ -366,13 +402,11 @@ hooks:
           command: "node scripts/hooks/enforce-completion-log.js"
 ```
 
-**Purpose:** Prevents agents from finishing without calling `item-agent-stop.js` to record their work.
-
-**Behavior:** If the agent hasn't logged completion via `item-agent-stop.js`, the hook blocks the stop and injects a message telling the agent to call the script.
+**Purpose:** Prevents agents from finishing without calling the `agent_stop` MCP tool to record their work.
 
 ### Hannibal Hooks
 
-Hannibal has three hooks to maintain orchestrator boundaries:
+Hannibal has hooks to maintain orchestrator boundaries:
 
 **PreToolUse Hook** - Blocks writes to source code:
 ```yaml
@@ -386,18 +420,6 @@ hooks:
 
 **Purpose:** Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
 
-**PreToolUse Hook** - Blocks raw `mv` on mission files:
-```yaml
-hooks:
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: "node scripts/hooks/block-raw-mv.js"
-```
-
-**Purpose:** Prevents Hannibal from using raw `mv` commands on mission files. All item movements must use `board-move.js` to keep board.json in sync.
-
 **Stop Hook** - Enforces final review and post-checks:
 ```yaml
 hooks:
@@ -408,7 +430,7 @@ hooks:
 ```
 
 **Purpose:** Prevents mission from ending without:
-1. All items reaching `done/`
+1. All items reaching `done` stage
 2. Final Mission Review being completed by Lynch
 3. Post-mission checks passing (lint, tests, e2e)
 
@@ -433,23 +455,6 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
    - `yarn.lock` → yarn
    - `pnpm-lock.yaml` → pnpm
    - `bun.lockb` → bun
-
-### Confirmation Flow
-
-Setup presents detected values for confirmation rather than asking from scratch:
-```
-I detected the following settings from your project:
-
-  Package manager: pnpm (detected from pnpm-lock.yaml)
-  Lint command:    pnpm run lint (from package.json scripts.lint)
-  Unit tests:      pnpm test:unit (from package.json scripts.test:unit)
-  E2E tests:       pnpm exec playwright test (from CLAUDE.md)
-  Dev server:      http://localhost:3000 (from CLAUDE.md)
-
-Does this look correct?
-```
-
-Only asks fallback questions for settings that couldn't be detected.
 
 ### Config File Format
 
@@ -478,16 +483,15 @@ Only asks fallback questions for settings that couldn't be detected.
 - `restart`: Command to restart the server (e.g., to pick up code changes)
 - `managed`: If false, user manages server; Amy checks if running but doesn't start/restart it
 
-**Pre-mission checks** (`mission-precheck.js`):
+**Pre-mission checks** (`mission_precheck` MCP tool):
 - Run before `/ateam run` starts execution
 - Ensures codebase is in clean state (no existing lint/test failures)
 - Establishes baseline for mission work
 
-**Post-mission checks** (`mission-postcheck.js`):
+**Post-mission checks** (`mission_postcheck` MCP tool):
 - Run after Lynch completes Final Mission Review
 - Proves all code works together (lint + unit + e2e all passing)
 - Required for mission completion (enforced by Hannibal's Stop hook)
-- Updates `board.json` with results so the Stop hook can verify
 
 ## Plugin Dependencies
 
@@ -522,7 +526,6 @@ Or from a marketplace:
 ### Option 2: Git Submodule
 ```bash
 git submodule add git@github.com:yourorg/ai-team.git .claude/ai-team
-echo "mission/" >> .gitignore
 ```
 
 ### Development Testing
@@ -532,3 +535,18 @@ claude --plugin-dir /path/to/ai-team
 ```
 
 Once installed, the plugin's slash commands (`/ateam plan`, `/ateam run`, etc.) become available.
+
+### First-Time Setup
+
+After installation, run setup to configure the project:
+
+```
+/ateam setup
+```
+
+This will:
+1. Configure your project ID (for multi-project isolation)
+2. Set up required permissions for background agents
+3. Create `ateam.config.json` with project settings
+4. Verify API server connectivity
+5. Check for optional Playwright plugin

@@ -5,6 +5,42 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-01-28
+
+### Added
+
+- **Dependency ID validation** - `item_create` now validates dependency IDs match `WI-XXX` format
+  - Zod schema rejects bare numeric IDs like `"001"` with a helpful error message
+  - Runtime validation runs before API call, catching format issues early
+  - Error message suggests using the ID returned from previous `item_create` calls
+
+### Changed
+
+- **`item_update`** - Uses PATCH instead of PUT for partial updates
+
+### Fixed
+
+- **ID format documentation** - Updated all examples from bare `"001"` to `"WI-001"` format
+  - `agents/face.md` - ID Convention section, YAML examples, deps_check output
+  - `agents/sosa.md` - Consolidation and refinement examples
+  - `CLAUDE.md` - Work item format example
+  - `README.md` - Work item format example
+
+- **Face agent error handling** - Face no longer strips dependencies to work around validation errors
+  - Added explicit "Error Handling" section forbidding dependency removal workarounds
+  - Added guidance to create items in dependency order (Wave 0 first)
+
+- **Face second pass scope** - Face no longer explores the codebase on second pass
+  - Tools section split by pass (first: Glob/Grep/MCP, second: MCP only)
+  - Second pass explicitly forbids Glob, Grep, Search tools
+  - Plan command prompt reinforced with MCP-only instruction
+
+- **Working directory boundary** - Agents no longer explore the ai-team plugin directory
+  - Added "Working Directory" section to Critical Requirements in CLAUDE.md
+  - All agents are directed to work on the target project only
+
+---
+
 ## [2.0.0] - 2026-01-22
 
 ### Added
@@ -26,12 +62,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Plugin Configuration** (`.mcp.json`) - Registers MCP server with Claude Code
 
+### Changed
+
+- **Agent interaction model** - All agents now use MCP tools instead of CLI scripts for board operations
+  - Agents invoke tools directly rather than shelling out to Node.js scripts
+  - Reduced permission requirements (no longer need `Bash(node **/scripts/*.js)` or `Bash(cat <<*)`)
+  - Cleaner error handling with structured MCP responses
+
+- **Documentation updates** - Updated all documentation to reference MCP tools:
+  - `CLAUDE.md` - Updated CLI scripts section to MCP tools section
+  - `README.md` - Replaced script examples with MCP tool usage
+  - `commands/*.md` - Updated command documentation
+
+- **Hook enforcement** - Hooks still use internal scripts but agent-facing API is now MCP tools
+
+### Deprecated
+
+- **CLI scripts** - Scripts in `scripts/` directory are now only used internally by hooks
+  - `board-*.js`, `item-*.js`, `mission-*.js` scripts are superseded by MCP tools
+  - Scripts remain for hook enforcement but are not directly called by agents
+
 ### Technical Details
 
 - All tools use Zod schemas for input validation
 - Comprehensive error handling with HTTP status code mapping
 - Type-safe TypeScript implementation throughout
 - 355 tests with full coverage
+- Maintains backward compatibility through hook scripts
 
 ---
 

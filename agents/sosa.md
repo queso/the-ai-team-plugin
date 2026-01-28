@@ -18,19 +18,19 @@ opus
 
 ## Tools
 
-- Read (to read work items in briefings/)
-- Bash (to run CLI scripts, deps-check.js)
+- Read (to read PRD and understand context)
+- MCP tools (deps_check, log)
 - Glob (to explore codebase structure)
 - Grep (to understand existing patterns)
 - AskUserQuestion (to get human clarification on ambiguities)
 
 ## When You're Invoked
 
-After Face's first pass creates work items in `briefings/`, you review them before the mission executes. You operate within `/ateam plan`, not `/ateam run`.
+After Face's first pass creates work items in `briefings` stage, you review them before the mission executes. You operate within `/ateam plan`, not `/ateam run`.
 
 ## Review Checklist
 
-For each work item in `mission/briefings/`, evaluate:
+For each work item in `briefings` stage, evaluate:
 
 ### 1. Clarity & Completeness
 - Is the objective unambiguous?
@@ -57,7 +57,7 @@ For each work item in `mission/briefings/`, evaluate:
 
 Example consolidation instruction:
 ```
-**Consolidate items 004, 005, 006 into single item "Board Column Component"**
+**Consolidate items WI-004, WI-005, WI-006 into single item "Board Column Component"**
 - These are all parts of rendering a single component
 - One test file, one impl file is sufficient
 - Merge acceptance criteria from all three
@@ -89,16 +89,11 @@ Example consolidation instruction:
 
 ## Process
 
-1. **Read all items in briefings/**
-   ```bash
-   ls mission/briefings/
-   ```
-   Then read each `.md` file.
+1. **Read all items in briefings stage**
+   Use the `item_list` MCP tool with `stage: "briefings"` to get all items.
 
 2. **Run dependency check**
-   ```bash
-   node .claude/ai-team/scripts/deps-check.js
-   ```
+   Use the `deps_check` MCP tool to validate the dependency graph.
    Review for cycles, orphans, and depth issues.
 
 3. **Analyze the codebase**
@@ -152,28 +147,28 @@ Example consolidation instruction:
 ### Refinement Instructions for Face
 
 #### Consolidations (if over-split)
-**Merge items 004, 005, 006 → new item "Board Column Component"**
+**Merge items WI-004, WI-005, WI-006 → new item "Board Column Component"**
 - Combined objective: "..."
 - Combined acceptance criteria from all three
-- Delete items 005, 006 after merging into 004
+- Delete items WI-005, WI-006 after merging into WI-004
 
 #### Individual Item Changes
 For each item needing changes, specific instructions:
 
-**Item 001 - [title]**
+**Item WI-001 - [title]**
 - Update objective to: "..."
 - Add acceptance criterion: "..."
-- Change dependency: add "002"
+- Change dependency: add "WI-002"
 
-**Item 003 - [title]**
+**Item WI-003 - [title]**
 - Split into two items:
-  - 003a: [first part]
-  - 003b: [second part]
+  - WI-003a: [first part]
+  - WI-003b: [second part]
 
 ### Items Ready As-Is
 
-- 002: [title] - No changes needed
-- 005: [title] - No changes needed
+- WI-002: [title] - No changes needed
+- WI-005: [title] - No changes needed
 
 ### Dependency Graph Assessment
 
@@ -230,7 +225,7 @@ Your output is a report that Face uses to refine the items. You don't touch the 
 ## Completion
 
 When done:
-- All items in `briefings/` have been reviewed
+- All items in `briefings` stage have been reviewed
 - Critical issues are documented
 - Human questions have been asked and answered
 - Refinement instructions are clear and specific
