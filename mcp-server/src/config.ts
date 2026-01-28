@@ -6,6 +6,8 @@
 export interface Config {
   /** Base URL for the A(i)-Team API */
   apiUrl: string;
+  /** Project ID for multi-project isolation */
+  projectId: string;
   /** Optional API key for authentication */
   apiKey: string | undefined;
   /** Request timeout in milliseconds */
@@ -92,8 +94,18 @@ function parseIntEnv(
   return parsed > maxValue ? maxValue : parsed;
 }
 
+/**
+ * Parse and validate project ID from environment variable.
+ * Returns 'default' if not set - allows single-project usage without configuration.
+ */
+function parseProjectId(value: string | undefined): string {
+  const parsed = parseStringEnv(value);
+  return parsed ?? 'default';
+}
+
 export const config: Config = {
   apiUrl: parseApiUrl(process.env.ATEAM_API_URL, DEFAULT_API_URL),
+  projectId: parseProjectId(process.env.ATEAM_PROJECT_ID),
   apiKey: process.env.ATEAM_API_KEY,
   timeout: parseIntEnv(process.env.ATEAM_TIMEOUT, DEFAULT_TIMEOUT, MAX_TIMEOUT),
   retries: parseIntEnv(process.env.ATEAM_RETRIES, DEFAULT_RETRIES, MAX_RETRIES),

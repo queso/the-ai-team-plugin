@@ -117,7 +117,7 @@ async function parseResponseBody<T>(response: Response | { ok: boolean; status: 
  * Creates a Kanban API HTTP client with the specified configuration.
  */
 export function createClient(config: ClientConfig): KanbanApiClient {
-  const { baseUrl, apiKey, timeout = DEFAULT_TIMEOUT, retries = DEFAULT_RETRIES } = config;
+  const { baseUrl, projectId, apiKey, timeout = DEFAULT_TIMEOUT, retries = DEFAULT_RETRIES } = config;
 
   /**
    * Performs a single HTTP request without retry logic.
@@ -130,6 +130,7 @@ export function createClient(config: ClientConfig): KanbanApiClient {
 
     const headers: Record<string, string> = {
       Accept: 'application/json',
+      'X-Project-ID': projectId,
       ...options.headers,
     };
 
@@ -288,6 +289,22 @@ export function createClient(config: ClientConfig): KanbanApiClient {
   }
 
   /**
+   * Performs a PATCH request.
+   */
+  async function patch<TResponse, TBody = unknown>(
+    path: string,
+    body?: TBody,
+    options?: Partial<RequestOptions<TBody>>
+  ): Promise<ApiResponse<TResponse>> {
+    return request<TResponse, TBody>({
+      method: 'PATCH',
+      path,
+      body,
+      ...options,
+    });
+  }
+
+  /**
    * Performs a DELETE request.
    */
   async function del<TResponse>(
@@ -305,6 +322,7 @@ export function createClient(config: ClientConfig): KanbanApiClient {
     get,
     post,
     put,
+    patch,
     delete: del,
     request,
   };

@@ -6,7 +6,7 @@
 /**
  * HTTP methods supported by the client.
  */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /**
  * Configuration options for the HTTP client.
@@ -14,6 +14,8 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export interface ClientConfig {
   /** Base URL for API requests */
   baseUrl: string;
+  /** Project ID for multi-project isolation */
+  projectId: string;
   /** Optional API key for authentication */
   apiKey?: string;
   /** Request timeout in milliseconds */
@@ -142,6 +144,15 @@ export interface KanbanApiClient {
    * Perform a PUT request.
    */
   put<TResponse, TBody = unknown>(
+    path: string,
+    body?: TBody,
+    options?: Partial<RequestOptions<TBody>>
+  ): Promise<ApiResponse<TResponse>>;
+
+  /**
+   * Perform a PATCH request.
+   */
+  patch<TResponse, TBody = unknown>(
     path: string,
     body?: TBody,
     options?: Partial<RequestOptions<TBody>>
