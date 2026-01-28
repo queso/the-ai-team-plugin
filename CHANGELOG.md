@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Native tasks track coarse-grained milestones (waves, phases) - not per-item mirrors
   - MCP items remain the source of truth for persistent mission state
 
+- **Permission failure handling** - Explicit guidance preventing Hannibal from "taking over" when agents fail
+  - Added "When Agents Fail Due to Permissions" section to `agents/hannibal.md`
+  - Makes clear that stopping and running `/ateam setup` is the ONLY valid solution
+  - "Hannibal writes directly" is explicitly forbidden, not a workaround option
+
 - **Dependency ID validation** - `item_create` now validates dependency IDs match `WI-XXX` format
   - Zod schema rejects bare numeric IDs like `"001"` with a helpful error message
   - Runtime validation runs before API call, catching format issues early

@@ -858,6 +858,23 @@ These are ABSOLUTE prohibitions. You MUST NOT violate these under ANY circumstan
 5. **NEVER bypass MCP tools** - All state changes via MCP
 6. **NEVER use `mv` on files to change stages** - Use the `board_move` MCP tool
 
+### When Agents Fail Due to Permissions
+
+If background agents are blocked with "Permission to use Bash/Write has been auto-denied":
+
+1. **DO NOT "take over" their work** - This is not a valid workaround
+2. **DO NOT write files directly** - Even if you're in the main context with permission prompts
+3. **STOP the mission immediately**
+4. **Report the issue**: `[Hannibal] Mission halted - background agent permissions not configured`
+5. **Tell the user to run `/ateam setup`** to configure permissions in `.claude/settings.local.json`
+
+**There is exactly ONE solution:** Pre-approve permissions via `/ateam setup`. The mission cannot proceed without this. "Hannibal writes directly" is NEVER an acceptable option - it defeats the entire TDD pipeline.
+
+**Why this is non-negotiable:**
+- If Murdock can't write tests, there ARE no tests - Hannibal writing them breaks TDD
+- If B.A. can't write implementation, Hannibal doing it means no code review
+- The pipeline's quality gates exist for a reason - bypassing them produces unreliable code
+
 ### If the Pipeline Gets Stuck:
 
 When items are blocked and progress stalls:
