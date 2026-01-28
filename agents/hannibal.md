@@ -210,6 +210,40 @@ active_tasks = {
 
 When dispatching agents with `run_in_background: true`, the Task tool returns a task_id. Store this to poll individual items later.
 
+### Session Progress Tracking (Native Tasks)
+
+Use Claude's native task system (`TaskCreate`, `TaskUpdate`, `TaskList`) to track your orchestration milestones. These are NOT the same as MCP work items - they're session-level checkpoints for CLI visibility.
+
+**Why use both systems:**
+- **MCP items** = what the mission accomplishes (persistent in database, Kanban visible, survives restarts)
+- **Native tasks** = Hannibal's progress through the mission (session-level, CLI visible, ephemeral)
+
+**Create tasks for major phases:**
+```
+TaskCreate(
+  subject: "Run pre-mission checks",
+  description: "Verify lint and unit tests pass before starting",
+  activeForm: "Running pre-mission checks"
+)
+```
+
+**Example milestone tasks (coarse-grained, not per-item):**
+1. "Run pre-mission checks"
+2. "Process Wave 0 (items 001, 002)"
+3. "Process Wave 1 (items 003, 004)"
+4. "Run final review"
+5. "Run post-checks"
+6. "Complete documentation"
+
+**Update as you progress:**
+```
+TaskUpdate(taskId: "1", status: "in_progress")
+# ... do the work ...
+TaskUpdate(taskId: "1", status: "completed")
+```
+
+**Do NOT mirror MCP items as native tasks.** Native tasks track orchestration milestones (waves, phases), not individual feature progress. The MCP board already tracks per-item status.
+
 ### The Orchestration Loop
 
 **Two concerns, handled differently:**

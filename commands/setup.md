@@ -20,18 +20,18 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 
 ## Behavior
 
-### Step 1: Configure Project ID
+### Step 1: Configure Project ID and API URL
 
-The A(i)-Team uses a project ID to isolate data between projects. This is essential when running multiple projects simultaneously.
+The A(i)-Team uses a project ID to isolate data between projects and an API URL to communicate with the backend server.
 
 **Check for existing configuration:**
 ```
-Look for ATEAM_PROJECT_ID in:
+Look for ATEAM_PROJECT_ID and ATEAM_API_URL in:
 1. .claude/settings.local.json (env section)
 2. Environment variables
 ```
 
-**If not configured, ask the user:**
+**If project ID not configured, ask the user:**
 ```
 AskUserQuestion({
   questions: [{
@@ -47,14 +47,33 @@ AskUserQuestion({
 })
 ```
 
+**If API URL not configured, ask the user:**
+```
+AskUserQuestion({
+  questions: [{
+    question: "Where is the A(i)-Team API server running?",
+    header: "API URL",
+    options: [
+      { label: "http://localhost:3000 (Recommended)", description: "Default local development server" },
+      { label: "Use detected devServer URL", description: "If devServer was detected, offer it as an option" },
+      { label: "Custom URL", description: "Enter a custom API server URL" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
 **Write to `.claude/settings.local.json`:**
 ```json
 {
   "env": {
-    "ATEAM_PROJECT_ID": "my-project-name"
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000"
   }
 }
 ```
+
+**IMPORTANT:** Both `ATEAM_PROJECT_ID` and `ATEAM_API_URL` must be set in `.claude/settings.local.json` for the MCP server to function correctly. The MCP server reads these from environment variables, NOT from `ateam.config.json`.
 
 ### Step 2: Auto-Detect Project Settings
 
@@ -276,7 +295,8 @@ Add these permissions to `.claude/settings.local.json`:
 ```json
 {
   "env": {
-    "ATEAM_PROJECT_ID": "my-project-name"
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000"
   },
   "permissions": {
     "allow": [
@@ -287,6 +307,8 @@ Add these permissions to `.claude/settings.local.json`:
   }
 }
 ```
+
+**CRITICAL:** Both `ATEAM_PROJECT_ID` and `ATEAM_API_URL` MUST be in the `env` section. The MCP server reads these as environment variables - it does NOT read from `ateam.config.json`.
 
 **Note:** All board and item operations are handled via MCP tools that communicate with the API server. No filesystem permissions are needed for mission state management.
 
@@ -315,6 +337,7 @@ A(i)-Team Setup
 
 Configuring project...
   Project ID: my-awesome-app (from folder name)
+  API URL: http://localhost:3000
 
 Checking permissions...
   + Bash(git add *)
@@ -322,12 +345,14 @@ Checking permissions...
   + Write(src/**)
 
 Settings updated: .claude/settings.local.json
+  env.ATEAM_PROJECT_ID = "my-awesome-app"
+  env.ATEAM_API_URL = "http://localhost:3000"
 
 Updating CLAUDE.md...
   ✓ Added A(i)-Team integration instructions
 
 Verifying API connectivity...
-  ✓ Connected to A(i)-Team API
+  ✓ Connected to A(i)-Team API at http://localhost:3000
   ✓ Project ID registered
 
 Checking plugin dependencies...
@@ -346,7 +371,7 @@ Ready to run /ateam plan
 
 ## Customization
 
-If your project uses a different structure, you can manually edit `.claude/settings.local.json`:
+If your project uses a different structure or API server, edit `.claude/settings.local.json`:
 
 ```json
 {
@@ -363,6 +388,8 @@ If your project uses a different structure, you can manually edit `.claude/setti
   }
 }
 ```
+
+**Note:** If you're using a non-default API URL (e.g., a local hostname like `http://kanban-viewer.orb.local:3000`), you MUST set `ATEAM_API_URL` in the `env` section. The default of `http://localhost:3000` only works if that's where your API actually runs.
 
 ## Plugin Dependencies
 

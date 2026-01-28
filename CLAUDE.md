@@ -212,6 +212,24 @@ Smallest independently-completable units:
 - If you can split it further without artificial boundaries, split it
 - No arbitrary time limits
 
+### Task Tracking: Two Systems
+
+The A(i)-Team uses two distinct task tracking systems for different purposes:
+
+**MCP Work Items** (`item_create`, `board_move`, etc.):
+- Persistent in API database
+- Visible in Kanban UI
+- Survive session restarts
+- Track: feature implementation progress (per-item)
+
+**Native Claude Tasks** (`TaskCreate`, `TaskUpdate`, `TaskList`):
+- Session-level, ephemeral
+- Visible in CLI progress spinner
+- Lost on session restart
+- Track: Hannibal's orchestration milestones (waves, phases)
+
+Use MCP tools for mission items. Use native tasks for orchestration checkpoints. Do NOT mirror one system to the other - they track different concerns.
+
 ### Agent Dispatch
 
 Hannibal dispatches agents using Task tool with `run_in_background: true`:
@@ -238,7 +256,8 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 ```json
 {
   "env": {
-    "ATEAM_PROJECT_ID": "my-project-name"
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000"
   },
   "permissions": {
     "allow": [
@@ -249,6 +268,8 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
   }
 }
 ```
+
+**CRITICAL:** Both `ATEAM_PROJECT_ID` and `ATEAM_API_URL` must be in the `env` section. The MCP server reads these as environment variables.
 
 | Permission | Used By | Purpose |
 |------------|---------|---------|
@@ -357,10 +378,12 @@ The MCP server reads the following environment variables:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `ATEAM_PROJECT_ID` | Yes | `default` | Project identifier for multi-project isolation |
-| `ATEAM_API_URL` | No | `http://localhost:3000` | Base URL for the A(i)-Team API |
+| `ATEAM_API_URL` | No* | `http://localhost:3000` | Base URL for the A(i)-Team API |
 | `ATEAM_API_KEY` | No | - | Optional API key for authentication |
 | `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
 | `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
+
+*`ATEAM_API_URL` defaults to `http://localhost:3000`. If your API runs elsewhere, you MUST set this variable.
 
 Configure these in `.claude/settings.local.json`:
 

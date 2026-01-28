@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Native task tracking for session orchestration** - Hannibal now uses Claude's native `TaskCreate`/`TaskUpdate` tools for CLI progress visibility
+  - Added "Session Progress Tracking" section to `agents/hannibal.md`
+  - Added "Task Tracking: Two Systems" section to `CLAUDE.md`
+  - Native tasks track coarse-grained milestones (waves, phases) - not per-item mirrors
+  - MCP items remain the source of truth for persistent mission state
+
 - **Dependency ID validation** - `item_create` now validates dependency IDs match `WI-XXX` format
   - Zod schema rejects bare numeric IDs like `"001"` with a helpful error message
   - Runtime validation runs before API call, catching format issues early
