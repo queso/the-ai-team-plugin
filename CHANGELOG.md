@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Makes clear that stopping and running `/ateam setup` is the ONLY valid solution
   - "Hannibal writes directly" is explicitly forbidden, not a workaround option
 
+- **Expanded background agent permissions** - Added missing permissions for agents to work autonomously
+  - `Bash(mkdir *)` - create directories for tests and implementations
+  - `Edit(src/**)` - edit existing files during implementation
+  - Updated CLAUDE.md, README.md, and commands/setup.md
+
+### Fixed
+
+- **Hook path matching** - `block-hannibal-writes.js` now handles relative paths (`src/...`) not just absolute (`/src/...`)
+
 - **Dependency ID validation** - `item_create` now validates dependency IDs match `WI-XXX` format
   - Zod schema rejects bare numeric IDs like `"001"` with a helpful error message
   - Runtime validation runs before API call, catching format issues early

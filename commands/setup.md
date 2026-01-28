@@ -300,9 +300,11 @@ Add these permissions to `.claude/settings.local.json`:
   },
   "permissions": {
     "allow": [
+      "Bash(mkdir *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Write(src/**)"
+      "Write(src/**)",
+      "Edit(src/**)"
     ]
   }
 }
@@ -314,9 +316,11 @@ Add these permissions to `.claude/settings.local.json`:
 
 | Permission | Purpose |
 |------------|---------|
+| `Bash(mkdir *)` | Create directories for tests and implementations |
 | `Bash(git add *)` | Tawnia stages files for final commit |
 | `Bash(git commit *)` | Tawnia creates final commit |
 | `Write(src/**)` | Murdock writes tests, B.A. writes implementations |
+| `Edit(src/**)` | B.A. edits existing files during implementation |
 
 ## Environment Variables
 
@@ -340,9 +344,11 @@ Configuring project...
   API URL: http://localhost:3000
 
 Checking permissions...
+  + Bash(mkdir *)
   + Bash(git add *)
   + Bash(git commit *)
   + Write(src/**)
+  + Edit(src/**)
 
 Settings updated: .claude/settings.local.json
   env.ATEAM_PROJECT_ID = "my-awesome-app"

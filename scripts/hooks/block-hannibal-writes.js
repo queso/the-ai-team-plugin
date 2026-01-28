@@ -10,8 +10,8 @@
 const input = JSON.parse(process.env.TOOL_INPUT || '{}');
 const filePath = input.file_path || '';
 
-// Block writes to src/ directory
-if (filePath.includes('/src/')) {
+// Block writes to src/ directory (handle both absolute and relative paths)
+if (filePath.includes('/src/') || filePath.startsWith('src/')) {
   console.error(`BLOCKED: Hannibal cannot write to ${filePath}`);
   console.error('Implementation code must be delegated to B.A.');
   process.exit(2);

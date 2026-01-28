@@ -287,7 +287,9 @@ This command:
 2. **Auto-detects settings** from `CLAUDE.md`, `package.json`, and lock files
 3. **Confirms detected settings** before writing
 4. **Configures permissions** for background agents:
+   - `Bash(mkdir *)` - create directories
    - `Write(src/**)` - tests and implementations
+   - `Edit(src/**)` - edit existing files
    - `Bash(git add *)` - staging files for commit
    - `Bash(git commit *)` - creating final commit
 5. **Creates `ateam.config.json`** with project settings
@@ -497,9 +499,11 @@ The plugin uses Claude Code's hook system to enforce workflow discipline:
   },
   "permissions": {
     "allow": [
+      "Bash(mkdir *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Write(src/**)"
+      "Write(src/**)",
+      "Edit(src/**)"
     ]
   }
 }

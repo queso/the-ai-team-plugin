@@ -261,9 +261,11 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
   },
   "permissions": {
     "allow": [
+      "Bash(mkdir *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Write(src/**)"
+      "Write(src/**)",
+      "Edit(src/**)"
     ]
   }
 }
@@ -273,9 +275,11 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 
 | Permission | Used By | Purpose |
 |------------|---------|---------|
+| `Bash(mkdir *)` | Murdock, B.A. | Create directories for tests/implementations |
 | `Bash(git add *)` | Tawnia | Stage files for final commit |
 | `Bash(git commit *)` | Tawnia | Create final commit |
 | `Write(src/**)` | Murdock, B.A. | Write tests and implementations |
+| `Edit(src/**)` | B.A. | Edit existing files during implementation |
 
 **Note:** All board and item operations are handled via MCP tools that communicate with the API server. No filesystem permissions are needed for mission state management.
 
