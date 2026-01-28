@@ -63,21 +63,20 @@ Feature 002:      [testing]  →  [implementing]  →  [review]  →  [probing]
 Feature 003:            [testing]  →  [implementing]  →  [review]
 ```
 
-WIP limit controls how many features are in-flight (not in briefings/ready/done).
+WIP limit controls how many features are in-flight (not in briefings, ready, or done stages).
 
 ## Behavior
 
 1. **Validate mission exists**
+   Use `mission_current` MCP tool to check for active mission.
    ```
-   if not exists(mission/board.json):
+   if mission not found:
        error "No mission found. Run /ateam plan first."
        exit
    ```
 
 2. **Run pre-mission checks**
-   ```bash
-   node .claude/ai-team/scripts/mission-precheck.js
-   ```
+   Use the `mission_precheck` MCP tool.
    - Ensures codebase is in clean state (lint, unit tests passing)
    - Establishes baseline before mission work begins
    - If checks fail, abort mission and report to user
@@ -87,40 +86,38 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
    - Worker agents dispatched as direct subagents
 
 4. **Orchestration loop:**
-   - Check for completed agents, advance items to next stage
-   - Move eligible items from briefings → ready
+   - Poll `TaskOutput` for completed agents, advance items to next stage via `board_move`
+   - Use `deps_check` to find items ready to move from briefings → ready
    - Start new features if under WIP limit
-   - Update board.json after every change
+   - Use `board_claim` before dispatching agent, `board_release` on completion
 
 5. **Final Mission Review:**
-   - When ALL items reach `done/`, trigger final review
+   - When ALL items reach `done` stage, trigger final review
    - Lynch reviews entire codebase for cross-cutting issues
    - Focus: readability, security, race conditions, code quality
    - If FINAL APPROVED → proceed to post-checks
    - If FINAL REJECTED → specified items return to pipeline
 
 6. **Post-Mission Checks:**
-   ```bash
-   node .claude/ai-team/scripts/mission-postcheck.js
-   ```
+   Use the `mission_postcheck` MCP tool.
    - Run after final review approves
    - Verifies lint, unit tests, and e2e tests all pass
-   - Updates `board.json` with `postChecks.passed: true`
+   - Updates mission state with postcheck results
    - If checks fail, items return to pipeline for fixes
 
 7. **Documentation Phase (Tawnia):**
    - Dispatch Tawnia when ALL three conditions are met:
-     1. All items in `done/`
-     2. `finalReview.passed: true` in board.json
-     3. `postChecks.passed: true` in board.json
+     1. All items in `done` stage
+     2. Final review passed
+     3. Post-checks passed
    - Tawnia updates CHANGELOG.md (always)
    - Tawnia updates README.md (if user-facing changes)
    - Tawnia creates/updates docs/ entries (for complex features)
    - Tawnia makes the **final commit** bundling all mission work + documentation
-   - Updates `board.json` with `documentation.completed: true` and `commit.hash`
+   - Updates mission state with documentation completion and commit hash
 
 8. **Completion (ALL conditions required):**
-   - ✓ All items in `done/`
+   - ✓ All items in `done` stage
    - ✓ Final review passed
    - ✓ Post-checks passed
    - ✓ Tawnia documentation committed ← **REQUIRED**
@@ -128,7 +125,7 @@ WIP limit controls how many features are in-flight (not in briefings/ready/done)
 
    **Mission is NOT complete until Tawnia commits. No exceptions.**
 
-   - Items in `blocked/` → Needs human intervention
+   - Items in `blocked` stage → Needs human intervention
    - Post-checks fail → Fix issues before documentation can run
 
 ## Progress Updates
@@ -192,8 +189,26 @@ This flat structure:
 - Allows mid-run intervention
 - Avoids nested subagent memory overhead
 
+## MCP Tools Used
+
+| Tool | Purpose |
+|------|---------|
+| `mission_current` | Check mission exists and get state |
+| `mission_precheck` | Run lint/tests before starting |
+| `mission_postcheck` | Run lint/tests after all done |
+| `board_read` | Get current board state |
+| `board_move` | Move items between stages |
+| `board_claim` | Assign agent to item |
+| `board_release` | Release agent assignment |
+| `item_list` | List items by stage |
+| `deps_check` | Find items ready to advance |
+| `agent_start` | Signal agent beginning work |
+| `agent_stop` | Signal agent completed work |
+| `log` | Write to activity feed |
+
 ## Errors
 
 - **No mission found**: Run `/ateam plan` first
 - **All items blocked**: Human intervention needed via `/ateam unblock`
 - **Agent failure**: Item returned to previous stage for retry
+- **API unavailable**: Cannot connect to A(i)-Team server

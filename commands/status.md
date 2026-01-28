@@ -11,15 +11,16 @@ Check mission progress and current state.
 ## Behavior
 
 1. **Validate mission exists**
+   Use `mission_current` MCP tool to check for active mission.
    ```
-   if not exists(mission/board.json):
+   if mission not found:
        error "No mission found. Run /ateam plan first."
        exit
    ```
 
 2. **Read board state**
-   - Load `mission/board.json`
-   - Count items in each phase
+   - Use `board_read` MCP tool to get board state
+   - Count items in each stage
    - Check current assignments
 
 3. **Display kanban board**
@@ -87,31 +88,25 @@ BLOCKED: 0
 ═══════════════════════════════════════════════════════════════
 ```
 
+## MCP Tools Used
+
+| Tool | Purpose |
+|------|---------|
+| `mission_current` | Check mission exists and get metadata |
+| `board_read` | Get full board state with items by stage |
+| `item_list` | Get items filtered by stage (optional) |
+
 ## Implementation Notes
 
 This is a read-only command that:
 
-1. Reads `mission/board.json`
-2. Reads work item files for titles
-3. Formats ASCII table output
-4. Calculates statistics
+1. Calls `board_read` MCP tool to get board state
+2. Formats ASCII table output
+3. Calculates statistics from the response
 
-No agents are launched - this is direct file reading and formatting.
-
-```python
-# Pseudo-implementation
-board = read_json("mission/board.json")
-
-for phase in ["briefings", "ready", "in_progress", "review", "done"]:
-    items = board["phases"][phase]
-    for item_id in items:
-        item = read_work_item(f"mission/{phase}/{item_id}.md")
-        display(item.id, item.title)
-
-display_stats(board["stats"])
-display_assignments(board["assignments"])
-```
+No agents are launched - this uses MCP tools directly.
 
 ## Errors
 
 - **No mission found**: Run `/ateam plan` first
+- **API unavailable**: Cannot connect to A(i)-Team server

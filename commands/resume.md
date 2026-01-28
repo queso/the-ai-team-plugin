@@ -11,38 +11,39 @@ Resume an interrupted mission from where it left off.
 ## Behavior
 
 1. **Validate mission exists**
+   Use `mission_current` MCP tool to check for active mission.
    ```
-   if not exists(mission/board.json):
+   if mission not found:
        error "No mission found. Nothing to resume."
        exit
    ```
 
 2. **Check mission state**
-   - Read `mission/board.json`
-   - Count items in each phase
+   - Use `board_read` MCP tool to get current state
+   - Count items in each stage
    - Identify interrupted work
 
 3. **Recover interrupted work**
 
-   Items in active stages during interruption:
-   - `testing/` items → back to `ready/`
-   - `implementing/` items → back to `testing/` (tests already exist)
-   - `review/` items → back to `implementing/` (impl already exists)
-   - Clear assignments
+   Items in active stages during interruption need recovery:
+   - `testing` items → back to `ready` stage
+   - `implementing` items → back to `testing` stage (tests already exist)
+   - `review` items → back to `implementing` stage (impl already exists)
+   - Clear agent assignments
 
+   Use `board_move` MCP tool for each recovery:
    ```
-   for item in testing/:
-       move to ready/
-   for item in implementing/:
-       move to testing/  # Will re-run through B.A.
-   for item in review/:
-       move to implementing/  # Will re-run through Lynch
-   clear assignments
+   for item in testing stage:
+       board_move(itemId, to="ready")
+   for item in implementing stage:
+       board_move(itemId, to="testing")  # Will re-run through B.A.
+   for item in review stage:
+       board_move(itemId, to="implementing")  # Will re-run through Lynch
    ```
 
 4. **Validate board integrity**
+   - Use `deps_check` MCP tool to verify dependency graph
    - Check for orphaned items
-   - Verify dependency graph is consistent
    - Ensure no items are "lost"
 
 5. **Display recovery summary**
@@ -68,20 +69,20 @@ Resume an interrupted mission from where it left off.
 
 ## Recovery Rules
 
-### Items in `in-progress/`
-- Move to `ready/`
+### Items in `testing` stage
+- Move to `ready` stage
 - Agent may have partially completed
 - Partial outputs are preserved but flagged
 
-### Items in `review/`
-- Stay in `review/`
+### Items in `review` stage
+- Stay in `review` stage
 - Lynch will re-review on resume
 
-### Items in `done/`
+### Items in `done` stage
 - Never re-done
 - Already approved by Lynch
 
-### Items in `blocked/`
+### Items in `blocked` stage
 - Stay blocked
 - Require human intervention via `/ateam unblock`
 
@@ -121,29 +122,10 @@ Current state:
 
 This command:
 
-1. Reads `mission/board.json`
-2. Moves any `in_progress` items to `ready`
-3. Updates `board.json` with corrected state
+1. Uses `board_read` MCP tool to get current state
+2. Uses `board_move` MCP tool to recover any in-progress items
+3. Uses `board_release` MCP tool to clear stale assignments
 4. Main Claude BECOMES Hannibal and continues orchestration
-
-```
-# Recovery logic (done by main Claude)
-board = read_json("mission/board.json")
-
-recovered = []
-for item_id in board.phases.in_progress:
-    move_file(f"mission/in-progress/{item_id}.md", f"mission/ready/{item_id}.md")
-    board.phases.ready.append(item_id)
-    recovered.append(item_id)
-
-board.phases.in_progress = []
-board.assignments = {}
-
-write_json("mission/board.json", board)
-
-# Main Claude then operates as Hannibal
-# Dispatching Murdock/B.A./Lynch as direct subagents
-```
 
 **Architecture:**
 ```
@@ -153,8 +135,18 @@ Main Claude (as Hannibal)
     └── Task → Lynch (subagent)
 ```
 
+## MCP Tools Used
+
+| Tool | Purpose |
+|------|---------|
+| `mission_current` | Check mission exists |
+| `board_read` | Get current board state |
+| `board_move` | Move items to recover state |
+| `board_release` | Clear stale agent assignments |
+| `deps_check` | Verify dependency graph integrity |
+
 ## Errors
 
 - **No mission found**: Nothing to resume
-- **Corrupted board.json**: Manual intervention needed
 - **All items blocked**: No work to resume (use `/ateam unblock`)
+- **API unavailable**: Cannot connect to A(i)-Team server

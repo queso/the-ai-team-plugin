@@ -16,40 +16,33 @@ Unblock a stuck work item and return it to the ready queue.
 ## Behavior
 
 1. **Validate mission exists**
+   Use `mission_current` MCP tool to check for active mission.
    ```
-   if not exists(mission/board.json):
+   if mission not found:
        error "No mission found."
        exit
    ```
 
 2. **Find the blocked item**
+   Use `item_list` MCP tool with `stage: "blocked"` to list blocked items.
    ```
-   if item-id not in board.phases.blocked:
+   if item-id not in blocked items:
        error "Item {item-id} is not blocked."
        list blocked items
        exit
    ```
 
 3. **Read item details**
-   - Load work item from `mission/blocked/`
+   - Use `item_get` MCP tool to load the work item
    - Show rejection history
    - Display last feedback
 
 4. **Apply human guidance** (if provided)
-
-   Append to work item:
-   ```markdown
-   ## Human Guidance
-
-   added_at: <ISO timestamp>
-   guidance: |
-     {guidance text}
-   ```
+   Use `item_update` MCP tool to add guidance to the item context.
 
 5. **Reset for retry**
-   - Reset `rejection_count` to 0
-   - Move item from `blocked/` to `ready/`
-   - Update `board.json`
+   - Use `item_update` MCP tool to reset `rejection_count` to 0
+   - Use `board_move` MCP tool to move item from `blocked` to `ready` stage
 
 6. **Confirm unblock**
    ```
@@ -60,7 +53,7 @@ Unblock a stuck work item and return it to the ready queue.
 
    Human guidance added: {yes/no}
 
-   Item is now in ready/ queue.
+   Item is now in ready stage.
    Run /ateam run or /ateam resume to continue.
    ```
 
@@ -88,7 +81,7 @@ Previous rejections: 2
 Human guidance added: yes
   "Focus on network timeout and 401/403 response handling"
 
-Item is now in ready/ queue.
+Item is now in ready stage.
 Run /ateam run or /ateam resume to continue.
 ```
 
@@ -108,7 +101,7 @@ Previous rejections: 2
 ⚠ No guidance provided. Agent will retry with same context.
 Consider adding --guidance if previous attempts missed something.
 
-Item is now in ready/ queue.
+Item is now in ready stage.
 ```
 
 ## Viewing Rejection History
@@ -141,45 +134,18 @@ Shows:
 ═══════════════════════════════════════════════════════════════
 ```
 
-## Implementation Notes
+## MCP Tools Used
 
-This command:
-
-1. Reads `mission/board.json`
-2. Finds item in `blocked/` phase
-3. If guidance provided, appends to work item file
-4. Resets `rejection_count` in frontmatter
-5. Moves file from `mission/blocked/` to `mission/ready/`
-6. Updates `board.json` phases
-
-```python
-# Pseudo-implementation
-board = read_json("mission/board.json")
-
-if item_id not in board.phases.blocked:
-    error(f"Item {item_id} not blocked")
-    return
-
-item_file = f"mission/blocked/{item_id}-*.md"
-item = read_work_item(item_file)
-
-if guidance:
-    item.append_section("Human Guidance", {
-        "added_at": now(),
-        "guidance": guidance
-    })
-
-item.frontmatter.rejection_count = 0
-
-move_file(item_file, f"mission/ready/{item_file.name}")
-
-board.phases.blocked.remove(item_id)
-board.phases.ready.append(item_id)
-write_json("mission/board.json", board)
-```
+| Tool | Purpose |
+|------|---------|
+| `mission_current` | Check mission exists |
+| `item_list` | List blocked items |
+| `item_get` | Get item details |
+| `item_update` | Reset rejection count, add guidance |
+| `board_move` | Move from blocked to ready stage |
 
 ## Errors
 
 - **No mission found**: Nothing to unblock
-- **Item not blocked**: Item is in different phase
+- **Item not blocked**: Item is in different stage
 - **Item not found**: Invalid item ID

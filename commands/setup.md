@@ -11,13 +11,52 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 ## What This Command Does
 
 1. **Auto-detects** project settings from CLAUDE.md and package.json
-2. Configures permissions for background agents
-3. Creates `ateam.config.json` with project-specific settings
-4. Checks for required plugin dependencies (Playwright)
+2. **Configures** the project ID environment variable for multi-project isolation
+3. **Sets up** permissions for background agents
+4. **Creates** `ateam.config.json` with project-specific settings
+5. **Injects** A(i)-Team instructions into CLAUDE.md (so Claude uses the workflow)
+6. **Verifies** API server connectivity
+7. **Checks** for Playwright plugin (optional, for browser testing)
 
 ## Behavior
 
-### Step 1: Auto-Detect Project Settings
+### Step 1: Configure Project ID
+
+The A(i)-Team uses a project ID to isolate data between projects. This is essential when running multiple projects simultaneously.
+
+**Check for existing configuration:**
+```
+Look for ATEAM_PROJECT_ID in:
+1. .claude/settings.local.json (env section)
+2. Environment variables
+```
+
+**If not configured, ask the user:**
+```
+AskUserQuestion({
+  questions: [{
+    question: "What project ID should identify this project? (Used to isolate data in the API)",
+    header: "Project ID",
+    options: [
+      { label: "Use folder name (Recommended)", description: "Auto-generate from current directory name" },
+      { label: "Use git remote", description: "Extract from git remote URL" },
+      { label: "Custom", description: "Enter a custom project identifier" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**Write to `.claude/settings.local.json`:**
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name"
+  }
+}
+```
+
+### Step 2: Auto-Detect Project Settings
 
 **IMPORTANT:** Before asking questions, inspect the project's existing documentation to auto-detect settings.
 
@@ -34,7 +73,7 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 
 3. **Build detected config** from findings
 
-### Step 2: Configure Permissions
+### Step 3: Configure Permissions
 
 Background agents (`run_in_background: true`) cannot prompt for user approval, so we pre-approve necessary permissions.
 
@@ -46,7 +85,7 @@ Background agents (`run_in_background: true`) cannot prompt for user approval, s
    - Use detected source directory or default to `src/`
    - Use detected test pattern or default to `__tests__`
 
-### Step 3: Confirm Detected Settings
+### Step 4: Confirm Detected Settings
 
 If settings were auto-detected from CLAUDE.md/package.json, **confirm them** instead of asking from scratch:
 
@@ -54,107 +93,23 @@ If settings were auto-detected from CLAUDE.md/package.json, **confirm them** ins
 ```
 I detected the following settings from your project:
 
+  Project ID:      my-awesome-app (from folder name)
   Package manager: pnpm (detected from pnpm-lock.yaml)
   Lint command:    pnpm run lint (from package.json scripts.lint)
   Unit tests:      pnpm test:unit (from package.json scripts.test:unit)
   E2E tests:       pnpm exec playwright test (from CLAUDE.md)
   Dev server:      http://localhost:3000 (from CLAUDE.md)
-  Dev start:       docker compose up (from CLAUDE.md)
 
 Does this look correct?
 ```
 
-Then use `AskUserQuestion` with detected values as the recommended option:
+Then use `AskUserQuestion` with detected values as the recommended option.
 
-```
-AskUserQuestion({
-  questions: [{
-    question: "I detected pnpm as your package manager. Is this correct?",
-    header: "Package mgr",
-    options: [
-      { label: "pnpm (Recommended)", description: "Detected from pnpm-lock.yaml" },
-      { label: "npm", description: "Node Package Manager" },
-      { label: "yarn", description: "Yarn package manager" },
-      { label: "bun", description: "Fast JavaScript runtime" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-### Step 4: Fill Gaps with Questions
+### Step 5: Fill Gaps with Questions
 
 Only ask questions for settings that **could not be detected**. Use `AskUserQuestion` for missing settings:
 
-**Fallback Question 1: Package Manager** (if no lock file detected)
-```
-AskUserQuestion({
-  questions: [{
-    question: "Which package manager does this project use?",
-    header: "Package mgr",
-    options: [
-      { label: "npm (Recommended)", description: "Node Package Manager" },
-      { label: "yarn", description: "Yarn package manager" },
-      { label: "pnpm", description: "Fast, disk space efficient package manager" },
-      { label: "bun", description: "Fast JavaScript runtime and package manager" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Fallback Question 2: Test Commands** (if not in package.json scripts)
-```
-AskUserQuestion({
-  questions: [{
-    question: "What command runs your unit tests?",
-    header: "Unit tests",
-    options: [
-      { label: "npm test", description: "Standard npm test script" },
-      { label: "npm run test:unit", description: "Separate unit test script" },
-      { label: "vitest", description: "Vitest test runner" },
-      { label: "jest", description: "Jest test runner directly" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Fallback Question 3: Lint Command** (if not in package.json scripts)
-```
-AskUserQuestion({
-  questions: [{
-    question: "What command runs your linter?",
-    header: "Linter",
-    options: [
-      { label: "npm run lint", description: "Standard lint script" },
-      { label: "eslint .", description: "ESLint directly" },
-      { label: "biome check", description: "Biome linter" },
-      { label: "None", description: "No linting configured" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Fallback Question 4: E2E Tests** (if not in package.json scripts)
-```
-AskUserQuestion({
-  questions: [{
-    question: "What command runs your E2E tests (if any)?",
-    header: "E2E tests",
-    options: [
-      { label: "npm run test:e2e", description: "E2E test script" },
-      { label: "playwright test", description: "Playwright directly" },
-      { label: "cypress run", description: "Cypress test runner" },
-      { label: "None", description: "No E2E tests configured" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Fallback Question 5: Pre-Mission Checks** (always ask - preference)
+**Pre-Mission Checks** (always ask - preference)
 ```
 AskUserQuestion({
   questions: [{
@@ -171,7 +126,7 @@ AskUserQuestion({
 })
 ```
 
-**Fallback Question 6: Post-Mission Checks** (always ask - preference)
+**Post-Mission Checks** (always ask - preference)
 ```
 AskUserQuestion({
   questions: [{
@@ -188,58 +143,7 @@ AskUserQuestion({
 })
 ```
 
-**Fallback Question 7: Dev Server** (if not detected in CLAUDE.md)
-```
-AskUserQuestion({
-  questions: [{
-    question: "What URL is your dev server running on? (Amy uses this for browser testing)",
-    header: "Dev server",
-    options: [
-      { label: "http://localhost:3000", description: "Common for React, Next.js" },
-      { label: "http://localhost:5173", description: "Common for Vite" },
-      { label: "http://localhost:4200", description: "Common for Angular" },
-      { label: "http://localhost:8080", description: "Common for Vue, generic" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Fallback Question 8: Dev Server Start** (if not detected)
-```
-AskUserQuestion({
-  questions: [{
-    question: "What command starts your dev server?",
-    header: "Dev start",
-    options: [
-      { label: "npm run dev", description: "Standard dev script" },
-      { label: "npm start", description: "Standard start script" },
-      { label: "docker compose up", description: "Docker Compose" },
-      { label: "User managed", description: "User starts server manually" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**Fallback Question 9: Dev Server Restart** (if not detected)
-```
-AskUserQuestion({
-  questions: [{
-    question: "What command restarts your dev server? (to pick up code changes)",
-    header: "Dev restart",
-    options: [
-      { label: "Same as start", description: "Just restart the start command" },
-      { label: "docker compose restart", description: "Docker Compose restart" },
-      { label: "pm2 restart all", description: "PM2 process manager" },
-      { label: "Not needed", description: "Hot reload handles changes" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-### Step 5: Write Config File
+### Step 6: Write Config File
 
 Based on answers, create `ateam.config.json` in project root:
 
@@ -262,11 +166,106 @@ Based on answers, create `ateam.config.json` in project root:
 }
 ```
 
+- `devServer.url`: Where Amy should point Playwright for browser testing
 - `devServer.start`: Command to start the server (for user reference)
-- `devServer.restart`: Command to restart the server (Amy can suggest this if changes need to be picked up)
-- `devServer.managed`: If false, user manages server; Amy checks if running but doesn't start/restart it herself
+- `devServer.restart`: Command to restart the server (e.g., to pick up code changes)
+- `devServer.managed`: If false, user manages server; Amy checks if running but doesn't start/restart it
 
-### Step 6: Check Plugin Dependencies
+### Step 7: Inject A(i)-Team Instructions into CLAUDE.md
+
+**Purpose:** Ensure Claude knows to use the A(i)-Team system for PRD work in this project.
+
+1. **Check if CLAUDE.md exists** in project root
+
+2. **If CLAUDE.md exists:**
+   - Check if it already contains `## A(i)-Team` section
+   - If not present, append the section at the end
+
+3. **If CLAUDE.md does not exist:**
+   - Create it with the A(i)-Team section
+
+**Section to inject:**
+
+```markdown
+
+## A(i)-Team Integration
+
+This project uses the A(i)-Team plugin for PRD-driven development.
+
+### When to Use A(i)-Team
+
+Use the A(i)-Team workflow when:
+- Implementing features from a PRD document
+- Working on multi-file changes that benefit from TDD
+- Building features that need structured test → implement → review flow
+
+### Commands
+
+- `/ateam plan <prd-file>` - Decompose a PRD into tracked work items
+- `/ateam run` - Execute the mission with parallel agents
+- `/ateam status` - Check current progress
+- `/ateam resume` - Resume an interrupted mission
+
+### Workflow
+
+1. Place your PRD in the `prd/` directory
+2. Run `/ateam plan prd/your-feature.md`
+3. Run `/ateam run` to execute
+
+The A(i)-Team will:
+- Break down the PRD into testable units
+- Write tests first (TDD)
+- Implement to pass tests
+- Review each feature
+- Probe for bugs
+- Update documentation and commit
+
+**Do NOT** work on PRD features directly without using `/ateam plan` first.
+```
+
+**Check for existing section:**
+```
+if CLAUDE.md contains "## A(i)-Team":
+    skip injection (already configured)
+else:
+    append section to CLAUDE.md
+```
+
+**Example output:**
+```
+Updating CLAUDE.md...
+  ✓ Added A(i)-Team integration instructions
+```
+
+Or if already present:
+```
+Checking CLAUDE.md...
+  ✓ A(i)-Team section already present
+```
+
+### Step 8: Verify API Connectivity
+
+Test connection to the A(i)-Team API server:
+
+```
+Using mission_current MCP tool to verify API connectivity...
+
+✓ Connected to A(i)-Team API at http://localhost:3000
+✓ Project ID: my-awesome-app
+```
+
+If connection fails:
+```
+⚠ Could not connect to A(i)-Team API at http://localhost:3000
+
+Make sure the API server is running:
+  cd /path/to/ateam-api && npm run dev
+
+Or configure a different URL:
+  Set ATEAM_API_URL in .claude/settings.local.json
+```
+
+### Step 9: Check Plugin Dependencies
 
 Check for Playwright plugin availability (see Plugin Dependencies section below).
 
@@ -275,127 +274,72 @@ Check for Playwright plugin availability (see Plugin Dependencies section below)
 Add these permissions to `.claude/settings.local.json`:
 
 ```json
-   {
-     "permissions": {
-       "allow": [
-         "Bash(echo * | node **/scripts/*.js)",
-         "Bash(node **/scripts/*.js)",
-         "Bash(cat <<*)",
-         "Bash(mv mission/*)",
-         "Bash(echo *>> mission/activity.log)",
-         "Bash(git add *)",
-         "Bash(git commit *)",
-         "Write(src/**)",
-         "Write(mission/**)"
-       ]
-     }
-   }
-   ```
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Write(src/**)"
+    ]
+  }
+}
+```
 
-4. **Merge with existing permissions**
-   - Don't overwrite existing allowed commands
-   - Add new permissions that don't already exist
-
-5. **Report what was added**
-
-## Required Permissions
+**Note:** All board and item operations are handled via MCP tools that communicate with the API server. No filesystem permissions are needed for mission state management.
 
 | Permission | Purpose |
 |------------|---------|
-| `Bash(echo * \| node **/scripts/*.js)` | Pipe JSON to board scripts |
-| `Bash(node **/scripts/*.js)` | Run board management scripts directly |
-| `Bash(cat <<*)` | Heredoc input to scripts |
-| `Bash(mv mission/*)` | Move items between stage directories |
-| `Bash(echo *>> mission/activity.log)` | Log to Live Feed |
 | `Bash(git add *)` | Tawnia stages files for final commit |
 | `Bash(git commit *)` | Tawnia creates final commit |
 | `Write(src/**)` | Murdock writes tests, B.A. writes implementations |
-| `Write(mission/**)` | Face creates/updates work items |
 
-## Implementation
+## Environment Variables
 
-```javascript
-// Pseudocode for setup logic
+The MCP server reads the following environment variables:
 
-const REQUIRED_PERMISSIONS = [
-  'Bash(echo * | node **/scripts/*.js)',
-  'Bash(node **/scripts/*.js)',
-  'Bash(cat <<*)',
-  'Bash(mv mission/*)',
-  'Bash(echo *>> mission/activity.log)',
-  'Bash(git add *)',
-  'Bash(git commit *)',
-  'Write(src/**)',
-  'Write(mission/**)'
-];
-
-// 1. Read existing settings
-const settingsPath = '.claude/settings.local.json';
-let settings = {};
-if (fileExists(settingsPath)) {
-  settings = JSON.parse(readFile(settingsPath));
-}
-
-// 2. Ensure permissions structure exists
-if (!settings.permissions) {
-  settings.permissions = {};
-}
-if (!settings.permissions.allow) {
-  settings.permissions.allow = [];
-}
-
-// 3. Add missing permissions
-const existing = new Set(settings.permissions.allow);
-const added = [];
-for (const perm of REQUIRED_PERMISSIONS) {
-  if (!existing.has(perm)) {
-    settings.permissions.allow.push(perm);
-    added.push(perm);
-  }
-}
-
-// 4. Write updated settings
-writeFile(settingsPath, JSON.stringify(settings, null, 2));
-
-// 5. Report
-if (added.length > 0) {
-  console.log(`Added ${added.length} permissions:`);
-  added.forEach(p => console.log(`  + ${p}`));
-} else {
-  console.log('All required permissions already configured.');
-}
-```
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ATEAM_PROJECT_ID` | Yes | `default` | Project identifier for multi-project isolation |
+| `ATEAM_API_URL` | No | `http://localhost:3000` | Base URL for the A(i)-Team API |
+| `ATEAM_API_KEY` | No | - | Optional API key for authentication |
+| `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
+| `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
 
 ## Example Output
 
 ```
 A(i)-Team Setup
 
+Configuring project...
+  Project ID: my-awesome-app (from folder name)
+
 Checking permissions...
-
-Current settings: .claude/settings.local.json
-
-Adding permissions for background agents:
-  + Bash(echo * | node **/scripts/*.js)
-  + Bash(node **/scripts/*.js)
-  + Bash(cat <<*)
-  + Bash(mv mission/*)
-  + Bash(echo *>> mission/activity.log)
   + Bash(git add *)
   + Bash(git commit *)
   + Write(src/**)
-  + Write(mission/**)
 
-Settings updated successfully.
+Settings updated: .claude/settings.local.json
+
+Updating CLAUDE.md...
+  ✓ Added A(i)-Team integration instructions
+
+Verifying API connectivity...
+  ✓ Connected to A(i)-Team API
+  ✓ Project ID registered
+
+Checking plugin dependencies...
+  ✓ Playwright plugin detected
 
 Background agents can now:
-  - Run board scripts (item-create, board-move, etc.)
-  - Move items between stage directories
-  - Log to the activity feed
   - Write test files
   - Write implementation files
-  - Manage work items
   - Create git commits (Tawnia)
+
+Board operations handled via MCP tools → API server.
+CLAUDE.md updated with A(i)-Team workflow instructions.
 
 Ready to run /ateam plan
 ```
@@ -406,6 +350,10 @@ If your project uses a different structure, you can manually edit `.claude/setti
 
 ```json
 {
+  "env": {
+    "ATEAM_PROJECT_ID": "custom-project-id",
+    "ATEAM_API_URL": "https://api.example.com"
+  },
   "permissions": {
     "allow": [
       "Write(lib/**)",
@@ -418,7 +366,7 @@ If your project uses a different structure, you can manually edit `.claude/setti
 
 ## Plugin Dependencies
 
-The A(i)-Team requires the **Playwright plugin** for Amy's browser-based bug hunting.
+The A(i)-Team recommends the **Playwright plugin** for Amy's browser-based bug hunting.
 
 ### Check for Playwright Plugin
 
@@ -431,7 +379,7 @@ Do you have the Playwright plugin installed? Amy (Investigator) uses it for brow
 If the user doesn't have it:
 
 ```
-Amy needs the Playwright plugin for browser-based bug hunting.
+Amy can use the Playwright plugin for browser-based bug hunting.
 
 To install it:
 1. Go to the Claude Code plugins repository
@@ -458,42 +406,11 @@ To check if Playwright tools are available, look for MCP tools matching `mcp__*p
 
 If these tools exist, Playwright is properly installed.
 
-## Example Output (with Playwright check)
-
-```
-A(i)-Team Setup
-
-Checking permissions...
-[permissions output...]
-
-Checking plugin dependencies...
-  ✓ Playwright plugin detected
-
-Amy (Investigator) has full browser testing capabilities:
-  - Navigate to URLs
-  - Take screenshots
-  - Click elements
-  - Fill forms
-  - Capture console logs
-
-Ready to run /ateam plan
-```
-
-Or if missing:
-
-```
-Checking plugin dependencies...
-  ⚠ Playwright plugin not detected
-
-Amy can still test via curl/scripts, but for full browser testing:
-  → Install the Playwright plugin from Claude Code plugins
-
-Continue anyway? (Amy will use API-only testing)
-```
-
 ## Notes
 
 - Uses `settings.local.json` by default (gitignored) to avoid committing permissions
-- Run this once per project before using `/ateam run`
-- Safe to run multiple times - won't duplicate permissions
+- Run this once per project before using `/ateam plan`
+- Safe to run multiple times - won't duplicate permissions or CLAUDE.md sections
 - Playwright plugin is recommended but not strictly required
+- Project ID enables running multiple A(i)-Team projects simultaneously
+- CLAUDE.md injection ensures Claude uses `/ateam plan` for PRD work instead of ad-hoc development
