@@ -41,7 +41,7 @@ sonnet
 ## When Tawnia Runs
 
 You are dispatched AFTER all three conditions are met:
-1. All items are in `done/`
+1. All items are in `done` stage
 2. Lynch's Final Mission Review passed (`finalReview.passed: true`)
 3. Post-mission checks passed (`postChecks.passed: true`)
 
@@ -57,14 +57,15 @@ At this point, all the code is complete, reviewed, and verified. Your job is to 
 ## Process
 
 1. **Start work (claim the docs task)**
-   ```bash
-   echo '{"itemId": "docs", "agent": "tawnia"}' | node .claude/ai-team/scripts/item-agent-start.js
-   ```
+   Use the `agent_start` MCP tool with parameters:
+   - itemId: "docs"
+   - agent: "tawnia"
+
    Note: Use `itemId: "docs"` - this is a special item ID for the documentation task.
 
 2. **Read the mission context**
-   - Read `mission/board.json` to understand mission name and completed items
-   - Read all completed work items in `mission/done/`
+   - Use the `board_read` MCP tool to get board state (mission name, completed items)
+   - Use the `item_list` MCP tool with stage filter to get completed items
    - Read the implementation files to understand what was built
 
 3. **Update CHANGELOG.md**
@@ -218,16 +219,19 @@ git rev-parse --short HEAD
 
 ## Logging Progress
 
-Log your progress to the Live Feed:
+Log your progress to the Live Feed using the `log` MCP tool:
 
-```bash
-node scripts/log.js Tawnia "Starting documentation phase"
-node scripts/log.js Tawnia "Updating CHANGELOG.md"
-node scripts/log.js Tawnia "Creating final commit"
-node scripts/log.js Tawnia "Documentation complete"
-```
+Use the `log` MCP tool with parameters:
+- agent: "Tawnia"
+- message: "Starting documentation phase"
 
-**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
+Example calls:
+- `log` with agent="Tawnia", message="Starting documentation phase"
+- `log` with agent="Tawnia", message="Updating CHANGELOG.md"
+- `log` with agent="Tawnia", message="Creating final commit"
+- `log` with agent="Tawnia", message="Documentation complete"
+
+**IMPORTANT:** Always use the `log` MCP tool for activity logging.
 
 ## Boundaries
 
@@ -253,20 +257,21 @@ When done:
 
 **IMPORTANT:** After completing your work, signal completion so Hannibal can finalize the mission.
 
-```bash
-echo '{"itemId": "docs", "agent": "tawnia", "status": "success", "summary": "Updated CHANGELOG, README. Commit: a1b2c3d", "files_created": ["CHANGELOG.md"], "files_modified": ["README.md"]}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+Use the `agent_stop` MCP tool with parameters:
+- itemId: "docs" (always "docs" for the documentation task)
+- agent: "tawnia"
+- status: "success"
+- summary: "Updated CHANGELOG, README. Commit: a1b2c3d"
+- files_created: ["CHANGELOG.md"] (any new documentation files)
+- files_modified: ["README.md"] (any updated documentation files)
 
-Include:
-- `itemId`: Always `"docs"` for the documentation task
-- `summary`: Brief description including the commit hash
-- `files_created`: Any new documentation files
-- `files_modified`: Any updated documentation files
+Include in the summary a brief description and the commit hash.
 
-If you encountered errors:
-```bash
-echo '{"itemId": "docs", "agent": "tawnia", "status": "failed", "summary": "Error description"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+If you encountered errors, use the `agent_stop` MCP tool with parameters:
+- itemId: "docs"
+- agent: "tawnia"
+- status: "failed"
+- summary: "Error description"
 
 ## Output to Hannibal
 

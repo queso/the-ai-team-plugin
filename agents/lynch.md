@@ -67,10 +67,11 @@ Review them as a cohesive unit, not separately.
 ## Process
 
 1. **Start work (claim the item)**
-   ```bash
-   echo '{"itemId": "XXX", "agent": "lynch"}' | node .claude/ai-team/scripts/item-agent-start.js
-   ```
-   Replace `XXX` with the actual item ID. This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
+   Use the `agent_start` MCP tool with parameters:
+   - itemId: "XXX" (replace with actual item ID)
+   - agent: "lynch"
+
+   This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
 
 2. **Read the feature item**
    - Note the objective and acceptance criteria
@@ -201,15 +202,18 @@ VERDICT: APPROVED/REJECTED
 
 ## Logging Progress
 
-Log your progress to the Live Feed:
+Log your progress to the Live Feed using the `log` MCP tool:
 
-```bash
-node scripts/log.js Lynch "Reviewing feature 001"
-node scripts/log.js Lynch "Running test suite"
-node scripts/log.js Lynch "APPROVED - all checks pass"
-```
+Use the `log` MCP tool with parameters:
+- agent: "Lynch"
+- message: "Reviewing feature 001"
 
-**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
+Example calls:
+- `log` with agent="Lynch", message="Reviewing feature 001"
+- `log` with agent="Lynch", message="Running test suite"
+- `log` with agent="Lynch", message="APPROVED - all checks pass"
+
+**IMPORTANT:** Always use the `log` MCP tool for activity logging.
 
 Log at key milestones:
 - Starting review
@@ -220,17 +224,17 @@ Log at key milestones:
 
 **IMPORTANT:** After completing your review, signal completion so Hannibal can advance this item immediately. This also leaves a work summary note in the work item.
 
-If approved:
-```bash
-echo '{"itemId": "XXX", "agent": "lynch", "status": "success", "summary": "APPROVED - All tests pass, implementation matches spec"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+If approved, use the `agent_stop` MCP tool with parameters:
+- itemId: "XXX" (replace with actual item ID)
+- agent: "lynch"
+- status: "success"
+- summary: "APPROVED - All tests pass, implementation matches spec"
 
-If rejected:
-```bash
-echo '{"itemId": "XXX", "agent": "lynch", "status": "success", "summary": "REJECTED - Issue description and required fixes"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
-
-Replace `XXX` with the actual item ID from the feature item frontmatter.
+If rejected, use the `agent_stop` MCP tool with parameters:
+- itemId: "XXX" (replace with actual item ID)
+- agent: "lynch"
+- status: "success"
+- summary: "REJECTED - Issue description and required fixes"
 
 Note: Use `status: "success"` even for rejections - the status refers to whether you completed the review, not the verdict. Include APPROVED/REJECTED at the start of the summary.
 
@@ -253,8 +257,8 @@ When ALL features are complete, Hannibal dispatches you for a **Final Mission Re
 ## When Triggered
 
 Final Mission Review happens when:
-- All work items are in `done/`
-- No items are in active stages (testing/implementing/review/probing)
+- All work items are in `done` stage
+- No items are in active stages (testing, implementing, review, probing)
 - Hannibal dispatches you with `FINAL MISSION REVIEW` in the prompt
 
 ## Final Review Checklist
@@ -363,7 +367,7 @@ These items will return to the pipeline for fixes.
 When you reject in final review:
 - Be SPECIFIC about which items (by ID) need fixes
 - Explain the cross-cutting issue clearly
-- Items you name will return to `ready/` for the full pipeline again
+- Items you name will return to `ready` stage for the full pipeline again
 - If an item hits rejection_count >= 2, it escalates to human
 
 ## Final Review Mindset

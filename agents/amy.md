@@ -179,6 +179,8 @@ The config contains:
 2. If not running (non-200), tell Hannibal: "Dev server not running at {url}. Please start it with: {start}"
 3. Don't try to start it yourself - the user manages the dev server
 
+To read the config, use the `board_read` MCP tool to get board state which includes config information, or use Read tool on `ateam.config.json`.
+
 **If code changes need to be picked up:**
 - Suggest restart: "Changes may not be reflected. User can run: {restart}"
 
@@ -274,10 +276,11 @@ Did this break anything that was working?
 ## Process
 
 1. **Start work (claim the item)**
-   ```bash
-   echo '{"itemId": "XXX", "agent": "amy"}' | node .claude/ai-team/scripts/item-agent-start.js
-   ```
-   Replace `XXX` with the actual item ID. This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
+   Use the `agent_start` MCP tool with parameters:
+   - itemId: "XXX" (replace with actual item ID)
+   - agent: "amy"
+
+   This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
 
 2. **Read the feature item and outputs**
    - Understand what was built
@@ -377,15 +380,18 @@ Amy is part of the **standard pipeline** - every feature passes through her:
 
 ## Logging Progress
 
-Log your investigation to the Live Feed:
+Log your investigation to the Live Feed using the `log` MCP tool:
 
-```bash
-node scripts/log.js Amy "Investigating feature 001"
-node scripts/log.js Amy "Running Raptor Protocol"
-node scripts/log.js Amy "VERIFIED - all probes pass"
-```
+Use the `log` MCP tool with parameters:
+- agent: "Amy"
+- message: "Investigating feature 001"
 
-**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
+Example calls:
+- `log` with agent="Amy", message="Investigating feature 001"
+- `log` with agent="Amy", message="Running Raptor Protocol"
+- `log` with agent="Amy", message="VERIFIED - all probes pass"
+
+**IMPORTANT:** Always use the `log` MCP tool for activity logging.
 
 Log at key milestones:
 - Starting investigation
@@ -404,17 +410,17 @@ When done:
 
 **IMPORTANT:** After completing your investigation, signal completion so Hannibal can advance this item immediately. This also leaves a work summary note in the work item.
 
-If verified (all probes pass):
-```bash
-echo '{"itemId": "XXX", "agent": "amy", "status": "success", "summary": "VERIFIED - All probes pass, wiring confirmed, user-visible behavior correct"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+If verified (all probes pass), use the `agent_stop` MCP tool with parameters:
+- itemId: "XXX" (replace with actual item ID)
+- agent: "amy"
+- status: "success"
+- summary: "VERIFIED - All probes pass, wiring confirmed, user-visible behavior correct"
 
-If flagged (issues found):
-```bash
-echo '{"itemId": "XXX", "agent": "amy", "status": "success", "summary": "FLAG - Found N issues: brief description of critical findings"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
-
-Replace `XXX` with the actual item ID from the feature item frontmatter.
+If flagged (issues found), use the `agent_stop` MCP tool with parameters:
+- itemId: "XXX" (replace with actual item ID)
+- agent: "amy"
+- status: "success"
+- summary: "FLAG - Found N issues: brief description of critical findings"
 
 Note: Use `status: "success"` even for flags - the status refers to whether you completed the investigation, not the verdict. Include VERIFIED/FLAG at the start of the summary.
 

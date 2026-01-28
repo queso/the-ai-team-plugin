@@ -57,10 +57,11 @@ Write ONLY tests and type definitions. **Do NOT write implementation code** - th
 ## Process
 
 1. **Start work (claim the item)**
-   ```bash
-   echo '{"itemId": "XXX", "agent": "murdock"}' | node .claude/ai-team/scripts/item-agent-start.js
-   ```
-   Replace `XXX` with the actual item ID. This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
+   Use the `agent_start` MCP tool with parameters:
+   - `itemId`: "XXX" (replace with actual item ID)
+   - `agent`: "murdock"
+
+   This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
 
 2. **Read the feature item**
    - Understand the objective
@@ -160,15 +161,18 @@ describe('OrderSyncService', () => {
 
 ## Logging Progress
 
-Log your progress to the Live Feed so the team can track your work:
+Log your progress to the Live Feed so the team can track your work using the `log` MCP tool:
 
-```bash
-node scripts/log.js Murdock "Writing tests for order sync"
-node scripts/log.js Murdock "Created 4 test cases"
-node scripts/log.js Murdock "Tests ready - all failing as expected"
-```
+- `log` tool with parameters:
+  - `agent`: "Murdock"
+  - `message`: "Writing tests for order sync"
 
-**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
+Example messages:
+- "Writing tests for order sync"
+- "Created 4 test cases"
+- "Tests ready - all failing as expected"
+
+**IMPORTANT:** Always use the `log` MCP tool for activity logging.
 
 Log at key milestones:
 - Starting work on a feature
@@ -186,18 +190,18 @@ When done:
 
 **IMPORTANT:** After completing your work, signal completion so Hannibal can advance this item immediately. This also leaves a work summary note in the work item.
 
-```bash
-echo '{"itemId": "XXX", "agent": "murdock", "status": "success", "summary": "Created N test cases covering happy path and edge cases", "files_created": ["path/to/test.ts"]}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+Use the `agent_stop` MCP tool with parameters:
+- `itemId`: "XXX" (replace with actual item ID from the feature item frontmatter)
+- `agent`: "murdock"
+- `status`: "success"
+- `summary`: "Created N test cases covering happy path and edge cases"
+- `files_created`: ["path/to/test.ts"]
 
 Replace:
-- `XXX` with the actual item ID from the feature item frontmatter
+- The itemId with the actual item ID from the feature item frontmatter
 - The summary with a brief description of what you did
 - The files_created array with the actual paths
 
-If you encountered errors that prevented completion:
-```bash
-echo '{"itemId": "XXX", "agent": "murdock", "status": "failed", "summary": "Error description"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+If you encountered errors that prevented completion, use `status`: "failed" and provide an error description in the summary.
 
 Report back to Hannibal with files created.

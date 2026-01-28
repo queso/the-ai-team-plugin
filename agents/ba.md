@@ -48,10 +48,11 @@ You receive a feature item that has already been through the testing stage:
 ## Process
 
 1. **Start work (claim the item)**
-   ```bash
-   echo '{"itemId": "XXX", "agent": "ba"}' | node .claude/ai-team/scripts/item-agent-start.js
-   ```
-   Replace `XXX` with the actual item ID. This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
+   Use the `agent_start` MCP tool with parameters:
+   - `itemId`: "XXX" (replace with actual item ID)
+   - `agent`: "ba"
+
+   This claims the item AND writes `assigned_agent` to the work item frontmatter so the kanban UI shows you're working on it.
 
 2. **Read the feature item**
    - Understand the objective
@@ -138,14 +139,17 @@ Report back to Hannibal with the file created.
 
 ## Logging Progress
 
-Log your progress to the Live Feed:
+Log your progress to the Live Feed using the `log` MCP tool:
 
-```bash
-node scripts/log.js B.A. "Implementing order sync service"
-node scripts/log.js B.A. "All tests passing"
-```
+- `log` tool with parameters:
+  - `agent`: "B.A."
+  - `message`: "Implementing order sync service"
 
-**IMPORTANT:** Always use `node scripts/log.js` - never use raw `echo >> mission/activity.log` commands.
+Example messages:
+- "Implementing order sync service"
+- "All tests passing"
+
+**IMPORTANT:** Always use the `log` MCP tool for activity logging.
 
 Log at key milestones:
 - Starting implementation
@@ -165,19 +169,19 @@ Log at key milestones:
 
 **IMPORTANT:** After completing your work, signal completion so Hannibal can advance this item immediately. This also leaves a work summary note in the work item.
 
-```bash
-echo '{"itemId": "XXX", "agent": "ba", "status": "success", "summary": "Implemented feature, all N tests passing", "files_created": ["path/to/impl.ts"]}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+Use the `agent_stop` MCP tool with parameters:
+- `itemId`: "XXX" (replace with actual item ID from the feature item frontmatter)
+- `agent`: "ba"
+- `status`: "success"
+- `summary`: "Implemented feature, all N tests passing"
+- `files_created`: ["path/to/impl.ts"]
 
 Replace:
-- `XXX` with the actual item ID from the feature item frontmatter
+- The itemId with the actual item ID from the feature item frontmatter
 - The summary with a brief description of what you did
-- The files_created/files_modified arrays with the actual paths
+- The files_created array with the actual paths
 
-If you encountered errors that prevented completion:
-```bash
-echo '{"itemId": "XXX", "agent": "ba", "status": "failed", "summary": "Error description"}' | node .claude/ai-team/scripts/item-agent-stop.js
-```
+If you encountered errors that prevented completion, use `status`: "failed" and provide an error description in the summary.
 
 ## Mindset
 
