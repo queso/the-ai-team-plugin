@@ -10,8 +10,19 @@
  * - getToolHandler(name): Returns the handler function for a specific tool
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 /**
- * Tool definition structure for MCP registration.
+ * Tool definition structure with Zod schema for MCP registration.
+ */
+export interface ToolDefinitionWithZod {
+    name: string;
+    description: string;
+    inputSchema: object;
+    zodSchema: z.ZodObject<z.ZodRawShape>;
+    handler: (input: unknown) => Promise<unknown>;
+}
+/**
+ * Legacy tool definition structure (JSON Schema only).
  */
 export interface ToolDefinition {
     name: string;
@@ -29,7 +40,7 @@ export interface ToolDefinition {
  *
  * @returns Array of tool definitions with name, description, and inputSchema
  */
-export declare function getAllToolDefinitions(): ToolDefinition[];
+export declare function getAllToolDefinitions(): ToolDefinitionWithZod[];
 /**
  * Returns the handler function for a specific tool.
  *
@@ -38,17 +49,9 @@ export declare function getAllToolDefinitions(): ToolDefinition[];
  */
 export declare function getToolHandler(name: string): ((input: unknown) => Promise<unknown>) | undefined;
 /**
- * Registers all tools with the MCP server.
- *
- * Sets up:
- * - tools/list handler to return all tool definitions
- * - tools/call handler to dispatch calls to the appropriate tool handler
+ * Registers all tools with the MCP server using the high-level tool() API.
  *
  * @param server - The MCP server instance
  */
-export declare function registerAllTools(server: McpServer & {
-    setRequestHandler: (schema: {
-        method: string;
-    }, handler: (request: unknown) => Promise<unknown>) => void;
-}): void;
+export declare function registerAllTools(server: McpServer): void;
 //# sourceMappingURL=index.d.ts.map

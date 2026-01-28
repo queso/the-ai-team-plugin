@@ -11,11 +11,11 @@ import { z } from 'zod';
  */
 export declare const AgentStartSchema: z.ZodObject<{
     itemId: z.ZodString;
-    agent: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>;
+    agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
     task_id: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     itemId: string;
-    agent: "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia";
+    agent: string;
     task_id?: string | undefined;
 }, {
     itemId: string;
@@ -28,7 +28,7 @@ export type AgentStartInput = z.infer<typeof AgentStartSchema>;
  */
 export declare const AgentStopSchema: z.ZodObject<{
     itemId: z.ZodString;
-    agent: z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>;
+    agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
     status: z.ZodEnum<["success", "failed"]>;
     summary: z.ZodString;
     files_created: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -36,7 +36,7 @@ export declare const AgentStopSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     status: "success" | "failed";
     itemId: string;
-    agent: "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia";
+    agent: string;
     summary: string;
     files_created?: string[] | undefined;
     files_modified?: string[] | undefined;
@@ -78,20 +78,114 @@ export declare function agentStart(input: AgentStartInput): Promise<ToolResponse
  */
 export declare function agentStop(input: AgentStopInput): Promise<ToolResponse>;
 /**
- * MCP tool definition structure.
+ * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
-interface McpToolDefinition {
+export declare const agentTools: ({
     name: string;
     description: string;
     inputSchema: {
-        type: 'object';
-        properties: Record<string, unknown>;
+        type: "object";
+        properties: {
+            itemId: {
+                type: string;
+                description: string;
+            };
+            agent: {
+                type: string;
+                description: string;
+                enum: readonly ["murdock", "ba", "lynch", "amy", "hannibal", "face", "sosa", "tawnia"];
+            };
+            task_id: {
+                type: string;
+                description: string;
+            };
+            status?: undefined;
+            summary?: undefined;
+            files_created?: undefined;
+            files_modified?: undefined;
+        };
         required: string[];
     };
-}
-/**
- * Tool definitions for MCP server registration.
- */
-export declare const agentTools: McpToolDefinition[];
+    zodSchema: z.ZodObject<{
+        itemId: z.ZodString;
+        agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
+        task_id: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        itemId: string;
+        agent: string;
+        task_id?: string | undefined;
+    }, {
+        itemId: string;
+        agent: string;
+        task_id?: string | undefined;
+    }>;
+    handler: typeof agentStart;
+} | {
+    name: string;
+    description: string;
+    inputSchema: {
+        type: "object";
+        properties: {
+            itemId: {
+                type: string;
+                description: string;
+            };
+            agent: {
+                type: string;
+                description: string;
+                enum: readonly ["murdock", "ba", "lynch", "amy", "hannibal", "face", "sosa", "tawnia"];
+            };
+            status: {
+                type: string;
+                description: string;
+                enum: string[];
+            };
+            summary: {
+                type: string;
+                description: string;
+            };
+            files_created: {
+                type: string;
+                items: {
+                    type: string;
+                };
+                description: string;
+            };
+            files_modified: {
+                type: string;
+                items: {
+                    type: string;
+                };
+                description: string;
+            };
+            task_id?: undefined;
+        };
+        required: string[];
+    };
+    zodSchema: z.ZodObject<{
+        itemId: z.ZodString;
+        agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
+        status: z.ZodEnum<["success", "failed"]>;
+        summary: z.ZodString;
+        files_created: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        files_modified: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        status: "success" | "failed";
+        itemId: string;
+        agent: string;
+        summary: string;
+        files_created?: string[] | undefined;
+        files_modified?: string[] | undefined;
+    }, {
+        status: "success" | "failed";
+        itemId: string;
+        agent: string;
+        summary: string;
+        files_created?: string[] | undefined;
+        files_modified?: string[] | undefined;
+    }>;
+    handler: typeof agentStop;
+})[];
 export {};
 //# sourceMappingURL=agents.d.ts.map

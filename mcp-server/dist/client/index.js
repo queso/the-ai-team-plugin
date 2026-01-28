@@ -96,7 +96,7 @@ async function parseResponseBody(response) {
  * Creates a Kanban API HTTP client with the specified configuration.
  */
 export function createClient(config) {
-    const { baseUrl, apiKey, timeout = DEFAULT_TIMEOUT, retries = DEFAULT_RETRIES } = config;
+    const { baseUrl, projectId, apiKey, timeout = DEFAULT_TIMEOUT, retries = DEFAULT_RETRIES } = config;
     /**
      * Performs a single HTTP request without retry logic.
      */
@@ -104,6 +104,7 @@ export function createClient(config) {
         const url = buildUrl(baseUrl, options.path);
         const headers = {
             Accept: 'application/json',
+            'X-Project-ID': projectId,
             ...options.headers,
         };
         if (apiKey) {
@@ -225,6 +226,17 @@ export function createClient(config) {
         });
     }
     /**
+     * Performs a PATCH request.
+     */
+    async function patch(path, body, options) {
+        return request({
+            method: 'PATCH',
+            path,
+            body,
+            ...options,
+        });
+    }
+    /**
      * Performs a DELETE request.
      */
     async function del(path, options) {
@@ -238,6 +250,7 @@ export function createClient(config) {
         get,
         post,
         put,
+        patch,
         delete: del,
         request,
     };

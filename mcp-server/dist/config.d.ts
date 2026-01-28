@@ -5,6 +5,8 @@
 export interface Config {
     /** Base URL for the A(i)-Team API */
     apiUrl: string;
+    /** Project ID for multi-project isolation */
+    projectId: string;
     /** Optional API key for authentication */
     apiKey: string | undefined;
     /** Request timeout in milliseconds */

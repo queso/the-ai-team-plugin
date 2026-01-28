@@ -10,10 +10,12 @@
  */
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
+import { config } from '../config.js';
 import { withErrorBoundary } from '../lib/errors.js';
 // Initialize HTTP client
 const client = createClient({
-    baseUrl: process.env.KANBAN_API_URL ?? 'http://localhost:3000',
+    baseUrl: config.apiUrl,
+    projectId: config.projectId,
     timeout: 30000,
     retries: 3,
 });
@@ -24,7 +26,8 @@ const client = createClient({
  * Schema for mission_init tool input.
  */
 export const MissionInitInputSchema = z.object({
-    name: z.string().min(1).optional(),
+    name: z.string().min(1),
+    prdPath: z.string().min(1),
     force: z.boolean().optional().default(false),
 });
 /**
@@ -59,14 +62,14 @@ export const MissionArchiveInputSchema = z.object({
  */
 export async function missionInit(input) {
     const handler = async (args) => {
-        const body = {};
-        if (args.name !== undefined) {
-            body.name = args.name;
-        }
+        const body = {
+            name: args.name,
+            prdPath: args.prdPath,
+        };
         if (args.force !== undefined) {
             body.force = args.force;
         }
-        const result = await client.post('/api/missions/init', body);
+        const result = await client.post('/api/missions', body);
         return {
             content: [{ type: 'text', text: JSON.stringify(result.data) }],
             data: result.data,
@@ -217,36 +220,42 @@ function getPropertySchema(schema) {
 }
 /**
  * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export const missionTools = [
     {
         name: 'mission_init',
-        description: 'Create a new mission directory structure. Optionally provide a name and force flag to archive existing mission.',
+        description: 'Create a new mission. Requires name and prdPath. Use force flag to archive existing active mission.',
         inputSchema: zodToJsonSchema(MissionInitInputSchema),
+        zodSchema: MissionInitInputSchema,
         handler: missionInit,
     },
     {
         name: 'mission_current',
         description: 'Return active mission metadata including progress, WIP limits, and column/phase information.',
         inputSchema: zodToJsonSchema(MissionCurrentInputSchema),
+        zodSchema: MissionCurrentInputSchema,
         handler: missionCurrent,
     },
     {
         name: 'mission_precheck',
         description: 'Run configured pre-flight checks (lint, tests) before starting mission execution.',
         inputSchema: zodToJsonSchema(MissionPrecheckInputSchema),
+        zodSchema: MissionPrecheckInputSchema,
         handler: missionPrecheck,
     },
     {
         name: 'mission_postcheck',
         description: 'Run configured post-completion checks (lint, unit tests, e2e) after all items are done.',
         inputSchema: zodToJsonSchema(MissionPostcheckInputSchema),
+        zodSchema: MissionPostcheckInputSchema,
         handler: missionPostcheck,
     },
     {
         name: 'mission_archive',
         description: 'Move completed mission items to archive. Use complete flag to archive entire mission with summary.',
         inputSchema: zodToJsonSchema(MissionArchiveInputSchema),
+        zodSchema: MissionArchiveInputSchema,
         handler: missionArchive,
     },
 ];

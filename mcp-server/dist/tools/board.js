@@ -35,6 +35,7 @@ export const BoardReleaseInputSchema = z.object({
 function getDefaultClient() {
     return createClient({
         baseUrl: config.apiUrl,
+        projectId: config.projectId,
         apiKey: config.apiKey,
         timeout: config.timeout,
         retries: config.retries,
@@ -43,10 +44,11 @@ function getDefaultClient() {
 /**
  * Read the full board state.
  *
- * @param client - Optional HTTP client (uses default if not provided)
+ * @param _input - Unused input parameter (required for MCP handler signature)
  * @returns The full board state as structured JSON
  */
-export async function boardRead(client = getDefaultClient()) {
+export async function boardRead(_input) {
+    const client = getDefaultClient();
     const result = await client.get('/api/board');
     return {
         content: [{ type: 'text', text: JSON.stringify(result.data) }],
@@ -72,7 +74,7 @@ export async function boardMove(input, client = getDefaultClient()) {
     }
     const result = await client.post('/api/board/move', {
         itemId: input.itemId,
-        to: input.to,
+        toStage: input.to,
     });
     return {
         content: [{ type: 'text', text: JSON.stringify(result.data) }],

@@ -68,8 +68,17 @@ function parseIntEnv(value, defaultValue, maxValue) {
     }
     return parsed > maxValue ? maxValue : parsed;
 }
+/**
+ * Parse and validate project ID from environment variable.
+ * Returns 'default' if not set - allows single-project usage without configuration.
+ */
+function parseProjectId(value) {
+    const parsed = parseStringEnv(value);
+    return parsed ?? 'default';
+}
 export const config = {
     apiUrl: parseApiUrl(process.env.ATEAM_API_URL, DEFAULT_API_URL),
+    projectId: parseProjectId(process.env.ATEAM_PROJECT_ID),
     apiKey: process.env.ATEAM_API_KEY,
     timeout: parseIntEnv(process.env.ATEAM_TIMEOUT, DEFAULT_TIMEOUT, MAX_TIMEOUT),
     retries: parseIntEnv(process.env.ATEAM_RETRIES, DEFAULT_RETRIES, MAX_RETRIES),

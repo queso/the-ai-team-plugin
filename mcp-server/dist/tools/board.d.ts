@@ -96,10 +96,10 @@ export interface ToolErrorResponse {
 /**
  * Read the full board state.
  *
- * @param client - Optional HTTP client (uses default if not provided)
+ * @param _input - Unused input parameter (required for MCP handler signature)
  * @returns The full board state as structured JSON
  */
-export declare function boardRead(client?: KanbanApiClient): Promise<ToolResponse<BoardState>>;
+export declare function boardRead(_input?: BoardReadInput): Promise<ToolResponse<BoardState>>;
 /**
  * Move an item to a target stage.
  * Validates stage transitions and enforces WIP limits.

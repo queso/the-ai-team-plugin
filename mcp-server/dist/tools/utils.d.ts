@@ -21,11 +21,11 @@ export declare const DepsCheckSchema: z.ZodObject<{
  * Schema for activity_log tool input.
  */
 export declare const ActivityLogSchema: z.ZodObject<{
-    agent: z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>;
+    agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
     message: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     message: string;
-    agent: "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia";
+    agent: string;
 }, {
     message: string;
     agent: string;
@@ -34,11 +34,11 @@ export declare const ActivityLogSchema: z.ZodObject<{
  * Schema for log tool input (simple shorthand).
  */
 export declare const LogSchema: z.ZodObject<{
-    agent: z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>;
+    agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
     message: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     message: string;
-    agent: "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia";
+    agent: string;
 }, {
     message: string;
     agent: string;
@@ -94,16 +94,34 @@ export declare function activityLog(input: ActivityLogInput): Promise<ToolRespon
 export declare function log(input: LogInput): Promise<ToolResponse<ActivityLogResponse>>;
 /**
  * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export declare const utilsTools: ({
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{
+        verbose: z.ZodOptional<z.ZodBoolean>;
+    }, "strip", z.ZodTypeAny, {
+        verbose?: boolean | undefined;
+    }, {
+        verbose?: boolean | undefined;
+    }>;
     handler: typeof depsCheck;
 } | {
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{
+        agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
+        message: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        message: string;
+        agent: string;
+    }, {
+        message: string;
+        agent: string;
+    }>;
     handler: typeof activityLog;
 })[];
 export {};

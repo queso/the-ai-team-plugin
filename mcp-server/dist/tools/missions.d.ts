@@ -14,13 +14,16 @@ import { type McpErrorResponse } from '../lib/errors.js';
  * Schema for mission_init tool input.
  */
 export declare const MissionInitInputSchema: z.ZodObject<{
-    name: z.ZodOptional<z.ZodString>;
+    name: z.ZodString;
+    prdPath: z.ZodString;
     force: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, "strip", z.ZodTypeAny, {
+    name: string;
+    prdPath: string;
     force: boolean;
-    name?: string | undefined;
 }, {
-    name?: string | undefined;
+    name: string;
+    prdPath: string;
     force?: boolean | undefined;
 }>;
 /**
@@ -178,31 +181,73 @@ export declare function missionPostcheck(input: MissionPostcheckInput): Promise<
 export declare function missionArchive(input: MissionArchiveInput): Promise<ToolResponse<MissionArchiveResult> | McpErrorResponse>;
 /**
  * Tool definitions for MCP server registration.
+ * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export declare const missionTools: ({
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{
+        name: z.ZodString;
+        prdPath: z.ZodString;
+        force: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        prdPath: string;
+        force: boolean;
+    }, {
+        name: string;
+        prdPath: string;
+        force?: boolean | undefined;
+    }>;
     handler: typeof missionInit;
 } | {
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
     handler: typeof missionCurrent;
 } | {
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{
+        checks: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        checks?: string[] | undefined;
+    }, {
+        checks?: string[] | undefined;
+    }>;
     handler: typeof missionPrecheck;
 } | {
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{
+        checks: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    }, "strip", z.ZodTypeAny, {
+        checks?: string[] | undefined;
+    }, {
+        checks?: string[] | undefined;
+    }>;
     handler: typeof missionPostcheck;
 } | {
     name: string;
     description: string;
     inputSchema: object;
+    zodSchema: z.ZodObject<{
+        itemIds: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+        complete: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        dryRun: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    }, "strip", z.ZodTypeAny, {
+        complete: boolean;
+        dryRun: boolean;
+        itemIds?: string[] | undefined;
+    }, {
+        itemIds?: string[] | undefined;
+        complete?: boolean | undefined;
+        dryRun?: boolean | undefined;
+    }>;
     handler: typeof missionArchive;
 })[];
 export {};

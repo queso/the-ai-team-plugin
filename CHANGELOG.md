@@ -48,8 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP Server** - New Model Context Protocol server for Claude Code plugin integration
   - Server core (`mcp-server/src/server.ts`) with stdio transport using `@modelcontextprotocol/sdk`
   - HTTP client (`mcp-server/src/client/index.ts`) with exponential backoff retry logic (1s/2s/4s delays)
+  - HTTP client supports GET, POST, PUT, PATCH, DELETE with `X-Project-ID` header on every request
   - Error utilities (`mcp-server/src/lib/errors.ts`) for MCP-compatible error responses
-  - Configuration module with environment variable support and validation
+  - Configuration module with `ATEAM_PROJECT_ID` for multi-project isolation
 
 - **20 MCP Tools** across 5 modules:
   - **Board tools** (`board.ts`): `board_read`, `board_move`, `board_claim`, `board_release`
@@ -58,9 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Mission tools** (`missions.ts`): `mission_init`, `mission_current`, `mission_precheck`, `mission_postcheck`, `mission_archive`
   - **Utility tools** (`utils.ts`): `deps_check`, `activity_log`, `log`
 
-- **Tool Registration** (`mcp-server/src/tools/index.ts`) - Wires all tools to MCP server with proper schemas
+- **Tool Registration** (`mcp-server/src/tools/index.ts`) - Registers tools via `McpServer.tool()` high-level API with Zod schemas
+  - Agent name normalization: case-insensitive input transformed to proper case (`ba` → `B.A.`)
 
-- **Plugin Configuration** (`.mcp.json`) - Registers MCP server with Claude Code
+- **Plugin Configuration** (`.mcp.json`) - Registers MCP server with Claude Code using `CLAUDE_PLUGIN_ROOT` for portable paths
 
 ### Changed
 
