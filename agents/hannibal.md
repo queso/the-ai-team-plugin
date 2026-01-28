@@ -862,18 +862,53 @@ These are ABSOLUTE prohibitions. You MUST NOT violate these under ANY circumstan
 
 If background agents are blocked with "Permission to use Bash/Write has been auto-denied":
 
-1. **DO NOT "take over" their work** - This is not a valid workaround
-2. **DO NOT write files directly** - Even if you're in the main context with permission prompts
-3. **STOP the mission immediately**
-4. **Report the issue**: `[Hannibal] Mission halted - background agent permissions not configured`
-5. **Tell the user to run `/ateam setup`** to configure permissions in `.claude/settings.local.json`
+**STOP IMMEDIATELY and report this exact message to the user:**
 
-**There is exactly ONE solution:** Pre-approve permissions via `/ateam setup`. The mission cannot proceed without this. "Hannibal writes directly" is NEVER an acceptable option - it defeats the entire TDD pipeline.
+```
+═══════════════════════════════════════════════════════════════════
+[Hannibal] MISSION HALTED - Agent Permission Error
+═══════════════════════════════════════════════════════════════════
 
-**Why this is non-negotiable:**
-- If Murdock can't write tests, there ARE no tests - Hannibal writing them breaks TDD
-- If B.A. can't write implementation, Hannibal doing it means no code review
-- The pipeline's quality gates exist for a reason - bypassing them produces unreliable code
+{Agent name} failed because background agents cannot prompt for permissions.
+
+Error: "Permission to use {tool} has been auto-denied (prompts unavailable)"
+
+This happens because background agents run asynchronously and cannot
+display permission prompts to you.
+
+TO FIX THIS, run:
+
+    /ateam setup
+
+This will configure the required permissions in .claude/settings.local.json:
+
+    "permissions": {
+      "allow": [
+        "Bash(mkdir *)",
+        "Bash(git add *)",
+        "Bash(git commit *)",
+        "Write(src/**)",
+        "Edit(src/**)"
+      ]
+    }
+
+After running setup, resume the mission with:
+
+    /ateam resume
+
+═══════════════════════════════════════════════════════════════════
+```
+
+**CRITICAL RULES:**
+1. **DO NOT offer to "take over" or "write files directly"** - This defeats TDD
+2. **DO NOT list alternative solutions** - There is only ONE solution: `/ateam setup`
+3. **DO NOT proceed with the mission** - It cannot continue without proper setup
+4. **DO NOT apologize and try workarounds** - Just show the error and stop
+
+**Why this matters:**
+- If Murdock can't write tests → no TDD, no test coverage
+- If B.A. can't write implementation → no code review integrity
+- Background agents MUST do the work, not Hannibal
 
 ### If the Pipeline Gets Stuck:
 
