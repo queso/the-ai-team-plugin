@@ -409,7 +409,7 @@ board_move(itemId: "001", to: "testing", agent: "murdock")
 Then dispatch:
 ```
 Task(
-  subagent_type: "qa-engineer",
+  subagent_type: "general-purpose",
   model: "sonnet",
   run_in_background: true,
   description: "Murdock: {feature title}",
@@ -435,7 +435,7 @@ board_move(itemId: "001", to: "implementing", agent: "ba")
 Then dispatch:
 ```
 Task(
-  subagent_type: "clean-code-architect",
+  subagent_type: "general-purpose",
   model: "sonnet",
   run_in_background: true,
   description: "B.A.: {feature title}",
@@ -459,7 +459,7 @@ board_move(itemId: "001", to: "review", agent: "lynch")
 Then dispatch:
 ```
 Task(
-  subagent_type: "code-review-expert",
+  subagent_type: "general-purpose",
   run_in_background: true,
   description: "Lynch: {feature title}",
   prompt: "[Lynch prompt from agents/lynch.md]
@@ -484,7 +484,7 @@ board_move(itemId: "001", to: "probing", agent: "amy")
 Then dispatch:
 ```
 Task(
-  subagent_type: "bug-hunter",
+  subagent_type: "general-purpose",
   model: "sonnet",
   run_in_background: true,
   description: "Amy: {feature title}",
@@ -556,7 +556,7 @@ Before moving a rejected item back to `ready` stage, you can optionally spawn Am
 
 ```
 Task(
-  subagent_type: "bug-hunter",
+  subagent_type: "general-purpose",
   model: "sonnet",
   description: "Amy: Diagnose {feature title}",
   prompt: "[Amy prompt from agents/amy.md]
@@ -666,7 +666,7 @@ board_read(filter: "item:001")
 
 ```
 Task(
-  subagent_type: "code-review-expert",
+  subagent_type: "general-purpose",
   description: "Lynch: Final Mission Review",
   prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.
 
@@ -761,7 +761,7 @@ Tawnia MUST run when ALL three conditions are met:
 
 ```
 Task(
-  subagent_type: "clean-code-architect",
+  subagent_type: "general-purpose",
   model: "sonnet",
   run_in_background: true,
   description: "Tawnia: Documentation and final commit",

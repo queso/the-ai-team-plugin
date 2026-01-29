@@ -120,10 +120,10 @@ or
 
 ## Implementation
 
-This command uses the `bug-hunter` subagent with the perspective-test skill:
+This command uses the `general-purpose` subagent with the perspective-test skill:
 
 ```
-subagent_type: bug-hunter
+subagent_type: general-purpose
 model: sonnet
 ```
 

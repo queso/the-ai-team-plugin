@@ -1,6 +1,7 @@
 ---
 name: tawnia
 description: Documentation writer - updates docs and makes final commit
+permissionMode: acceptEdits
 hooks:
   PreToolUse:
     - matcher: "Bash"

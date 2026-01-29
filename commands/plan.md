@@ -89,7 +89,7 @@ The tool:
 
 ```
 Task(
-  subagent_type: "clean-code-architect",
+  subagent_type: "general-purpose",
   model: "opus",
   prompt: "You are Face from the A(i)-Team. [full face.md prompt]
 
@@ -120,7 +120,7 @@ If validation fails, report errors and stop.
 
 ```
 Task(
-  subagent_type: "requirements-critic",
+  subagent_type: "general-purpose",
   model: "opus",
   prompt: "You are Sosa from the A(i)-Team. [full sosa.md prompt]
 
@@ -150,7 +150,7 @@ Sosa will:
 
 ```
 Task(
-  subagent_type: "clean-code-architect",
+  subagent_type: "general-purpose",
   model: "opus",
   prompt: "You are Face from the A(i)-Team. [full face.md prompt]
 

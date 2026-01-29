@@ -235,17 +235,17 @@ Use MCP tools for mission items. Use native tasks for orchestration checkpoints.
 Hannibal dispatches agents using Task tool with `run_in_background: true`:
 
 **Planning Phase:**
-- Face: `subagent_type: "clean-code-architect"`, `model: "opus"`
-- Sosa: `subagent_type: "requirements-critic"`, `model: "opus"`
+- Face: `subagent_type: "general-purpose"`, `model: "opus"`
+- Sosa: `subagent_type: "general-purpose"`, `model: "opus"`
 
 **Per-Feature Pipeline (ALL MANDATORY for each item):**
-- Murdock: `subagent_type: "qa-engineer"`, `model: "sonnet"` → testing stage
-- B.A.: `subagent_type: "clean-code-architect"`, `model: "sonnet"` → implementing stage
-- Lynch: `subagent_type: "code-review-expert"` → review stage
-- Amy: `subagent_type: "bug-hunter"`, `model: "sonnet"` → probing stage (EVERY feature, no exceptions)
+- Murdock: `subagent_type: "general-purpose"`, `model: "sonnet"` → testing stage
+- B.A.: `subagent_type: "general-purpose"`, `model: "sonnet"` → implementing stage
+- Lynch: `subagent_type: "general-purpose"` → review stage
+- Amy: `subagent_type: "general-purpose"`, `model: "sonnet"` → probing stage (EVERY feature, no exceptions)
 
 **Mission Completion (MANDATORY):**
-- Tawnia: `subagent_type: "clean-code-architect"`, `model: "sonnet"` → after post-checks pass
+- Tawnia: `subagent_type: "general-purpose"`, `model: "sonnet"` → after post-checks pass
 
 ### Background Agent Permissions
 

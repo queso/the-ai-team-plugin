@@ -5,6 +5,24 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-01-28
+
+### Changed
+
+- **Self-contained agent definitions** - Merged external base agent expertise into A(i)-Team agents
+  - `murdock.md` - Absorbed qa-engineer expertise (Testing Best Practices, API/Browser Testing Guidelines, Quality Gates)
+  - `ba.md` - Absorbed clean-code-architect expertise (SOLID principles, DRY, Type Safety, Testability by Design)
+  - `lynch.md` - Absorbed code-review-expert expertise (Priority Framework, Rule of Three, Check for Existing Solutions)
+  - `amy.md` - Absorbed bug-hunter expertise (Investigation Methodology, Log Analysis, Hypothesis-Driven Debugging)
+  - `sosa.md` - Absorbed requirements-critic expertise (Key Principles, Analysis Framework, AskUserQuestion guidance)
+
+- **Simplified subagent dispatch** - All agents now use `subagent_type: "general-purpose"`
+  - Removed dependency on external agent definitions (`qa-engineer`, `clean-code-architect`, etc.)
+  - Agent behavior is fully defined in the prompt from `agents/*.md` files
+  - Updated: `hannibal.md`, `lynch.md`, `CLAUDE.md`, `commands/plan.md`, `commands/perspective-test.md`
+
+---
+
 ## [2.1.0] - 2026-01-28
 
 ### Added
