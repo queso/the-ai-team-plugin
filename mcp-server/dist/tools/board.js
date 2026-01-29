@@ -3,8 +3,22 @@
  * Provides MCP tools for managing the kanban board state.
  */
 import { z } from 'zod';
-import { createClient } from '../client/index.js';
+import { createClient, ApiRequestError } from '../client/index.js';
 import { config } from '../config.js';
+/**
+ * Valid stage transitions for the kanban board.
+ * Used to provide actionable guidance when an invalid transition is attempted.
+ */
+const VALID_TRANSITIONS = {
+    briefings: ['ready', 'blocked'],
+    ready: ['testing', 'implementing', 'probing', 'blocked', 'briefings'],
+    testing: ['review', 'blocked'],
+    implementing: ['review', 'blocked'],
+    probing: ['ready', 'done', 'blocked'],
+    review: ['done', 'testing', 'implementing', 'probing', 'blocked'],
+    done: [],
+    blocked: ['ready'],
+};
 /**
  * Zod schema for board_read input (empty object).
  */
@@ -72,14 +86,39 @@ export async function boardMove(input, client = getDefaultClient()) {
             message: parsed.error.errors[0].message,
         };
     }
-    const result = await client.post('/api/board/move', {
-        itemId: input.itemId,
-        toStage: input.to,
-    });
-    return {
-        content: [{ type: 'text', text: JSON.stringify(result.data) }],
-        data: result.data,
-    };
+    try {
+        const result = await client.post('/api/board/move', {
+            itemId: input.itemId,
+            toStage: input.to,
+        });
+        return {
+            content: [{ type: 'text', text: JSON.stringify(result.data) }],
+            data: result.data,
+        };
+    }
+    catch (error) {
+        if (error instanceof ApiRequestError) {
+            // Extract 'from' stage from error details if available
+            const details = error.details;
+            const fromStage = details?.from;
+            const toStage = details?.to ?? input.to;
+            let message = error.message;
+            // Build actionable guidance for invalid transitions
+            if (error.code === 'INVALID_TRANSITION' && fromStage && VALID_TRANSITIONS[fromStage]) {
+                const validNext = VALID_TRANSITIONS[fromStage];
+                const suggestedStage = validNext[0]; // First valid option (usually the main path)
+                message = `Cannot move directly from '${fromStage}' to '${toStage}'. `;
+                message += `Move to '${suggestedStage}' first and verify the work is complete before proceeding. `;
+                message += `Valid next stages: ${validNext.join(', ')}.`;
+            }
+            return {
+                isError: true,
+                code: error.code,
+                message,
+            };
+        }
+        throw error;
+    }
 }
 /**
  * Claim an item for an agent.

@@ -164,20 +164,21 @@ export function createClient(config: ClientConfig): KanbanApiClient {
       const data = await parseResponseBody<TResponse>(response);
 
       if (!response.ok) {
-        // Extract error message from response
-        const errorMessage = (data as { message?: string })?.message ?? response.statusText;
-
-        // Throw appropriate error based on status
-        if (isRetryableStatus(response.status)) {
-          throw new ApiRequestError({
-            status: response.status,
-            message: errorMessage,
-          });
-        }
+        // Extract error from nested API response structure
+        // API returns: { success: false, error: { code, message, details } }
+        const errorData = data as {
+          error?: { code?: string; message?: string; details?: unknown };
+          message?: string;
+        };
+        const errorCode = errorData?.error?.code ?? 'API_ERROR';
+        const errorMessage = errorData?.error?.message ?? errorData?.message ?? response.statusText;
+        const errorDetails = errorData?.error?.details;
 
         throw new ApiRequestError({
           status: response.status,
+          code: errorCode,
           message: errorMessage,
+          details: errorDetails,
         });
       }
 
