@@ -58,13 +58,23 @@ export const ItemCreateInputSchema = z.object({
 
 /**
  * Schema for item_update tool input.
+ * Supports partial updates to any work item field.
  */
 export const ItemUpdateInputSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
   status: z.string().optional(),
+  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
   assigned_agent: z.string().optional(),
   rejection_count: z.number().int().min(0).optional(),
+  dependencies: z.array(dependencyIdSchema).optional(),
+  parallel_group: z.string().optional(),
+  outputs: z.object({
+    test: z.string().optional(),
+    impl: z.string().optional(),
+    types: z.string().optional(),
+  }).optional(),
 });
 
 /**
@@ -180,6 +190,19 @@ export async function itemCreate(
 export async function itemUpdate(
   input: ItemUpdateInput
 ): Promise<ToolResponse<WorkItem> | McpErrorResponse> {
+  // Validate input (especially dependency IDs) before sending to API
+  const parsed = ItemUpdateInputSchema.safeParse(input);
+  if (!parsed.success) {
+    const errorMessage = parsed.error.errors
+      .map((e) => e.message)
+      .join('; ');
+    return {
+      isError: true,
+      code: 'VALIDATION_ERROR',
+      message: errorMessage,
+    };
+  }
+
   const handler = async (args: ItemUpdateInput) => {
     const { id, ...updateData } = args;
     const result = await client.patch<WorkItem>(`/api/items/${id}`, updateData);
@@ -189,7 +212,7 @@ export async function itemUpdate(
     };
   };
 
-  return withErrorBoundary(handler)(input);
+  return withErrorBoundary(handler)(parsed.data);
 }
 
 /**
@@ -375,7 +398,7 @@ export const itemTools = [
   },
   {
     name: 'item_update',
-    description: 'Update an existing work item with partial fields. Requires item ID.',
+    description: 'Update an existing work item. Supports: title, description, status, priority, dependencies, parallel_group, outputs, assigned_agent, rejection_count.',
     inputSchema: zodToJsonSchema(ItemUpdateInputSchema),
     zodSchema: ItemUpdateInputSchema,
     handler: itemUpdate,
