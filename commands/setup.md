@@ -372,7 +372,13 @@ Background agents can now:
 Board operations handled via MCP tools → API server.
 CLAUDE.md updated with A(i)-Team workflow instructions.
 
-Ready to run /ateam plan
+⚠️  RESTART REQUIRED
+Environment variables are loaded when Claude Code starts.
+To pick up the new settings, please:
+  1. Exit this session (/exit or Ctrl+C)
+  2. Restart Claude Code in this directory
+
+After restart, run /ateam plan to begin.
 ```
 
 ## Customization
@@ -441,6 +447,7 @@ If these tools exist, Playwright is properly installed.
 
 ## Notes
 
+- **Restart required after first setup** - The MCP server reads environment variables at startup, so you must restart Claude Code after initial setup for `ATEAM_PROJECT_ID` and `ATEAM_API_URL` to take effect
 - Uses `settings.local.json` by default (gitignored) to avoid committing permissions
 - Run this once per project before using `/ateam plan`
 - Safe to run multiple times - won't duplicate permissions or CLAUDE.md sections
