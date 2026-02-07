@@ -41,18 +41,78 @@ Resume an interrupted mission from where it left off.
        board_move(itemId, to="implementing")  # Will re-run through Lynch
    ```
 
-4. **Validate board integrity**
+4. **Native Teams Recovery** (if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)
+
+   Native teams are ephemeral - they don't survive session restarts. On resume:
+
+   1. **Log warning about lost team context:**
+      ```
+      [Hannibal] Previous team session lost. Spawning fresh teammates from board state.
+      ```
+
+   2. **Initialize fresh team:**
+      ```javascript
+      TeammateTool({
+        action: "spawnTeam",
+        team_name: \`mission-\${missionId}\`,
+        config: { display_mode: process.env.ATEAM_TEAMMATE_MODE || "auto" }
+      })
+      ```
+
+   3. **Respawn agents for in-progress work:**
+      Use `board_read` to find items in active stages, then spawn fresh teammates:
+
+      ```javascript
+      const board = await mcp.board_read();
+
+      // Items in testing stage need Murdock
+      for (const itemId of board.columns.testing) {
+        const item = await mcp.item_get({ id: itemId });
+        await mcp.board_release({ itemId }); // Clear stale assignment
+        spawnTeammate("murdock", item);
+      }
+
+      // Items in implementing stage need B.A.
+      for (const itemId of board.columns.implementing) {
+        const item = await mcp.item_get({ id: itemId });
+        await mcp.board_release({ itemId });
+        spawnTeammate("ba", item);
+      }
+
+      // Items in review stage need Lynch
+      for (const itemId of board.columns.review) {
+        const item = await mcp.item_get({ id: itemId });
+        await mcp.board_release({ itemId });
+        spawnTeammate("lynch", item);
+      }
+
+      // Items in probing stage need Amy
+      for (const itemId of board.columns.probing) {
+        const item = await mcp.item_get({ id: itemId });
+        await mcp.board_release({ itemId });
+        spawnTeammate("amy", item);
+      }
+      ```
+
+   4. **MCP state is source of truth:**
+      - Work items track all progress via `work_log`
+      - Board stage positions are preserved in the database
+      - Only the teammate sessions are lost - not the work state
+      - Agents pick up from the current board state, not from memory
+
+5. **Validate board integrity**
    - Use `deps_check` MCP tool to verify dependency graph
    - Check for orphaned items
    - Ensure no items are "lost"
 
-5. **Display recovery summary**
+6. **Display recovery summary**
    ```
    The A(i)-Team is back. Resuming mission...
 
    Recovered state:
    - {n} items were in-progress, moved to ready
    - {m} items in review (will be re-reviewed)
+   - Native teams: respawned from board state (if teams mode)
 
    Current state:
    - Briefings: {x}
@@ -63,7 +123,7 @@ Resume an interrupted mission from where it left off.
    Resuming orchestration...
    ```
 
-6. **Start Hannibal orchestration**
+7. **Start Hannibal orchestration**
    - Same as `/ateam run` from recovered state
    - Hannibal picks up from current board state
 
@@ -125,7 +185,8 @@ This command:
 1. Uses `board_read` MCP tool to get current state
 2. Uses `board_move` MCP tool to recover any in-progress items
 3. Uses `board_release` MCP tool to clear stale assignments
-4. Main Claude BECOMES Hannibal and continues orchestration
+4. Respawns native team if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set (teammates are ephemeral and lost on restart; board state in MCP is the source of truth)
+5. Main Claude BECOMES Hannibal and continues orchestration
 
 **Architecture:**
 ```
@@ -133,6 +194,15 @@ Main Claude (as Hannibal)
     ├── Task → Murdock (subagent)
     ├── Task → B.A. (subagent)
     └── Task → Lynch (subagent)
+```
+
+**With Native Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`):**
+```
+Main Claude (as Hannibal)
+    ├── Teammate → Murdock (native team member)
+    ├── Teammate → B.A. (native team member)
+    ├── Teammate → Lynch (native team member)
+    └── Teammate → Amy (native team member)
 ```
 
 ## MCP Tools Used
@@ -150,3 +220,4 @@ Main Claude (as Hannibal)
 - **No mission found**: Nothing to resume
 - **All items blocked**: No work to resume (use `/ateam unblock`)
 - **API unavailable**: Cannot connect to A(i)-Team server
+- **Orphaned team**: Previous team session lost on restart (normal behavior, auto-recovered)

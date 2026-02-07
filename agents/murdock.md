@@ -38,6 +38,19 @@ sonnet
 
 Write ONLY tests and type definitions. **Do NOT write implementation code** - that is B.A.'s job. Tests define acceptance criteria BEFORE implementation exists.
 
+## Test Scope by Work Item Type
+
+**Check the `type` field in the work item - it determines your testing approach:**
+
+| Type | Test Count | Focus |
+|------|------------|-------|
+| `task` | 1-3 smoke tests | "Does it compile? Does it run?" |
+| `feature` | 3-5 tests | Happy path, error path, key edge cases |
+| `bug` | 2-3 tests | Reproduce bug, verify fix, regression guard |
+| `enhancement` | 2-4 tests | New/changed behavior only |
+
+**For scaffolding (`type: "task"`):** Test the outcome, not the structure. Don't test every field individually - that's the #1 anti-pattern. See the TDD Workflow skill for detailed examples.
+
 ## Testing Philosophy: Move Fast
 
 **Cover the important stuff, don't chase coverage numbers.**
@@ -54,6 +67,7 @@ Write ONLY tests and type definitions. **Do NOT write implementation code** - th
 - Implementation details
 - Trivial getters/setters
 - Every possible permutation
+- Every field/property individually (test the outcome instead)
 
 **Mindset:** "What would break in production?" - test that.
 
@@ -246,6 +260,53 @@ Log at key milestones:
 - Starting work on a feature
 - Creating test/type files
 - Tests complete and verified
+
+## Team Communication (Native Teams Mode)
+
+When running in native teams mode (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), you are a teammate in an A(i)-Team mission with direct messaging capabilities.
+
+### Notify Hannibal on Completion
+After calling `agent_stop` MCP tool, message Hannibal:
+```javascript
+TeammateTool({
+  action: "message",
+  target: "hannibal",
+  message: "DONE: {itemId} - {brief summary of work completed}"
+})
+```
+
+### Request Help or Clarification
+```javascript
+TeammateTool({
+  action: "message",
+  target: "hannibal",
+  message: "BLOCKED: {itemId} - {description of issue}"
+})
+```
+
+### Coordinate with Teammates
+```javascript
+TeammateTool({
+  action: "message",
+  target: "{teammate_name}",
+  message: "{coordination message}"
+})
+```
+
+Example - Tell B.A. about test structure:
+```javascript
+TeammateTool({ action: "message", target: "ba", message: "WI-003: Tests expect OrderService.process() to return Promise<OrderResult>. See src/__tests__/order.test.ts" })
+```
+
+### Shutdown
+When your work is complete and `agent_stop` has been called:
+```javascript
+TeammateTool({
+  action: "approveShutdown"
+})
+```
+
+**IMPORTANT:** MCP tools remain the source of truth for all state changes. TeammateTool messaging is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
 
 ## Completion
 

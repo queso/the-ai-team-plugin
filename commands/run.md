@@ -81,6 +81,22 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - Establishes baseline before mission work begins
    - If checks fail, abort mission and report to user
 
+2.5. **Initialize team (if native teams enabled)**
+   Check if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to "1".
+   If enabled:
+   ```javascript
+   TeammateTool({
+     action: "spawnTeam",
+     team_name: `mission-${missionId}`,
+     config: {
+       display_mode: process.env.ATEAM_TEAMMATE_MODE || "auto"
+     }
+   })
+   ```
+   This creates the team container. Individual agents are spawned on-demand as items enter their stages.
+
+   If not enabled, skip this step (legacy Task dispatch will be used).
+
 3. **Main Claude becomes Hannibal**
    - Orchestration runs in the main context (visible to user)
    - Worker agents dispatched as direct subagents
@@ -90,6 +106,11 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - Use `deps_check` to find items ready to move from briefings → ready
    - Start new features if under WIP limit
    - Use `board_claim` before dispatching agent, `board_release` on completion
+
+
+   **Dispatch mode:**
+   - **Native teams** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`): Use `TeammateTool({ action: "spawn", ... })` to create teammates. Completion detected via mailbox messages instead of TaskOutput polling.
+   - **Legacy mode** (default): Use `Task(run_in_background: true)` with TaskOutput polling.
 
 5. **Final Mission Review:**
    - When ALL items reach `done` stage, trigger final review
@@ -116,12 +137,28 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - Tawnia makes the **final commit** bundling all mission work + documentation
    - Updates mission state with documentation completion and commit hash
 
+7.5. **Team shutdown (if native teams enabled)**
+   If native teams mode was used:
+   ```javascript
+   // Shutdown remaining agents (Amy, Lynch may still be active)
+   for (const agent of activeAgents) {
+     TeammateTool({ action: "requestShutdown", target: agent.name })
+   }
+   ```
+   Note: Don't clean up the team yet - Tawnia still needs to run.
+
 8. **Completion (ALL conditions required):**
    - ✓ All items in `done` stage
    - ✓ Final review passed
    - ✓ Post-checks passed
    - ✓ Tawnia documentation committed ← **REQUIRED**
    - Then and ONLY then: "I love it when a plan comes together."
+
+
+   - If native teams mode: clean up team resources
+   ```javascript
+   TeammateTool({ action: "cleanup", team_name: `mission-${missionId}` })
+   ```
 
    **Mission is NOT complete until Tawnia commits. No exceptions.**
 
@@ -188,6 +225,25 @@ This flat structure:
 - Gives user visibility into orchestration
 - Allows mid-run intervention
 - Avoids nested subagent memory overhead
+
+
+**Native Teams Mode:**
+
+When `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`:
+```
+Main Claude (as Hannibal / Team Lead)
+    ├── TeammateTool → Murdock  (tester, testing stage)
+    ├── TeammateTool → B.A.     (coder, implementing stage)
+    ├── TeammateTool → Lynch    (reviewer, review + final review)
+    ├── TeammateTool → Amy      (researcher, probing stage)
+    └── TeammateTool → Tawnia   (documenter, after post-checks)
+```
+
+Benefits over legacy mode:
+- Direct mailbox communication (no TaskOutput polling)
+- Split pane visualization (tmux)
+- Interactive user control (Shift+Up/Down to select agents)
+- Plan approval for complex items
 
 ## MCP Tools Used
 
