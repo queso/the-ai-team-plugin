@@ -301,17 +301,17 @@ The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_
 Hannibal dispatches agents using Task tool with `run_in_background: true`:
 
 **Planning Phase:**
-- Face: `subagent_type: "general-purpose"`, `model: "opus"`
-- Sosa: `subagent_type: "general-purpose"`, `model: "opus"`
+- Face: `subagent_type: "ai-team:face"`, `model: "opus"`
+- Sosa: `subagent_type: "ai-team:sosa"`, `model: "opus"`
 
 **Per-Feature Pipeline (ALL MANDATORY for each item):**
-- Murdock: `subagent_type: "general-purpose"`, `model: "sonnet"` → testing stage
-- B.A.: `subagent_type: "general-purpose"`, `model: "sonnet"` → implementing stage
-- Lynch: `subagent_type: "general-purpose"` → review stage
-- Amy: `subagent_type: "general-purpose"`, `model: "sonnet"` → probing stage (EVERY feature, no exceptions)
+- Murdock: `subagent_type: "ai-team:murdock"`, `model: "sonnet"` → testing stage
+- B.A.: `subagent_type: "ai-team:ba"`, `model: "sonnet"` → implementing stage
+- Lynch: `subagent_type: "ai-team:lynch"` → review stage
+- Amy: `subagent_type: "ai-team:amy"`, `model: "sonnet"` → probing stage (EVERY feature, no exceptions)
 
 **Mission Completion (MANDATORY):**
-- Tawnia: `subagent_type: "general-purpose"`, `model: "sonnet"` → after post-checks pass
+- Tawnia: `subagent_type: "ai-team:tawnia"`, `model: "sonnet"` → after post-checks pass
 
 ### Background Agent Permissions
 
