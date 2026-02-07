@@ -23,10 +23,11 @@ export declare const BoardMoveInputSchema: z.ZodObject<{
 }>;
 /**
  * Zod schema for board_claim input.
+ * Agent name accepts lowercase (murdock, ba, lynch, amy) and transforms to API format.
  */
 export declare const BoardClaimInputSchema: z.ZodObject<{
     itemId: z.ZodString;
-    agent: z.ZodString;
+    agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
 }, "strip", z.ZodTypeAny, {
     itemId: string;
     agent: string;
@@ -157,7 +158,7 @@ export declare const boardTools: {
         description: string;
         inputSchema: z.ZodObject<{
             itemId: z.ZodString;
-            agent: z.ZodString;
+            agent: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodString, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, "murdock" | "ba" | "lynch" | "amy" | "hannibal" | "face" | "sosa" | "tawnia", string>, string, string>;
         }, "strip", z.ZodTypeAny, {
             itemId: string;
             agent: string;

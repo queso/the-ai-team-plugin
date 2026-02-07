@@ -19,6 +19,7 @@ import { itemTools } from './items.js';
 import { agentTools } from './agents.js';
 import { missionTools } from './missions.js';
 import { utilsTools } from './utils.js';
+import type { ToolResponse } from '../lib/tool-response.js';
 
 /**
  * Tool definition structure with Zod schema for MCP registration.
@@ -46,21 +47,10 @@ export interface ToolDefinition {
 }
 
 /**
- * MCP tool response content structure.
+ * MCP tool response with index signature required by the MCP SDK.
  */
-interface ToolResponseContent {
-  type: 'text';
-  text: string;
-}
-
-/**
- * MCP tool response structure.
- * The index signature is required by the MCP SDK.
- */
-interface ToolResponse {
+interface McpToolResponse extends ToolResponse {
   [key: string]: unknown;
-  content: ToolResponseContent[];
-  isError?: boolean;
 }
 
 /**
@@ -180,9 +170,9 @@ export function registerAllTools(server: McpServer): void {
       toolDef.name,
       toolDef.description,
       zodShape,
-      async (args: unknown): Promise<ToolResponse> => {
+      async (args: unknown): Promise<McpToolResponse> => {
         try {
-          const result = (await toolDef.handler(args)) as ToolResponse;
+          const result = (await toolDef.handler(args)) as McpToolResponse;
 
           // Ensure proper response format
           if (result && 'content' in result) {

@@ -375,17 +375,25 @@ T=60s   Poll c → COMPLETE!
         active_tasks = {001: e, 002: d}
 
 T=90s   Poll e → COMPLETE! (Lynch approved)
+        → board_move(itemId="001", to="probing", agent="Amy"), dispatch Amy (task_f)
+        active_tasks = {001: f, 002: d}
+
+T=100s  Poll f → COMPLETE! (Amy verified)
         → board_move(itemId="001", to="done")
         deps_check() → readyItems: [003]  ← 003's dep (001) now satisfied!
         board_move(itemId="003", to="ready")  (004 still blocked - needs 002 done too)
-        Dispatch Murdock for 003 (task_f)
-        active_tasks = {002: d, 003: f}
+        Dispatch Murdock for 003 (task_g)
+        active_tasks = {002: d, 003: g}
 
-T=95s   Poll d → COMPLETE!
-        → IMMEDIATELY: board_move(itemId="002", to="review", agent="Lynch"), dispatch Lynch (task_g)
-        active_tasks = {002: g, 003: f}
+T=105s  Poll d → COMPLETE!
+        → IMMEDIATELY: board_move(itemId="002", to="review", agent="Lynch"), dispatch Lynch (task_h)
+        active_tasks = {002: h, 003: g}
 
-T=120s  Poll g → COMPLETE! (Lynch approved 002)
+T=120s  Poll h → COMPLETE! (Lynch approved 002)
+        → board_move(itemId="002", to="probing", agent="Amy"), dispatch Amy (task_i)
+        active_tasks = {002: i, 003: g}
+
+T=130s  Poll i → COMPLETE! (Amy verified 002)
         → board_move(itemId="002", to="done")
         deps_check() → readyItems: [004]  ← 004's deps (001,002) now satisfied!
         board_move(itemId="004", to="ready")
@@ -695,25 +703,16 @@ B.A. will see this diagnosis when picking up the item for retry.
 
 ## Handling Approvals
 
-When Lynch approves:
+When Lynch approves, move the item to **probing** (NOT done) for Amy's mandatory investigation:
 
 ```
-# Move to done (auto-releases Lynch's claim)
-board_move(itemId: "001", to: "done")
+# Move to probing (auto-releases Lynch's claim)
+board_move(itemId: "001", to: "probing", agent: "Amy")
 ```
 
-**IMPORTANT:** Check the output of `board_move` for `finalReviewReady: true`:
+Then dispatch Amy to probe the feature (see "Workflow for dispatching Amy" above).
 
-```json
-{
-  "success": true,
-  "itemId": "001",
-  "to": "done",
-  "finalReviewReady": true  // <-- When true, trigger Final Mission Review!
-}
-```
-
-When `finalReviewReady` is true, immediately dispatch Lynch for the Final Mission Review.
+When Amy completes and verifies the feature, advance the item to the done stage. The orchestration loop (Phase 1, probing handler) shows the exact flow. Check the response for `finalReviewReady: true` -- when present, immediately dispatch Lynch for the Final Mission Review.
 
 ## Reading Board State
 

@@ -141,47 +141,6 @@ Review them as a cohesive unit, not separately.
 
 3. **Render verdict**
 
-## Deep Investigation (Optional)
-
-For risky or complex features, spawn Amy (Investigator) to probe beyond what tests cover.
-
-### When to Spawn Amy
-
-- Complex async/concurrent code
-- Security-sensitive features (auth, payments, user data)
-- Code that "works but feels fragile"
-- Minimal test coverage for the complexity
-- Integration-heavy code (multiple external dependencies)
-
-### How to Invoke Amy
-
-```
-Task(
-  subagent_type: "general-purpose",
-  model: "sonnet",
-  description: "Amy: Investigate {feature title}",
-  prompt: "[Amy prompt from agents/amy.md]
-
-  Feature Item:
-  [Full content of the work item file]
-
-  Investigate these files:
-  - Test: {outputs.test}
-  - Implementation: {outputs.impl}
-  - Types (if exists): {outputs.types}
-
-  Run the Raptor Protocol. Report findings with evidence."
-)
-```
-
-### Using Amy's Findings
-
-Amy returns an investigation report with:
-- **VERIFIED**: All probes pass - safe to approve
-- **FLAG**: Issues found with evidence
-
-Use Amy's findings to inform your APPROVED/REJECTED verdict. If Amy flags issues, include them in your rejection reasoning.
-
 ## Verdicts
 
 ### APPROVED
@@ -431,6 +390,47 @@ Final Mission Review happens when:
 5. **Cross-check** for consistency and integration issues
 6. **Security scan** across all code
 7. **Render final verdict**
+
+## Deep Investigation (Optional)
+
+During the Final Mission Review, for risky or complex areas, spawn Amy (Investigator) to probe beyond what tests cover.
+
+### When to Spawn Amy
+
+- Complex async/concurrent code spanning multiple modules
+- Security-sensitive features (auth, payments, user data)
+- Code that "works but feels fragile"
+- Minimal test coverage for the complexity
+- Integration-heavy code (multiple external dependencies)
+
+### How to Invoke Amy
+
+```
+Task(
+  subagent_type: "general-purpose",
+  model: "sonnet",
+  description: "Amy: Investigate {feature title}",
+  prompt: "[Amy prompt from agents/amy.md]
+
+  Feature Item:
+  [Full content of the work item file]
+
+  Investigate these files:
+  - Test: {outputs.test}
+  - Implementation: {outputs.impl}
+  - Types (if exists): {outputs.types}
+
+  Run the Raptor Protocol. Report findings with evidence."
+)
+```
+
+### Using Amy's Findings
+
+Amy returns an investigation report with:
+- **VERIFIED**: All probes pass - safe to approve
+- **FLAG**: Issues found with evidence
+
+Use Amy's findings to inform your FINAL APPROVED/FINAL REJECTED verdict. If Amy flags issues, include them in your rejection reasoning.
 
 ## Final Verdicts
 

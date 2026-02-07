@@ -10,60 +10,10 @@
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
-
-// ============================================================================
-// Valid Agent Names
-// ============================================================================
-
-/**
- * Valid agent names (lowercase for input validation).
- */
-const VALID_AGENTS_LOWER = [
-  'murdock',
-  'ba',
-  'lynch',
-  'amy',
-  'hannibal',
-  'face',
-  'sosa',
-  'tawnia',
-] as const;
-
-type ValidAgentLower = (typeof VALID_AGENTS_LOWER)[number];
-
-/**
- * Map from lowercase agent names to API-expected format.
- */
-const AGENT_NAME_MAP: Record<ValidAgentLower, string> = {
-  murdock: 'Murdock',
-  ba: 'B.A.',
-  lynch: 'Lynch',
-  amy: 'Amy',
-  hannibal: 'Hannibal',
-  face: 'Face',
-  sosa: 'Sosa',
-  tawnia: 'Tawnia',
-};
-
-/**
- * Normalize agent name to lowercase key format.
- * Handles special cases like "B.A." -> "ba"
- */
-function normalizeAgentName(val: string): string {
-  return val.toLowerCase().replace(/\./g, '');
-}
-
-/**
- * Zod schema for agent name validation.
- * Accepts case-insensitive input, validates, and transforms to API format.
- */
-const AgentNameSchema = z
-  .string()
-  .transform((val) => normalizeAgentName(val) as ValidAgentLower)
-  .refine((val): val is ValidAgentLower => VALID_AGENTS_LOWER.includes(val), {
-    message: `Agent must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
-  })
-  .transform((val) => AGENT_NAME_MAP[val]);
+import { AgentNameSchema } from '../lib/agents.js';
+import { zodToJsonSchema } from '../lib/schema-utils.js';
+import type { ToolResponse } from '../lib/tool-response.js';
+import { formatErrorMessage } from '../lib/tool-response.js';
 
 // ============================================================================
 // Zod Schemas for Input Validation
@@ -128,41 +78,6 @@ interface ActivityLogResponse {
   };
 }
 
-interface ToolResponse<T = unknown> {
-  content: Array<{ type: 'text'; text: string }>;
-  data?: T;
-  isError?: boolean;
-}
-
-/**
- * Error with status and message properties.
- */
-interface ApiErrorLike {
-  status?: number;
-  message?: string;
-  code?: string;
-}
-
-/**
- * Formats an error message from an API error response.
- */
-function formatErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    const apiError = error as Error & { code?: string };
-    if (apiError.code === 'ECONNREFUSED') {
-      return 'Connection refused - server may be unavailable';
-    }
-    return error.message;
-  }
-
-  const apiError = error as ApiErrorLike;
-  if (apiError.message) {
-    return apiError.message;
-  }
-
-  return 'Unknown error occurred';
-}
-
 // ============================================================================
 // HTTP Client
 // ============================================================================
@@ -170,8 +85,9 @@ function formatErrorMessage(error: unknown): string {
 const client = createClient({
   baseUrl: config.apiUrl,
   projectId: config.projectId,
-  timeout: 30000,
-  retries: 3,
+  apiKey: config.apiKey,
+  timeout: config.timeout,
+  retries: config.retries,
 });
 
 // ============================================================================
@@ -253,92 +169,6 @@ export async function log(
 // ============================================================================
 // Tool Definitions for MCP Server Registration
 // ============================================================================
-
-/**
- * Converts a Zod schema to JSON Schema format for MCP tool registration.
- */
-function zodToJsonSchema(schema: z.ZodType): object {
-  if (schema instanceof z.ZodObject) {
-    const shape = schema.shape;
-    const properties: Record<string, object> = {};
-    const required: string[] = [];
-
-    for (const [key, value] of Object.entries(shape)) {
-      const zodValue = value as z.ZodTypeAny;
-      properties[key] = getPropertySchema(zodValue);
-
-      if (!isOptional(zodValue)) {
-        required.push(key);
-      }
-    }
-
-    return {
-      type: 'object',
-      properties,
-      required: required.length > 0 ? required : undefined,
-    };
-  }
-
-  return { type: 'object', properties: {} };
-}
-
-/**
- * Checks if a Zod schema is optional.
- */
-function isOptional(schema: z.ZodTypeAny): boolean {
-  if (schema instanceof z.ZodOptional) return true;
-  if (schema instanceof z.ZodDefault) return true;
-  if (schema._def?.typeName === 'ZodOptional') return true;
-  if (schema._def?.typeName === 'ZodDefault') return true;
-  return false;
-}
-
-/**
- * Gets the JSON Schema representation of a Zod property.
- */
-function getPropertySchema(schema: z.ZodTypeAny): object {
-  let unwrapped = schema;
-  if (unwrapped instanceof z.ZodOptional) {
-    unwrapped = unwrapped.unwrap();
-  }
-  if (unwrapped instanceof z.ZodDefault) {
-    unwrapped = unwrapped._def.innerType;
-  }
-
-  if (unwrapped instanceof z.ZodString) {
-    return { type: 'string' };
-  }
-
-  if (unwrapped instanceof z.ZodNumber) {
-    return { type: 'number' };
-  }
-
-  if (unwrapped instanceof z.ZodBoolean) {
-    return { type: 'boolean' };
-  }
-
-  if (unwrapped instanceof z.ZodEnum) {
-    return { type: 'string', enum: unwrapped.options };
-  }
-
-  if (unwrapped instanceof z.ZodArray) {
-    return {
-      type: 'array',
-      items: getPropertySchema(unwrapped.element),
-    };
-  }
-
-  if (unwrapped instanceof z.ZodObject) {
-    return zodToJsonSchema(unwrapped);
-  }
-
-  // For refined types (like AgentNameSchema), check the inner type
-  if (unwrapped instanceof z.ZodEffects) {
-    return getPropertySchema(unwrapped.innerType());
-  }
-
-  return { type: 'string' };
-}
 
 /**
  * Tool definitions for MCP server registration.

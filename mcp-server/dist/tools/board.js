@@ -6,6 +6,50 @@ import { z } from 'zod';
 import { createClient, ApiRequestError } from '../client/index.js';
 import { config } from '../config.js';
 /**
+ * Valid agent names (lowercase for input validation).
+ */
+const VALID_AGENTS_LOWER = [
+    'murdock',
+    'ba',
+    'lynch',
+    'amy',
+    'hannibal',
+    'face',
+    'sosa',
+    'tawnia',
+];
+/**
+ * Map from lowercase agent names to API-expected format.
+ */
+const AGENT_NAME_MAP = {
+    murdock: 'Murdock',
+    ba: 'B.A.',
+    lynch: 'Lynch',
+    amy: 'Amy',
+    hannibal: 'Hannibal',
+    face: 'Face',
+    sosa: 'Sosa',
+    tawnia: 'Tawnia',
+};
+/**
+ * Normalize agent name to lowercase key format.
+ * Handles special cases like "B.A." -> "ba"
+ */
+function normalizeAgentName(val) {
+    return val.toLowerCase().replace(/\./g, '');
+}
+/**
+ * Zod schema for agent name validation.
+ * Accepts case-insensitive input, validates, and transforms to API format.
+ */
+const AgentNameSchema = z
+    .string()
+    .transform((val) => normalizeAgentName(val))
+    .refine((val) => VALID_AGENTS_LOWER.includes(val), {
+    message: `Invalid agent name. Must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
+})
+    .transform((val) => AGENT_NAME_MAP[val]);
+/**
  * Valid stage transitions for the kanban board.
  * Used to provide actionable guidance when an invalid transition is attempted.
  */
@@ -32,10 +76,11 @@ export const BoardMoveInputSchema = z.object({
 });
 /**
  * Zod schema for board_claim input.
+ * Agent name accepts lowercase (murdock, ba, lynch, amy) and transforms to API format.
  */
 export const BoardClaimInputSchema = z.object({
     itemId: z.string().min(1, 'itemId is required'),
-    agent: z.string().min(1, 'agent name is required'),
+    agent: AgentNameSchema,
 });
 /**
  * Zod schema for board_release input.

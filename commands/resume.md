@@ -25,25 +25,39 @@ Resume an interrupted mission from where it left off.
 
 3. **Recover interrupted work**
 
-   Items in active stages during interruption need recovery:
-   - `testing` items → back to `ready` stage
-   - `implementing` items → back to `testing` stage (tests already exist)
-   - `review` items → back to `implementing` stage (impl already exists)
-   - Clear agent assignments
+   Items in active stages stay at their current stage. Clear stale agent assignments
+   and re-dispatch the appropriate agent to resume work. This avoids backward moves
+   that are not allowed by VALID_TRANSITIONS in board.ts.
 
-   Use `board_move` MCP tool for each recovery:
+   Use `board_release` to clear stale assignments, then re-dispatch agents:
    ```
    for item in testing stage:
-       board_move(itemId, to="ready")
+       board_release(itemId)          # Clear stale Murdock assignment
+       dispatch Murdock on item       # Re-run tests from current state
+
    for item in implementing stage:
-       board_move(itemId, to="testing")  # Will re-run through B.A.
+       board_release(itemId)          # Clear stale B.A. assignment
+       dispatch B.A. on item          # Resume implementation (tests already exist)
+
    for item in review stage:
-       board_move(itemId, to="implementing")  # Will re-run through Lynch
+       board_release(itemId)          # Clear stale Lynch assignment
+       dispatch Lynch on item         # Re-review (tests + impl already exist)
+
+   for item in probing stage:
+       board_release(itemId)          # Clear stale Amy assignment
+       dispatch Amy on item           # Re-probe (tests + impl + review done)
    ```
+
+   **Rationale:** Re-dispatching at the current stage is safe because:
+   - `testing`: Murdock can re-run or complete partial test suites
+   - `implementing`: B.A. can pick up where partial implementation left off (tests exist)
+   - `review`: Lynch can re-review (tests + implementation exist, review is idempotent)
+   - `probing`: Amy can re-probe (all prior work exists, probing is idempotent)
 
 4. **Native Teams Recovery** (if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)
 
-   Native teams are ephemeral - they don't survive session restarts. On resume:
+   Native teams are ephemeral - they don't survive session restarts. On resume,
+   re-spawn agents at their current stage (same strategy as legacy mode).
 
    1. **Log warning about lost team context:**
       ```
@@ -59,38 +73,39 @@ Resume an interrupted mission from where it left off.
       })
       ```
 
-   3. **Respawn agents for in-progress work:**
-      Use `board_read` to find items in active stages, then spawn fresh teammates:
+   3. **Re-dispatch agents at current stage:**
+      Use `board_read` to find items in active stages, clear stale assignments,
+      then spawn fresh teammates at the item's current stage:
 
       ```javascript
       const board = await mcp.board_read();
 
-      // Items in testing stage need Murdock
+      // Items in testing stage -> re-dispatch Murdock
       for (const itemId of board.columns.testing) {
         const item = await mcp.item_get({ id: itemId });
         await mcp.board_release({ itemId }); // Clear stale assignment
-        spawnTeammate("murdock", item);
+        spawnTeammate("murdock", item);       // Resume at testing stage
       }
 
-      // Items in implementing stage need B.A.
+      // Items in implementing stage -> re-dispatch B.A.
       for (const itemId of board.columns.implementing) {
         const item = await mcp.item_get({ id: itemId });
         await mcp.board_release({ itemId });
-        spawnTeammate("ba", item);
+        spawnTeammate("ba", item);            // Resume at implementing stage
       }
 
-      // Items in review stage need Lynch
+      // Items in review stage -> re-dispatch Lynch
       for (const itemId of board.columns.review) {
         const item = await mcp.item_get({ id: itemId });
         await mcp.board_release({ itemId });
-        spawnTeammate("lynch", item);
+        spawnTeammate("lynch", item);         // Resume at review stage
       }
 
-      // Items in probing stage need Amy
+      // Items in probing stage -> re-dispatch Amy
       for (const itemId of board.columns.probing) {
         const item = await mcp.item_get({ id: itemId });
         await mcp.board_release({ itemId });
-        spawnTeammate("amy", item);
+        spawnTeammate("amy", item);           // Resume at probing stage
       }
       ```
 
@@ -110,8 +125,8 @@ Resume an interrupted mission from where it left off.
    The A(i)-Team is back. Resuming mission...
 
    Recovered state:
-   - {n} items were in-progress, moved to ready
-   - {m} items in review (will be re-reviewed)
+   - {n} items in active stages, agents re-dispatched at current stage
+   - {t} in testing (Murdock), {i} in implementing (B.A.), {r} in review (Lynch), {p} in probing (Amy)
    - Native teams: respawned from board state (if teams mode)
 
    Current state:
@@ -129,14 +144,26 @@ Resume an interrupted mission from where it left off.
 
 ## Recovery Rules
 
+All active items stay at their current stage. Stale agent assignments are cleared
+and agents are re-dispatched to resume work. No backward board moves are needed.
+
 ### Items in `testing` stage
-- Move to `ready` stage
-- Agent may have partially completed
-- Partial outputs are preserved but flagged
+- Stay in `testing` stage, re-dispatch Murdock
+- Murdock re-runs or completes partial test suites
+- Any partial test files from the interrupted session are preserved
+
+### Items in `implementing` stage
+- Stay in `implementing` stage, re-dispatch B.A.
+- B.A. picks up where implementation left off (tests already exist from Murdock)
+- Any partial implementation files are preserved
 
 ### Items in `review` stage
-- Stay in `review` stage
-- Lynch will re-review on resume
+- Stay in `review` stage, re-dispatch Lynch
+- Lynch re-reviews tests + implementation (review is idempotent)
+
+### Items in `probing` stage
+- Stay in `probing` stage, re-dispatch Amy
+- Amy re-probes for bugs (tests + impl + review all exist, probing is idempotent)
 
 ### Items in `done` stage
 - Never re-done
@@ -161,18 +188,19 @@ Output:
 The A(i)-Team is back. Resuming mission...
 
 Recovered state:
-- 2 items were in-progress, moved to ready
-- 1 item in review (will be re-reviewed)
+- 3 items in active stages, agents re-dispatched at current stage
+- 1 in testing (Murdock), 1 in implementing (B.A.), 1 in review (Lynch), 0 in probing (Amy)
 
 Current state:
 - Briefings: 3
-- Ready:     5
+- Ready:     4
 - Done:      7
 - Blocked:   0
 
 [Hannibal] "Time to get back to work."
-[Hannibal] Dispatching B.A. on 021-impl
-[Hannibal] Dispatching Murdock on 015-tests
+[Hannibal] Re-dispatching Murdock on WI-015 (testing)
+[Hannibal] Re-dispatching B.A. on WI-021 (implementing)
+[Hannibal] Re-dispatching Lynch on WI-018 (review)
 ...
 ```
 
@@ -183,8 +211,8 @@ Current state:
 This command:
 
 1. Uses `board_read` MCP tool to get current state
-2. Uses `board_move` MCP tool to recover any in-progress items
-3. Uses `board_release` MCP tool to clear stale assignments
+2. Uses `board_release` MCP tool to clear stale agent assignments
+3. Re-dispatches agents at their current stage (no backward board moves needed)
 4. Respawns native team if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set (teammates are ephemeral and lost on restart; board state in MCP is the source of truth)
 5. Main Claude BECOMES Hannibal and continues orchestration
 
@@ -211,7 +239,6 @@ Main Claude (as Hannibal)
 |------|---------|
 | `mission_current` | Check mission exists |
 | `board_read` | Get current board state |
-| `board_move` | Move items to recover state |
 | `board_release` | Clear stale agent assignments |
 | `deps_check` | Verify dependency graph integrity |
 

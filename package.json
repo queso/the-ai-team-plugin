@@ -7,10 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "gray-matter": "^4.0.3",
-    "proper-lockfile": "^4.1.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "vitest": "^1.6.0"
   },

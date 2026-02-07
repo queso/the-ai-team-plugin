@@ -66,6 +66,37 @@ After Sosa reviews and humans answer questions:
 
 Given a PRD, decompose it into feature items - the smallest independently-completable units of work.
 
+## Work Item Types
+
+Choose the appropriate type based on the nature of the work:
+
+| Type | Use When | Test Expectation |
+|------|----------|------------------|
+| `feature` | User-facing functionality, business logic | 3-5 tests: happy path, error path, edge cases |
+| `task` | Scaffolding, setup, infrastructure | 1-3 smoke tests: "does it work end-to-end" |
+| `bug` | Fixing broken behavior | Tests that reproduce the bug + verify fix |
+| `enhancement` | Improving existing feature | Tests for new behavior only |
+
+**Scaffolding indicators** (use `type: "task"`):
+- Types-only work (no runtime behavior)
+- Configuration files (package.json, tsconfig, vite.config, etc.)
+- Project setup/initialization
+- Utility functions without business logic
+- Test fixtures/helpers
+- Directory structure creation
+
+**Feature indicators** (use `type: "feature"`):
+- User-facing functionality with behavioral requirements
+- Business logic with state changes
+- API endpoints with request/response contracts
+- Components that render and respond to user input
+
+**Example type selection:**
+- "Create TypeScript types for order data" → `type: "task"` (types-only, no runtime)
+- "Implement order creation API" → `type: "feature"` (business logic, user-facing)
+- "Set up Vitest configuration" → `type: "task"` (infrastructure)
+- "Add order validation rules" → `type: "feature"` (business logic)
+
 ## Work Item Sizing
 
 **Goal:** Smallest independently-completable units - but not smaller.

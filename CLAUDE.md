@@ -355,7 +355,7 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 
 ```
 ai-team/
-├── plugin.json              # Plugin configuration
+├── .claude-plugin/plugin.json  # Plugin configuration
 ├── .mcp.json                # MCP server configuration
 ├── package.json             # Node.js dependencies (run `npm install`)
 ├── mcp-server/              # MCP server for Claude Code integration
@@ -393,8 +393,9 @@ ai-team/
 ├── scripts/                 # Hook enforcement scripts (for internal use)
 │   └── hooks/               # Agent lifecycle hooks
 │       ├── enforce-completion-log.js    # Stop hook for working agents
-│       ├── block-raw-echo-log.js        # PreToolUse hook for working agents
-│       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal
+│       ├── block-raw-echo-log.js        # PreToolUse hook for working agents (Bash)
+│       ├── block-raw-mv.js              # PreToolUse hook for Hannibal (Bash)
+│       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal (Write|Edit)
 │       └── enforce-final-review.js      # Stop hook for Hannibal
 ├── lib/                     # Shared utilities (used by hooks)
 │   ├── board.js, lock.js, validate.js
@@ -505,7 +506,7 @@ hooks:
 
 Hannibal has hooks to maintain orchestrator boundaries:
 
-**PreToolUse Hook** - Blocks writes to source code:
+**PreToolUse Hook 1** - Blocks writes to source code:
 ```yaml
 hooks:
   PreToolUse:
@@ -516,6 +517,16 @@ hooks:
 ```
 
 **Purpose:** Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
+
+**PreToolUse Hook 2** - Blocks raw file moves:
+```yaml
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-raw-mv.js"
+```
+
+**Purpose:** Prevents Hannibal from using raw `mv` commands to move work item files. Stage transitions must go through the `board_move` MCP tool.
 
 **Stop Hook** - Enforces final review and post-checks:
 ```yaml

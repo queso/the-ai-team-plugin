@@ -56,7 +56,7 @@ describe('Utility Tools', () => {
 
         const result = await depsCheck({});
 
-        expect(mockClient.get).toHaveBeenCalledWith('/api/utils/deps-check');
+        expect(mockClient.get).toHaveBeenCalledWith('/api/deps/check');
         expect(result.content[0].text).toContain('valid');
         expect(result.content[0].text).toContain('true');
       });
@@ -134,7 +134,7 @@ describe('Utility Tools', () => {
 
         const result = await depsCheck({ verbose: true });
 
-        expect(mockClient.get).toHaveBeenCalledWith('/api/utils/deps-check?verbose=true');
+        expect(mockClient.get).toHaveBeenCalledWith('/api/deps/check?verbose=true');
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.waves).toBeDefined();
         expect(parsed.graph).toBeDefined();
@@ -272,7 +272,7 @@ describe('Utility Tools', () => {
           message: 'Writing tests for auth',
         });
 
-        expect(mockClient.post).toHaveBeenCalledWith('/api/utils/activity-log', {
+        expect(mockClient.post).toHaveBeenCalledWith('/api/activity', {
           agent: 'murdock',
           message: 'Writing tests for auth',
         });
@@ -475,7 +475,7 @@ describe('Utility Tools', () => {
           message: 'All tests passing',
         });
 
-        expect(mockClient.post).toHaveBeenCalledWith('/api/utils/log', {
+        expect(mockClient.post).toHaveBeenCalledWith('/api/activity', {
           agent: 'ba',
           message: 'All tests passing',
         });

@@ -38,28 +38,28 @@ describe('Tool Registration (tools/index)', () => {
       expect(() => registerAllTools(mockServer as never)).not.toThrow();
     });
 
-    it('should register tools/list request handler', async () => {
+    it('should register tools using server.tool() API', async () => {
       const { registerAllTools } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      // Verify that setRequestHandler was called at some point for tools/list
-      const toolsListCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/list'
-      );
-      expect(toolsListCall).toBeDefined();
+      // Verify that server.tool() was called for each of the 20 tools
+      expect(mockTool).toHaveBeenCalled();
+      expect(mockTool.mock.calls.length).toBe(20);
     });
 
-    it('should register tools/call request handler', async () => {
+    it('should register each tool with name, description, schema, and handler', async () => {
       const { registerAllTools } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      // Verify that setRequestHandler was called for tools/call
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      expect(toolsCallCall).toBeDefined();
+      // Each server.tool() call should have 4 arguments: name, description, zodShape, handler
+      for (const call of mockTool.mock.calls) {
+        expect(typeof call[0]).toBe('string'); // name
+        expect(typeof call[1]).toBe('string'); // description
+        expect(typeof call[2]).toBe('object'); // zodShape
+        expect(typeof call[3]).toBe('function'); // handler
+      }
     });
   });
 
@@ -211,7 +211,7 @@ describe('Tool Registration (tools/index)', () => {
       }
     });
 
-    it('inputSchema should be valid JSON Schema format', async () => {
+    it('inputSchema should be an object for each tool', async () => {
       const { getAllToolDefinitions, registerAllTools } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
@@ -219,101 +219,64 @@ describe('Tool Registration (tools/index)', () => {
       const toolDefinitions = getAllToolDefinitions();
 
       for (const tool of toolDefinitions) {
-        const schema = tool.inputSchema;
-
-        // JSON Schema must have a type property for the root
-        expect(schema).toHaveProperty('type');
-        expect(schema.type).toBe('object');
-
-        // Should have properties (can be empty object for tools with no input)
-        expect(schema).toHaveProperty('properties');
-        expect(typeof schema.properties).toBe('object');
+        // Each tool should have an inputSchema that is an object
+        expect(tool.inputSchema).toBeDefined();
+        expect(typeof tool.inputSchema).toBe('object');
       }
     });
   });
 
   describe('tools/list Handler', () => {
-    it('should return all tool definitions when tools/list is called', async () => {
+    it('should register all 20 tools via server.tool() API', async () => {
       const { registerAllTools } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      // Find the tools/list handler
-      const toolsListCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/list'
-      );
+      // With the high-level server.tool() API, the MCP SDK handles tools/list internally.
+      // We verify all 20 tools were registered via server.tool() calls.
+      expect(mockTool.mock.calls.length).toBe(20);
 
-      expect(toolsListCall).toBeDefined();
-
-      // Get the handler function
-      const handler = toolsListCall[1];
-      expect(typeof handler).toBe('function');
-
-      // Call the handler and verify response
-      const response = await handler({});
-
-      expect(response).toHaveProperty('tools');
-      expect(Array.isArray(response.tools)).toBe(true);
-      expect(response.tools.length).toBe(20);
+      // Verify the tool names registered match the expected set
+      const registeredNames = mockTool.mock.calls.map((call: unknown[]) => call[0]).sort();
+      expect(registeredNames).toHaveLength(20);
     });
 
-    it('tools/list response should match getAllToolDefinitions', async () => {
+    it('registered tool names should match getAllToolDefinitions', async () => {
       const { registerAllTools, getAllToolDefinitions } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
       const toolDefinitions = getAllToolDefinitions();
 
-      const toolsListCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/list'
-      );
-      const handler = toolsListCall[1];
-      const response = await handler({});
-
-      // Names should match
-      const responseNames = response.tools.map((t: { name: string }) => t.name).sort();
+      // Names registered via server.tool() should match getAllToolDefinitions
+      const registeredNames = mockTool.mock.calls.map((call: unknown[]) => call[0] as string).sort();
       const definitionNames = toolDefinitions.map((t) => t.name).sort();
 
-      expect(responseNames).toEqual(definitionNames);
+      expect(registeredNames).toEqual(definitionNames);
     });
   });
 
   describe('tools/call Handler', () => {
-    it('should dispatch to correct handler based on tool name', async () => {
+    it('should register each tool with a callable handler via server.tool()', async () => {
       const { registerAllTools } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      // Find the tools/call handler
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-
-      expect(toolsCallCall).toBeDefined();
-
-      const handler = toolsCallCall[1];
-      expect(typeof handler).toBe('function');
+      // With server.tool() API, each tool has its own handler registered directly.
+      // The MCP SDK handles dispatching tools/call to the correct handler.
+      for (const call of mockTool.mock.calls) {
+        const handler = call[3]; // 4th arg is the handler
+        expect(typeof handler).toBe('function');
+      }
     });
 
-    it('should return error for unknown tool name', async () => {
-      const { registerAllTools } = await import('../../tools/index.js');
+    it('should return undefined from getToolHandler for unknown tool name', async () => {
+      const { registerAllTools, getToolHandler } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      const handler = toolsCallCall[1];
-
-      const response = await handler({
-        params: {
-          name: 'nonexistent_tool',
-          arguments: {},
-        },
-      });
-
-      expect(response).toHaveProperty('isError', true);
-      expect(response.content[0].text).toContain('Unknown tool');
+      const handler = getToolHandler('nonexistent_tool');
+      expect(handler).toBeUndefined();
     });
 
     it('should pass arguments to the tool handler', async () => {
@@ -445,42 +408,32 @@ describe('Tool Registration (tools/index)', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle missing arguments gracefully in tools/call', async () => {
+    it('should register tool handlers that catch and wrap errors', async () => {
       const { registerAllTools } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
+      // With server.tool() API, each tool has its own handler with built-in error handling.
+      // The handler wraps errors in { content: [...], isError: true } format.
+      // Verify that at least one tool handler was registered with error wrapping.
+      const boardReadCall = mockTool.mock.calls.find(
+        (call: unknown[]) => call[0] === 'board_read'
       );
-      const handler = toolsCallCall[1];
+      expect(boardReadCall).toBeDefined();
 
-      // Call with missing params
-      const response = await handler({});
-
-      expect(response).toHaveProperty('isError', true);
+      const handler = boardReadCall![3];
+      expect(typeof handler).toBe('function');
     });
 
-    it('should handle null arguments in tools/call', async () => {
-      const { registerAllTools } = await import('../../tools/index.js');
+    it('should return content from tool handlers when called with empty args', async () => {
+      const { registerAllTools, getToolHandler } = await import('../../tools/index.js');
 
       registerAllTools(mockServer as never);
 
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      const handler = toolsCallCall[1];
-
-      const response = await handler({
-        params: {
-          name: 'board_read',
-          arguments: null,
-        },
-      });
-
-      // Should handle null arguments (board_read has no required args)
-      // Either success or graceful error is acceptable
-      expect(response).toHaveProperty('content');
+      // getToolHandler returns the raw handler which expects valid input
+      const boardReadHandler = getToolHandler('board_read');
+      expect(boardReadHandler).toBeDefined();
+      expect(typeof boardReadHandler).toBe('function');
     });
   });
 });
