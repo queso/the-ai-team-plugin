@@ -13,10 +13,11 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 1. **Auto-detects** project settings from CLAUDE.md and package.json
 2. **Configures** the project ID environment variable for multi-project isolation
 3. **Sets up** permissions for background agents
-4. **Creates** `ateam.config.json` with project-specific settings
-5. **Injects** A(i)-Team instructions into CLAUDE.md (so Claude uses the workflow)
-6. **Verifies** API server connectivity
-7. **Checks** for Playwright plugin (optional, for browser testing)
+4. **Configures** native Agent Teams (TeammateTool) if desired (optional)
+5. **Creates** `ateam.config.json` with project-specific settings
+6. **Injects** A(i)-Team instructions into CLAUDE.md (so Claude uses the workflow)
+7. **Verifies** API server connectivity
+8. **Checks** for Playwright plugin (optional, for browser testing)
 
 ## Behavior
 
@@ -104,7 +105,83 @@ Background agents (`run_in_background: true`) cannot prompt for user approval, s
    - Use detected source directory or default to `src/`
    - Use detected test pattern or default to `__tests__`
 
-### Step 4: Confirm Detected Settings
+### Step 4: Configure Native Teams (Optional)
+
+Claude Code supports native Agent Teams via the TeammateTool, which provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.
+
+**Ask the user if they want to enable native teams:**
+```
+AskUserQuestion({
+  questions: [{
+    question: "Enable native Agent Teams (TeammateTool)? This provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.",
+    header: "Native Agent Teams",
+    options: [
+      { label: "Yes (Recommended)", description: "Enable TeammateTool for enhanced agent orchestration" },
+      { label: "No", description: "Use standard background task dispatch" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**If yes, write the feature flag to `.claude/settings.local.json`:**
+
+Add `"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"` to the `env` section:
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+**Then ask for teammate mode preference:**
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which teammate mode should agents use?",
+    header: "Teammate Mode",
+    options: [
+      { label: "auto (Recommended)", description: "Uses tmux for split panes if available, falls back to in-process" },
+      { label: "tmux", description: "Always use tmux for split pane visualization (requires tmux installed)" },
+      { label: "in-process", description: "Run teammates in-process without split panes" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**Write the mode to `.claude/settings.local.json`:**
+
+Add `"ATEAM_TEAMMATE_MODE": "<choice>"` to the `env` section:
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "ATEAM_TEAMMATE_MODE": "auto"
+  }
+}
+```
+
+**If tmux mode selected, verify tmux is installed:**
+```
+Run: which tmux
+```
+
+If tmux is not found:
+```
+⚠ tmux is not installed but "tmux" mode was selected.
+Split pane visualization requires tmux. Either:
+  1. Install tmux: brew install tmux (macOS) or apt install tmux (Linux)
+  2. Switch to "auto" mode (will fall back to in-process if tmux is unavailable)
+  3. Switch to "in-process" mode (no split panes)
+```
+
+### Step 5: Confirm Detected Settings
 
 If settings were auto-detected from CLAUDE.md/package.json, **confirm them** instead of asking from scratch:
 
@@ -124,7 +201,7 @@ Does this look correct?
 
 Then use `AskUserQuestion` with detected values as the recommended option.
 
-### Step 5: Fill Gaps with Questions
+### Step 6: Fill Gaps with Questions
 
 Only ask questions for settings that **could not be detected**. Use `AskUserQuestion` for missing settings:
 
@@ -162,7 +239,7 @@ AskUserQuestion({
 })
 ```
 
-### Step 6: Write Config File
+### Step 7: Write Config File
 
 Based on answers, create `ateam.config.json` in project root:
 
@@ -190,7 +267,7 @@ Based on answers, create `ateam.config.json` in project root:
 - `devServer.restart`: Command to restart the server (e.g., to pick up code changes)
 - `devServer.managed`: If false, user manages server; Amy checks if running but doesn't start/restart it
 
-### Step 7: Inject A(i)-Team Instructions into CLAUDE.md
+### Step 8: Inject A(i)-Team Instructions into CLAUDE.md
 
 **Purpose:** Ensure Claude knows to use the A(i)-Team system for PRD work in this project.
 
@@ -262,7 +339,7 @@ Checking CLAUDE.md...
   ✓ A(i)-Team section already present
 ```
 
-### Step 8: Verify API Connectivity
+### Step 9: Verify API Connectivity
 
 Test connection to the A(i)-Team API server:
 
@@ -284,7 +361,7 @@ Or configure a different URL:
   Set ATEAM_API_URL in .claude/settings.local.json
 ```
 
-### Step 9: Check Plugin Dependencies
+### Step 10: Check Plugin Dependencies
 
 Check for Playwright plugin availability (see Plugin Dependencies section below).
 
@@ -333,6 +410,8 @@ The MCP server reads the following environment variables:
 | `ATEAM_API_KEY` | No | - | Optional API key for authentication |
 | `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
 | `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native TeammateTool integration |
+| `ATEAM_TEAMMATE_MODE` | No | `auto` | Teammate mode: `auto`, `tmux`, or `in-process` |
 
 ## Example Output
 
@@ -350,9 +429,15 @@ Checking permissions...
   + Write(src/**)
   + Edit(src/**)
 
+Configuring native teams...
+  ✓ Agent Teams (TeammateTool) enabled
+  ✓ Teammate mode: auto
+
 Settings updated: .claude/settings.local.json
   env.ATEAM_PROJECT_ID = "my-awesome-app"
   env.ATEAM_API_URL = "http://localhost:3000"
+  env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1"
+  env.ATEAM_TEAMMATE_MODE = "auto"
 
 Updating CLAUDE.md...
   ✓ Added A(i)-Team integration instructions
@@ -372,7 +457,13 @@ Background agents can now:
 Board operations handled via MCP tools → API server.
 CLAUDE.md updated with A(i)-Team workflow instructions.
 
-Ready to run /ateam plan
+⚠️  RESTART REQUIRED
+Environment variables are loaded when Claude Code starts.
+To pick up the new settings, please:
+  1. Exit this session (/exit or Ctrl+C)
+  2. Restart Claude Code in this directory
+
+After restart, run /ateam plan to begin.
 ```
 
 ## Customization
@@ -441,9 +532,11 @@ If these tools exist, Playwright is properly installed.
 
 ## Notes
 
+- **Restart required after first setup** - The MCP server reads environment variables at startup, so you must restart Claude Code after initial setup for `ATEAM_PROJECT_ID` and `ATEAM_API_URL` to take effect
 - Uses `settings.local.json` by default (gitignored) to avoid committing permissions
 - Run this once per project before using `/ateam plan`
-- Safe to run multiple times - won't duplicate permissions or CLAUDE.md sections
+- Safe to run multiple times - won't duplicate permissions, CLAUDE.md sections, or teammate config
 - Playwright plugin is recommended but not strictly required
 - Project ID enables running multiple A(i)-Team projects simultaneously
 - CLAUDE.md injection ensures Claude uses `/ateam plan` for PRD work instead of ad-hoc development
+- Native Agent Teams is optional - the plugin works with standard background task dispatch if not enabled

@@ -226,6 +226,8 @@ describe('KanbanApiClient', () => {
 
       const client = createClient({ baseUrl: 'http://localhost:3000', retries: 3 });
       const requestPromise = client.get('/api/board');
+      // Prevent unhandled rejection warning
+      requestPromise.catch(() => {});
 
       // Advance through all retry delays
       await vi.advanceTimersByTimeAsync(1000);
@@ -342,6 +344,7 @@ describe('KanbanApiClient', () => {
 
         const client = createClient({ baseUrl: 'http://localhost:3000', retries: 3 });
         const requestPromise = client.get('/api/board');
+        requestPromise.catch(() => {});
 
         await vi.advanceTimersByTimeAsync(7000); // 1s + 2s + 4s
 
@@ -358,6 +361,7 @@ describe('KanbanApiClient', () => {
 
         const client = createClient({ baseUrl: 'http://localhost:3000', retries: 3 });
         const requestPromise = client.get('/api/board');
+        requestPromise.catch(() => {});
 
         await vi.advanceTimersByTimeAsync(7000);
 
@@ -423,6 +427,7 @@ describe('KanbanApiClient', () => {
 
         const client = createClient({ baseUrl: 'http://localhost:3000', retries: 3 });
         const requestPromise = client.get('/api/board');
+        requestPromise.catch(() => {});
 
         await vi.advanceTimersByTimeAsync(7000);
 
@@ -656,6 +661,7 @@ describe('KanbanApiClient', () => {
       testStartTime = Date.now();
 
       const requestPromise = client.get('/api/board');
+      requestPromise.catch(() => {});
 
       // Advance through all retry delays: 1s + 2s + 4s = 7s total
       await vi.advanceTimersByTimeAsync(1000); // First retry after 1s
@@ -722,6 +728,7 @@ describe('KanbanApiClient', () => {
       const startTime = Date.now();
 
       const requestPromise = client.get('/api/board');
+      requestPromise.catch(() => {});
 
       // Total backoff time for 3 retries: 1s + 2s + 4s = 7s
       // Advance time in small increments to verify proper timing

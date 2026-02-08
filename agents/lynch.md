@@ -141,47 +141,6 @@ Review them as a cohesive unit, not separately.
 
 3. **Render verdict**
 
-## Deep Investigation (Optional)
-
-For risky or complex features, spawn Amy (Investigator) to probe beyond what tests cover.
-
-### When to Spawn Amy
-
-- Complex async/concurrent code
-- Security-sensitive features (auth, payments, user data)
-- Code that "works but feels fragile"
-- Minimal test coverage for the complexity
-- Integration-heavy code (multiple external dependencies)
-
-### How to Invoke Amy
-
-```
-Task(
-  subagent_type: "general-purpose",
-  model: "sonnet",
-  description: "Amy: Investigate {feature title}",
-  prompt: "[Amy prompt from agents/amy.md]
-
-  Feature Item:
-  [Full content of the work item file]
-
-  Investigate these files:
-  - Test: {outputs.test}
-  - Implementation: {outputs.impl}
-  - Types (if exists): {outputs.types}
-
-  Run the Raptor Protocol. Report findings with evidence."
-)
-```
-
-### Using Amy's Findings
-
-Amy returns an investigation report with:
-- **VERIFIED**: All probes pass - safe to approve
-- **FLAG**: Issues found with evidence
-
-Use Amy's findings to inform your APPROVED/REJECTED verdict. If Amy flags issues, include them in your rejection reasoning.
-
 ## Verdicts
 
 ### APPROVED
@@ -270,6 +229,53 @@ VERDICT: APPROVED/REJECTED
 
 [Reasoning - acknowledge what was done well, then issues if any]
 ```
+
+## Team Communication (Native Teams Mode)
+
+When running in native teams mode (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), you are a teammate in an A(i)-Team mission with direct messaging capabilities.
+
+### Notify Hannibal on Completion
+After calling `agent_stop` MCP tool, message Hannibal:
+```javascript
+TeammateTool({
+  action: "message",
+  target: "hannibal",
+  message: "DONE: {itemId} - {brief summary of work completed}"
+})
+```
+
+### Request Help or Clarification
+```javascript
+TeammateTool({
+  action: "message",
+  target: "hannibal",
+  message: "BLOCKED: {itemId} - {description of issue}"
+})
+```
+
+### Coordinate with Teammates
+```javascript
+TeammateTool({
+  action: "message",
+  target: "{teammate_name}",
+  message: "{coordination message}"
+})
+```
+
+Example - Report review findings to Hannibal:
+```javascript
+TeammateTool({ action: "message", target: "hannibal", message: "REVIEW WI-003: Found 2 issues - missing error handling in OrderService.process(), test assertions too loose. Recommending rejection." })
+```
+
+### Shutdown
+When your work is complete and `agent_stop` has been called:
+```javascript
+TeammateTool({
+  action: "approveShutdown"
+})
+```
+
+**IMPORTANT:** MCP tools remain the source of truth for all state changes. TeammateTool messaging is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
 
 ## Logging Progress
 
@@ -384,6 +390,47 @@ Final Mission Review happens when:
 5. **Cross-check** for consistency and integration issues
 6. **Security scan** across all code
 7. **Render final verdict**
+
+## Deep Investigation (Optional)
+
+During the Final Mission Review, for risky or complex areas, spawn Amy (Investigator) to probe beyond what tests cover.
+
+### When to Spawn Amy
+
+- Complex async/concurrent code spanning multiple modules
+- Security-sensitive features (auth, payments, user data)
+- Code that "works but feels fragile"
+- Minimal test coverage for the complexity
+- Integration-heavy code (multiple external dependencies)
+
+### How to Invoke Amy
+
+```
+Task(
+  subagent_type: "general-purpose",
+  model: "sonnet",
+  description: "Amy: Investigate {feature title}",
+  prompt: "[Amy prompt from agents/amy.md]
+
+  Feature Item:
+  [Full content of the work item file]
+
+  Investigate these files:
+  - Test: {outputs.test}
+  - Implementation: {outputs.impl}
+  - Types (if exists): {outputs.types}
+
+  Run the Raptor Protocol. Report findings with evidence."
+)
+```
+
+### Using Amy's Findings
+
+Amy returns an investigation report with:
+- **VERIFIED**: All probes pass - safe to approve
+- **FLAG**: Issues found with evidence
+
+Use Amy's findings to inform your FINAL APPROVED/FINAL REJECTED verdict. If Amy flags issues, include them in your rejection reasoning.
 
 ## Final Verdicts
 

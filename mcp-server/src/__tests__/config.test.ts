@@ -83,19 +83,22 @@ describe('.mcp.json Plugin Configuration', () => {
       expect(entryPoint).toContain('index.js');
     });
 
-    it('should include env object with ATEAM_API_URL', () => {
-      expect(config.mcpServers.ateam?.env).toBeDefined();
-      expect(typeof config.mcpServers.ateam?.env).toBe('object');
-      expect(config.mcpServers.ateam?.env).toHaveProperty('ATEAM_API_URL');
+    it('should not require env in mcp.json (env is configured in settings.local.json)', () => {
+      // ATEAM_API_URL and ATEAM_PROJECT_ID are configured in .claude/settings.local.json
+      // per the /ateam setup command, not in .mcp.json
+      // .mcp.json only needs command and args for MCP server launch
+      expect(config.mcpServers.ateam?.command).toBe('node');
+      expect(config.mcpServers.ateam?.args).toBeDefined();
     });
 
-    it('should have ATEAM_API_URL as a valid URL string', () => {
-      const apiUrl = config.mcpServers.ateam?.env?.ATEAM_API_URL;
-      expect(apiUrl).toBeDefined();
-      expect(typeof apiUrl).toBe('string');
-
-      // Should be a valid URL format
-      expect(() => new URL(apiUrl as string)).not.toThrow();
+    it('should have a valid server configuration without env overrides', () => {
+      // The MCP server reads ATEAM_API_URL from process.env at runtime
+      // (set via .claude/settings.local.json env section)
+      // .mcp.json only defines how to launch the server
+      const ateam = config.mcpServers.ateam;
+      expect(ateam).toBeDefined();
+      expect(ateam?.command).toBe('node');
+      expect(ateam?.args?.[0]).toContain('mcp-server');
     });
   });
 

@@ -12,3 +12,9 @@ node_modules/
 
 # Draft docs
 docs/kanban-ui-prd.md
+
+# Untracked nested directory (git submodule artifact)
+The-Ai-team/
+
+# Review docs (not part of plugin)
+REVIEW_TEAMMATE_TOOL_INTEGRATION.md

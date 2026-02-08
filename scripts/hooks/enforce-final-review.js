@@ -3,42 +3,101 @@
  * enforce-final-review.js - Stop hook for Hannibal
  *
  * Prevents mission from ending without:
- * 1. All items reaching done/
+ * 1. All items reaching done stage
  * 2. Final Mission Review being completed
- * 3. Post-mission checks passing (lint, tests, e2e)
+ * 3. Post-mission checks passing (via mission_postcheck MCP tool)
  *
- * This ensures the workflow is fully executed before Claude stops.
+ * Queries the A(i)-Team API instead of reading filesystem.
+ *
+ * Environment variables:
+ *   ATEAM_API_URL - Base URL for the A(i)-Team API
+ *   ATEAM_PROJECT_ID - Project identifier
+ *
+ * For testing:
+ *   __TEST_MOCK_BOARD__ - JSON string for fake board response
+ *   __TEST_MOCK_MISSION__ - JSON string for fake mission response
+ *   __TEST_MOCK_NO_MISSION__ - Set to 'true' to simulate no active mission
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+const apiUrl = process.env.ATEAM_API_URL || '';
+const projectId = process.env.ATEAM_PROJECT_ID || '';
+const mockBoard = process.env.__TEST_MOCK_BOARD__;
+const mockMission = process.env.__TEST_MOCK_MISSION__;
+const mockNoMission = process.env.__TEST_MOCK_NO_MISSION__;
 
-const missionDir = join(process.cwd(), 'mission');
-const boardPath = join(missionDir, 'board.json');
+async function checkFinalReview() {
+  // Simulate no active mission
+  if (mockNoMission === 'true') {
+    process.exit(0);
+  }
 
-// No active mission - allow stop
-if (!existsSync(boardPath)) {
-  process.exit(0);
-}
+  let boardData;
+  let missionData;
 
-try {
-  const board = JSON.parse(readFileSync(boardPath, 'utf8'));
-  const phases = board.phases || {};
+  if (mockBoard !== undefined || mockMission !== undefined) {
+    // Use test mocks
+    boardData = mockBoard ? JSON.parse(mockBoard) : { columns: {} };
+    missionData = mockMission ? JSON.parse(mockMission) : {};
+  } else {
+    // Query the API
+    if (!apiUrl || !projectId) {
+      // No API config, allow stop
+      process.exit(0);
+    }
+
+    // Fetch board state
+    const boardUrl = `${apiUrl}/api/projects/${projectId}/board`;
+    const boardResp = await fetch(boardUrl, {
+      headers: { 'X-Project-ID': projectId },
+    });
+
+    if (!boardResp.ok) {
+      // No board / API error, allow stop
+      process.exit(0);
+    }
+
+    boardData = await boardResp.json();
+
+    // Fetch mission state
+    const missionUrl = `${apiUrl}/api/projects/${projectId}/missions/current`;
+    const missionResp = await fetch(missionUrl, {
+      headers: { 'X-Project-ID': projectId },
+    });
+
+    if (!missionResp.ok) {
+      // No active mission, allow stop
+      process.exit(0);
+    }
+
+    missionData = await missionResp.json();
+  }
+
+  const columns = boardData.columns || {};
 
   // Check for items still in active stages
-  const activeStages = ['briefings', 'ready', 'testing', 'implementing', 'review', 'probing', 'blocked'];
+  const activeStages = [
+    'briefings',
+    'ready',
+    'testing',
+    'implementing',
+    'review',
+    'probing',
+    'blocked',
+  ];
   const activeCounts = {};
   let totalActive = 0;
 
   for (const stage of activeStages) {
-    const count = phases[stage]?.length || 0;
+    const items = columns[stage] || [];
+    const count = items.length;
     if (count > 0) {
       activeCounts[stage] = count;
       totalActive += count;
     }
   }
 
-  const doneCount = phases.done?.length || 0;
+  const doneItems = columns.done || [];
+  const doneCount = doneItems.length;
 
   // If items are still active, block stop
   if (totalActive > 0) {
@@ -46,37 +105,47 @@ try {
       .map(([stage, count]) => `${stage}: ${count}`)
       .join(', ');
 
-    console.error(`Mission incomplete. ${totalActive} items still in progress.`);
-    console.error(`Status: ${summary}`);
-    console.error(`Done: ${doneCount}`);
+    process.stderr.write(
+      `Mission incomplete. ${totalActive} items still in progress (not done).\n`
+    );
+    process.stderr.write(`Status: ${summary}\n`);
+    process.stderr.write(`Done: ${doneCount}\n`);
     process.exit(2);
   }
 
   // If all items done but no final review verdict, block stop
-  if (doneCount > 0 && !board.mission?.final_review_verdict) {
-    console.error('Final Mission Review required.');
-    console.error(`All ${doneCount} items are done, but Lynch has not completed the final review.`);
-    console.error('Dispatch Lynch for Final Mission Review before ending.');
+  if (doneCount > 0 && !missionData.final_review_verdict) {
+    process.stderr.write('Final Mission Review required.\n');
+    process.stderr.write(
+      `All ${doneCount} items are done, but Lynch has not completed the final review.\n`
+    );
+    process.stderr.write(
+      'Dispatch Lynch for Final Mission Review before ending.\n'
+    );
     process.exit(2);
   }
 
   // If final review done but post-checks not run/passed, block stop
-  if (board.mission?.final_review_verdict && !board.mission?.postcheck?.passed) {
-    console.error('Post-mission checks required.');
-    console.error('Final review is complete, but post-checks have not passed.');
-    console.error('');
-    console.error('Run the post-mission checks:');
-    console.error('  node scripts/mission-postcheck.js');
-    console.error('');
-    console.error('This verifies lint, tests, and e2e all pass after the mission.');
-    process.exit(2);
+  if (missionData.final_review_verdict) {
+    const postcheck = missionData.postcheck;
+    if (!postcheck || !postcheck.passed) {
+      process.stderr.write('Post-mission checks required.\n');
+      process.stderr.write(
+        'Final review is complete, but post-checks have not passed.\n'
+      );
+      process.stderr.write('\n');
+      process.stderr.write(
+        'Run the mission_postcheck MCP tool to verify lint, tests, and e2e all pass.\n'
+      );
+      process.exit(2);
+    }
   }
 
   // Mission complete with final review and passing post-checks - allow stop
   process.exit(0);
-
-} catch (err) {
-  // On error, allow stop (don't block due to parse errors)
-  console.error(`Warning: Could not check mission status: ${err.message}`);
-  process.exit(0);
 }
+
+checkFinalReview().catch(() => {
+  // On any error (API unreachable, etc.), allow stop
+  process.exit(0);
+});

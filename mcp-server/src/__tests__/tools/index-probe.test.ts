@@ -52,119 +52,65 @@ describe('Tool Registration Probe Tests', () => {
   });
 
   describe('Edge Cases: tools/call Handler', () => {
-    it('FIXED: handles undefined request gracefully', async () => {
+    it('FIXED: getToolHandler returns undefined for unknown tools', async () => {
       /**
-       * VERIFIED FIX
-       *
-       * The tools/call handler now correctly checks for undefined request.
-       * Location: mcp-server/src/tools/index.ts
-       *
-       * Fixed code:
-       *   if (!req || !req.params || !req.params.name) {
+       * With the server.tool() API, tool dispatch is handled by the MCP SDK.
+       * Edge case handling (undefined request, empty name, etc.) is managed
+       * by the SDK's internal validation. We verify via getToolHandler.
        */
-      const mockSetRequestHandler = vi.fn();
       const mockServer = {
         name: 'ateam',
         version: '1.0.0',
-        setRequestHandler: mockSetRequestHandler,
+        setRequestHandler: vi.fn(),
         tool: vi.fn(),
       };
 
       registerAllTools(mockServer as never);
 
-      // Find the tools/call handler
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-
-      expect(toolsCallCall).toBeDefined();
-      const handler = toolsCallCall![1];
-
-      // FIXED: Now returns a graceful error response instead of throwing
-      const response = await handler(undefined);
-      expect(response).toHaveProperty('isError', true);
-      expect(response.content[0].text).toContain('Missing tool name');
+      // getToolHandler returns undefined for nonexistent tools
+      expect(getToolHandler(undefined as unknown as string)).toBeUndefined();
     });
 
     it('should handle empty string tool name', async () => {
-      const mockSetRequestHandler = vi.fn();
       const mockServer = {
         name: 'ateam',
         version: '1.0.0',
-        setRequestHandler: mockSetRequestHandler,
+        setRequestHandler: vi.fn(),
         tool: vi.fn(),
       };
 
       registerAllTools(mockServer as never);
 
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      const handler = toolsCallCall![1];
-
-      // Test with empty string tool name
-      const response = await handler({
-        params: {
-          name: '',
-          arguments: {},
-        },
-      });
-      // Empty string is correctly handled as "missing" (good behavior)
-      expect(response).toHaveProperty('isError', true);
-      expect(response.content[0].text).toContain('Missing tool name');
+      // Empty string tool name returns undefined (not found)
+      expect(getToolHandler('')).toBeUndefined();
     });
 
     it('should handle special characters in tool name', async () => {
-      const mockSetRequestHandler = vi.fn();
       const mockServer = {
         name: 'ateam',
         version: '1.0.0',
-        setRequestHandler: mockSetRequestHandler,
+        setRequestHandler: vi.fn(),
         tool: vi.fn(),
       };
 
       registerAllTools(mockServer as never);
 
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      const handler = toolsCallCall![1];
-
-      // Test with special characters (potential injection)
-      const response = await handler({
-        params: {
-          name: 'board_read; rm -rf /',
-          arguments: {},
-        },
-      });
-      expect(response).toHaveProperty('isError', true);
-      expect(response.content[0].text).toContain('Unknown tool');
+      // Special characters in tool name returns undefined (not found)
+      expect(getToolHandler('board_read; rm -rf /')).toBeUndefined();
     });
 
     it('should handle extremely long tool name', async () => {
-      const mockSetRequestHandler = vi.fn();
       const mockServer = {
         name: 'ateam',
         version: '1.0.0',
-        setRequestHandler: mockSetRequestHandler,
+        setRequestHandler: vi.fn(),
         tool: vi.fn(),
       };
 
       registerAllTools(mockServer as never);
 
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      const handler = toolsCallCall![1];
-
-      // Test with extremely long tool name (potential DoS)
-      const response = await handler({
-        params: {
-          name: 'a'.repeat(10000),
-          arguments: {},
-        },
-      });
-      expect(response).toHaveProperty('isError', true);
+      // Extremely long tool name returns undefined (not found)
+      expect(getToolHandler('a'.repeat(10000))).toBeUndefined();
     });
   });
 
@@ -189,26 +135,26 @@ describe('Tool Registration Probe Tests', () => {
   });
 
   describe('Edge Cases: Response Wrapping', () => {
-    it('tools/call should dispatch to registered handlers', async () => {
-      const mockSetRequestHandler = vi.fn();
+    it('server.tool() registers handlers that dispatch to tool implementations', async () => {
+      const mockToolFn = vi.fn();
       const mockServer = {
         name: 'ateam',
         version: '1.0.0',
-        setRequestHandler: mockSetRequestHandler,
-        tool: vi.fn(),
+        setRequestHandler: vi.fn(),
+        tool: mockToolFn,
       };
 
       registerAllTools(mockServer as never);
 
-      // Find tools/call handler
-      const toolsCallCall = mockSetRequestHandler.mock.calls.find(
-        (call) => call[0]?.method === 'tools/call'
-      );
-      expect(toolsCallCall).toBeDefined();
+      // With server.tool() API, each tool is registered individually.
+      // The MCP SDK dispatches tools/call to the correct handler.
+      expect(mockToolFn).toHaveBeenCalled();
 
-      // The handler exists and will dispatch to tool handlers
-      const handler = toolsCallCall![1];
-      expect(typeof handler).toBe('function');
+      // Verify each registration includes a handler function
+      for (const call of mockToolFn.mock.calls) {
+        const handler = call[3]; // 4th arg is the handler
+        expect(typeof handler).toBe('function');
+      }
     });
   });
 

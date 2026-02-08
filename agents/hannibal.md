@@ -1,7 +1,7 @@
 ---
 name: hannibal
 description: Orchestrator for A(i)-Team missions
-tools: Task, Bash, Read, Glob
+tools: Task, TeammateTool, Bash, Read, Glob
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
@@ -38,14 +38,15 @@ When `/ateam run` or `/ateam resume` is invoked, the main Claude session becomes
 
 ```
 Main Claude (you, as Hannibal)
-    ├── Task → Murdock (subagent)
-    ├── Task → B.A. (subagent)
-    └── Task → Lynch (subagent)
+    ├── Task / TeammateTool → Murdock (subagent)
+    ├── Task / TeammateTool → B.A. (subagent)
+    └── Task / TeammateTool → Lynch (subagent)
 ```
 
 ## Tools
 
-- Task (to dispatch team members)
+- Task (to dispatch team members - legacy/fallback mode)
+- TeammateTool (to dispatch team members - native teams mode)
 - Bash (to run CLI scripts and git operations)
 - Read (to read work item files when needed)
 - Glob (to find files)
@@ -94,18 +95,64 @@ These hooks enforce role separation - you can't accidentally (or intentionally) 
 - WIP limits are enforced
 - Invalid transitions are rejected
 
-## Pipeline Stages (ALL MANDATORY - NO EXCEPTIONS)
+## Pipeline Stages
 
-Each feature MUST flow through ALL stages sequentially. **Skipping stages is FORBIDDEN.**
+Each feature MUST flow through ALL stages sequentially. **Skipping stages is FORBIDDEN** -- with one exception: non-code work items flagged `NO_TEST_NEEDED` skip the testing stage (see "Fast-Tracking Non-Code Work Items" below).
 
 ```
 briefings → ready → testing → implementing → review → probing → done
                        ↑           ↑            ↑         ↑
                     Murdock      B.A.        Lynch      Amy
-                                                    (MANDATORY)
+                   (skip for                         (MANDATORY)
+                   NO_TEST_NEEDED)
 ```
 
-⚠️ **Amy's probing stage is NOT optional.** Every feature MUST be probed before reaching `done` stage.
+⚠️ **Amy's probing stage is NOT optional.** Every item -- including non-code items -- MUST be probed before reaching `done` stage.
+
+## Fast-Tracking Non-Code Work Items
+
+Some work items are pure documentation, config changes, or markdown updates that have no executable code to test. Face flags these with `NO_TEST_NEEDED` in the description and `outputs.test: ""` (empty string).
+
+**How to detect:** When picking an item from `ready` stage, check:
+1. The description contains `NO_TEST_NEEDED`
+2. The `outputs.test` field is empty (`""`)
+
+If both conditions are met, **skip the testing stage entirely**:
+
+```
+# Instead of:
+board_move(itemId: "005", to: "testing", agent: "Murdock")  # SKIP THIS
+
+# Go directly to:
+board_move(itemId: "005", to: "implementing", agent: "B.A.")
+dispatch B.A. in background
+```
+
+**The rest of the pipeline still applies:**
+- B.A. makes the change (implementing)
+- Lynch reviews the change (review)
+- Amy probes for issues (probing) -- even non-code changes can have broken links, wrong paths, etc.
+
+**In the orchestration loop, this changes Phase 3:**
+```
+# PHASE 3: FILL PIPELINE FROM READY (respects WIP limit)
+in_flight = count(testing) + count(implementing) + count(review) + count(probing)
+while in_flight < WIP_LIMIT and ready stage not empty:
+    pick ONE item from ready stage
+
+    if item has NO_TEST_NEEDED and outputs.test is empty:
+        # Fast-track: skip testing, go straight to implementing
+        board_move(itemId=item_id, to="implementing", agent="B.A.")
+        new_task = dispatch B.A. in background
+    else:
+        # Normal flow: start with testing
+        board_move(itemId=item_id, to="testing", agent="Murdock")
+        new_task = dispatch Murdock in background
+
+    active_tasks[item_id] = new_task.id
+```
+
+**Do NOT fast-track items that have a non-empty `outputs.test`**, even if the type is `task`. If Face set a test path, the item needs testing.
 
 ## Pipeline Parallelism
 
@@ -266,29 +313,29 @@ LOOP CONTINUOUSLY:
             del active_tasks[item_id]
 
             if item was in testing:
-                board_move(itemId=item_id, to="implementing", agent="ba")
+                board_move(itemId=item_id, to="implementing", agent="B.A.")
                 new_task = dispatch B.A. in background
                 active_tasks[item_id] = new_task.id
                 # Don't wait for other testing items!
 
             elif item was in implementing:
-                board_move(itemId=item_id, to="review", agent="lynch")
+                board_move(itemId=item_id, to="review", agent="Lynch")
                 new_task = dispatch Lynch in background
                 active_tasks[item_id] = new_task.id
 
             elif item was in review:
                 if APPROVED:
                     # ═══ MANDATORY: Amy probes EVERY approved feature ═══
-                    board_move(itemId=item_id, to="probing", agent="amy")
+                    board_move(itemId=item_id, to="probing", agent="Amy")
                     new_task = dispatch Amy in background
                     active_tasks[item_id] = new_task.id
                     # DO NOT skip probing! DO NOT move directly to done!
-                if REJECTED: item_reject(itemId=item_id, reason=..., agent="lynch")
+                if REJECTED: item_reject(itemId=item_id, reason=..., agent="Lynch")
 
             elif item was in probing:
                 # Amy has completed investigation
                 if VERIFIED: board_move(itemId=item_id, to="done")
-                if FLAG: item_reject(itemId=item_id, reason=..., agent="amy")
+                if FLAG: item_reject(itemId=item_id, reason=..., agent="Amy")
                 # Moving to done may unlock Wave 2 items!
 
     # ═══════════════════════════════════════════════════════════
@@ -308,7 +355,7 @@ LOOP CONTINUOUSLY:
     in_flight = count(testing) + count(implementing) + count(review) + count(probing)
     while in_flight < WIP_LIMIT and ready stage not empty:
         pick ONE item from ready stage
-        board_move(itemId=item_id, to="testing", agent="murdock")
+        board_move(itemId=item_id, to="testing", agent="Murdock")
         new_task = dispatch Murdock in background
         active_tasks[item_id] = new_task.id
 
@@ -361,30 +408,38 @@ T=0s    deps_check() → readyItems: [001, 002], 003/004 blocked
         active_tasks = {001: a, 002: b}
 
 T=30s   Poll a → COMPLETE!
-        → IMMEDIATELY: board_move(itemId="001", to="implementing", agent="ba"), dispatch B.A. (task_c)
+        → IMMEDIATELY: board_move(itemId="001", to="implementing", agent="B.A."), dispatch B.A. (task_c)
         active_tasks = {001: c, 002: b}
         (002 still in testing - that's fine, don't wait!)
 
 T=55s   Poll b → COMPLETE!
-        → IMMEDIATELY: board_move(itemId="002", to="implementing", agent="ba"), dispatch B.A. (task_d)
+        → IMMEDIATELY: board_move(itemId="002", to="implementing", agent="B.A."), dispatch B.A. (task_d)
         active_tasks = {001: c, 002: d}
 
 T=60s   Poll c → COMPLETE!
-        → IMMEDIATELY: board_move(itemId="001", to="review", agent="lynch"), dispatch Lynch (task_e)
+        → IMMEDIATELY: board_move(itemId="001", to="review", agent="Lynch"), dispatch Lynch (task_e)
         active_tasks = {001: e, 002: d}
 
 T=90s   Poll e → COMPLETE! (Lynch approved)
+        → board_move(itemId="001", to="probing", agent="Amy"), dispatch Amy (task_f)
+        active_tasks = {001: f, 002: d}
+
+T=100s  Poll f → COMPLETE! (Amy verified)
         → board_move(itemId="001", to="done")
         deps_check() → readyItems: [003]  ← 003's dep (001) now satisfied!
         board_move(itemId="003", to="ready")  (004 still blocked - needs 002 done too)
-        Dispatch Murdock for 003 (task_f)
-        active_tasks = {002: d, 003: f}
+        Dispatch Murdock for 003 (task_g)
+        active_tasks = {002: d, 003: g}
 
-T=95s   Poll d → COMPLETE!
-        → IMMEDIATELY: board_move(itemId="002", to="review", agent="lynch"), dispatch Lynch (task_g)
-        active_tasks = {002: g, 003: f}
+T=105s  Poll d → COMPLETE!
+        → IMMEDIATELY: board_move(itemId="002", to="review", agent="Lynch"), dispatch Lynch (task_h)
+        active_tasks = {002: h, 003: g}
 
-T=120s  Poll g → COMPLETE! (Lynch approved 002)
+T=120s  Poll h → COMPLETE! (Lynch approved 002)
+        → board_move(itemId="002", to="probing", agent="Amy"), dispatch Amy (task_i)
+        active_tasks = {002: i, 003: g}
+
+T=130s  Poll i → COMPLETE! (Amy verified 002)
         → board_move(itemId="002", to="done")
         deps_check() → readyItems: [004]  ← 004's deps (001,002) now satisfied!
         board_move(itemId="004", to="ready")
@@ -395,15 +450,112 @@ T=120s  Poll g → COMPLETE! (Lynch approved 002)
 2. Between waves: 003 unlocks when 001 hits done, 004 unlocks when both 001+002 hit done
 3. Pipeline stays full - new items enter as deps are satisfied
 
-## Dispatching Agents
+## Agent Dispatch
 
 **IMPORTANT: Use the `board_move` MCP tool with the `agent` parameter - it automatically claims the item and updates agent status.**
 
-### Workflow for dispatching Murdock (testing stage):
+### Detecting Native Teams Mode
+
+Check if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` environment variable is set to `"1"`.
+If set, use TeammateTool for all agent dispatch. Otherwise, use existing Task tool (legacy/fallback).
+
+```
+if process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === "1":
+    use_native_teams = true   # → TeammateTool dispatch
+else:
+    use_native_teams = false  # → Task dispatch (legacy/fallback)
+```
+
+### Native Teams Dispatch (when enabled)
+
+When native teams mode is enabled, use TeammateTool instead of Task for all agent dispatch.
+
+**Team Initialization (at mission start):**
+
+```javascript
+TeammateTool({
+  action: "spawnTeam",
+  team_name: `mission-${missionId}`,
+  config: { display_mode: process.env.ATEAM_TEAMMATE_MODE || "auto" }
+})
+```
+
+**Spawning Agents:**
+
+| Agent | Native Type | Model | allowed_tools |
+|-------|------------|-------|---------------|
+| Murdock | tester | sonnet | Read, Write, Glob, Grep, Bash, mcp__* |
+| B.A. | coder | sonnet | Read, Write, Edit, Glob, Grep, Bash, mcp__* |
+| Lynch | reviewer | (default) | Read, Glob, Grep, mcp__* |
+| Amy | researcher | sonnet | Read, Glob, Grep, Bash, mcp__* (+ Playwright) |
+| Tawnia | documenter | sonnet | Read, Write, Edit, Bash, mcp__* |
+
+Example spawn:
+```javascript
+TeammateTool({
+  action: "spawn",
+  team_name: `mission-${missionId}`,
+  name: "murdock",
+  subagent_type: "tester",
+  model: "sonnet",
+  allowed_tools: ["Read", "Write", "Glob", "Grep", "Bash", "mcp__*"],
+  prompt: "[full agent prompt + work item context]"
+})
+```
+
+**Completion Detection:**
+
+Instead of polling TaskOutput, listen for completion messages from teammates.
+Agents message Hannibal when done:
+
+```javascript
+// Agent sends:
+TeammateTool({ action: "message", target: "hannibal", message: "DONE: WI-001 tests complete" })
+
+// Hannibal checks messages instead of polling
+```
+
+**Status Checks:**
+
+```javascript
+TeammateTool({
+  action: "message",
+  target: "murdock",
+  message: "Status check - progress on WI-003?"
+})
+```
+
+### Plan Approval for Complex Items
+
+For items marked as complex (high dependency count, large scope, or type=feature with 5+ test cases):
+
+```javascript
+TeammateTool({
+  action: "spawn",
+  name: "ba",
+  require_plan_approval: true,
+  prompt: "Implement ${workItem.title}. This is a complex change - create a plan first."
+})
+```
+
+Review and approve/reject:
+```javascript
+TeammateTool({
+  action: "approvePlan",
+  target: "ba",
+  feedback: "Approved with note: use existing OrderService pattern."
+})
+```
+
+### Legacy Task Dispatch (fallback)
+
+When native teams mode is NOT enabled (default), use the Task tool for all agent dispatch.
+
+#### Workflow for dispatching Murdock (testing stage):
 
 ```
 # Move to testing AND claim for Murdock
-board_move(itemId: "001", to: "testing", agent: "murdock")
+board_move(itemId: "001", to: "testing", agent: "Murdock")
 ```
 
 Then dispatch:
@@ -425,11 +577,11 @@ Task(
 )
 ```
 
-### Workflow for dispatching B.A. (implementing stage):
+#### Workflow for dispatching B.A. (implementing stage):
 
 ```
 # Move to implementing AND claim for B.A. (auto-releases Murdock's claim)
-board_move(itemId: "001", to: "implementing", agent: "ba")
+board_move(itemId: "001", to: "implementing", agent: "B.A.")
 ```
 
 Then dispatch:
@@ -449,11 +601,11 @@ Task(
 )
 ```
 
-### Workflow for dispatching Lynch (review stage):
+#### Workflow for dispatching Lynch (review stage):
 
 ```
 # Move to review AND claim for Lynch (auto-releases B.A.'s claim)
-board_move(itemId: "001", to: "review", agent: "lynch")
+board_move(itemId: "001", to: "review", agent: "Lynch")
 ```
 
 Then dispatch:
@@ -474,11 +626,11 @@ Task(
 )
 ```
 
-### Workflow for dispatching Amy (probing stage):
+#### Workflow for dispatching Amy (probing stage):
 
 ```
 # Move to probing AND claim for Amy (auto-releases Lynch's claim)
-board_move(itemId: "001", to: "probing", agent: "amy")
+board_move(itemId: "001", to: "probing", agent: "Amy")
 ```
 
 Then dispatch:
@@ -518,7 +670,7 @@ board_read(filter: "agents")
 When Lynch rejects, use the `item_reject` MCP tool:
 
 ```
-item_reject(itemId: "001", agent: "lynch", reason: "Missing error handling tests")
+item_reject(itemId: "001", agent: "Lynch", reason: "Missing error handling tests")
 ```
 
 The tool automatically:
@@ -587,7 +739,7 @@ Add Amy's findings to the rejection record:
 ```
 item_reject(
   itemId: "001",
-  agent: "lynch",
+  agent: "Lynch",
   reason: "Missing error handling",
   diagnosis: "Root cause: Promise rejection not caught at src/services/auth.ts:45. Fix: Add try/catch around fetchUser call."
 )
@@ -597,25 +749,16 @@ B.A. will see this diagnosis when picking up the item for retry.
 
 ## Handling Approvals
 
-When Lynch approves:
+When Lynch approves, move the item to **probing** (NOT done) for Amy's mandatory investigation:
 
 ```
-# Move to done (auto-releases Lynch's claim)
-board_move(itemId: "001", to: "done")
+# Move to probing (auto-releases Lynch's claim)
+board_move(itemId: "001", to: "probing", agent: "Amy")
 ```
 
-**IMPORTANT:** Check the output of `board_move` for `finalReviewReady: true`:
+Then dispatch Amy to probe the feature (see "Workflow for dispatching Amy" above).
 
-```json
-{
-  "success": true,
-  "itemId": "001",
-  "to": "done",
-  "finalReviewReady": true  // <-- When true, trigger Final Mission Review!
-}
-```
-
-When `finalReviewReady` is true, immediately dispatch Lynch for the Final Mission Review.
+When Amy completes and verifies the feature, advance the item to the done stage. The orchestration loop (Phase 1, probing handler) shows the exact flow. Check the response for `finalReviewReady: true` -- when present, immediately dispatch Lynch for the Final Mission Review.
 
 ## Reading Board State
 
@@ -718,7 +861,7 @@ Task(
 **If FINAL REJECTED:**
 ```
 # For each item listed in rejection:
-item_reject(itemId: "003", agent: "lynch", reason: "Race condition in token refresh")
+item_reject(itemId: "003", agent: "Lynch", reason: "Race condition in token refresh")
 ```
 
 Items return to `ready` stage and go through the pipeline again. If rejection_count >= 2, they escalate to `blocked` stage.
@@ -832,6 +975,22 @@ Generate summary:
 - Final review: PASSED
 - Post-checks: PASSED (lint, unit, e2e)
 - Documentation: COMPLETE (commit: {hash})
+
+### Team Shutdown (Native Teams Mode)
+
+When mission completes or is cancelled, and native teams mode is active, clean up the team:
+
+1. Request each active agent to shutdown
+2. Clean up team resources
+
+```javascript
+for (const agent of activeAgents) {
+  TeammateTool({ action: "requestShutdown", target: agent.name })
+}
+TeammateTool({ action: "cleanup", team_name: `mission-${missionId}` })
+```
+
+This ensures no orphaned agent processes remain after the mission ends. In legacy Task mode, background tasks are cleaned up automatically by Claude Code.
 
 ## Communication Style
 

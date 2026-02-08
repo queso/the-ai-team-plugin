@@ -14,13 +14,16 @@ import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
 import { withErrorBoundary, type McpErrorResponse } from '../lib/errors.js';
+import { zodToJsonSchema } from '../lib/schema-utils.js';
+import type { ToolResponse } from '../lib/tool-response.js';
 
 // Initialize HTTP client
 const client = createClient({
   baseUrl: config.apiUrl,
   projectId: config.projectId,
-  timeout: 30000,
-  retries: 3,
+  apiKey: config.apiKey,
+  timeout: config.timeout,
+  retries: config.retries,
 });
 
 // ============================================================================
@@ -58,13 +61,23 @@ export const ItemCreateInputSchema = z.object({
 
 /**
  * Schema for item_update tool input.
+ * Supports partial updates to any work item field.
  */
 export const ItemUpdateInputSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
   status: z.string().optional(),
+  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
   assigned_agent: z.string().optional(),
   rejection_count: z.number().int().min(0).optional(),
+  dependencies: z.array(dependencyIdSchema).optional(),
+  parallel_group: z.string().optional(),
+  outputs: z.object({
+    test: z.string().optional(),
+    impl: z.string().optional(),
+    types: z.string().optional(),
+  }).optional(),
 });
 
 /**
@@ -135,11 +148,6 @@ interface RenderResult {
   markdown: string;
 }
 
-interface ToolResponse<T = unknown> {
-  content: Array<{ type: 'text'; text: string }>;
-  data?: T;
-}
-
 // ============================================================================
 // Tool Handlers
 // ============================================================================
@@ -180,6 +188,19 @@ export async function itemCreate(
 export async function itemUpdate(
   input: ItemUpdateInput
 ): Promise<ToolResponse<WorkItem> | McpErrorResponse> {
+  // Validate input (especially dependency IDs) before sending to API
+  const parsed = ItemUpdateInputSchema.safeParse(input);
+  if (!parsed.success) {
+    const errorMessage = parsed.error.errors
+      .map((e) => e.message)
+      .join('; ');
+    return {
+      isError: true,
+      code: 'VALIDATION_ERROR',
+      message: errorMessage,
+    };
+  }
+
   const handler = async (args: ItemUpdateInput) => {
     const { id, ...updateData } = args;
     const result = await client.patch<WorkItem>(`/api/items/${id}`, updateData);
@@ -189,7 +210,7 @@ export async function itemUpdate(
     };
   };
 
-  return withErrorBoundary(handler)(input);
+  return withErrorBoundary(handler)(parsed.data);
 }
 
 /**
@@ -277,91 +298,6 @@ export async function itemRender(
 // ============================================================================
 
 /**
- * Converts a Zod schema to JSON Schema format for MCP tool registration.
- */
-function zodToJsonSchema(schema: z.ZodType): object {
-  // Get the shape if it's an object schema
-  if (schema instanceof z.ZodObject) {
-    const shape = schema.shape;
-    const properties: Record<string, object> = {};
-    const required: string[] = [];
-
-    for (const [key, value] of Object.entries(shape)) {
-      const zodValue = value as z.ZodTypeAny;
-      properties[key] = getPropertySchema(zodValue);
-
-      // Check if the field is required (not optional and no default)
-      if (!isOptional(zodValue)) {
-        required.push(key);
-      }
-    }
-
-    return {
-      type: 'object',
-      properties,
-      required: required.length > 0 ? required : undefined,
-    };
-  }
-
-  return { type: 'object', properties: {} };
-}
-
-/**
- * Checks if a Zod schema is optional.
- */
-function isOptional(schema: z.ZodTypeAny): boolean {
-  if (schema instanceof z.ZodOptional) return true;
-  if (schema instanceof z.ZodDefault) return true;
-  if (schema._def?.typeName === 'ZodOptional') return true;
-  if (schema._def?.typeName === 'ZodDefault') return true;
-  return false;
-}
-
-/**
- * Gets the JSON Schema representation of a Zod property.
- */
-function getPropertySchema(schema: z.ZodTypeAny): object {
-  // Unwrap optional and default types
-  let unwrapped = schema;
-  if (unwrapped instanceof z.ZodOptional) {
-    unwrapped = unwrapped.unwrap();
-  }
-  if (unwrapped instanceof z.ZodDefault) {
-    unwrapped = unwrapped._def.innerType;
-  }
-
-  // Handle string
-  if (unwrapped instanceof z.ZodString) {
-    return { type: 'string' };
-  }
-
-  // Handle number
-  if (unwrapped instanceof z.ZodNumber) {
-    return { type: 'number' };
-  }
-
-  // Handle enum
-  if (unwrapped instanceof z.ZodEnum) {
-    return { type: 'string', enum: unwrapped.options };
-  }
-
-  // Handle array
-  if (unwrapped instanceof z.ZodArray) {
-    return {
-      type: 'array',
-      items: getPropertySchema(unwrapped.element),
-    };
-  }
-
-  // Handle nested object
-  if (unwrapped instanceof z.ZodObject) {
-    return zodToJsonSchema(unwrapped);
-  }
-
-  return { type: 'string' };
-}
-
-/**
  * Tool definitions for MCP server registration.
  * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
@@ -375,7 +311,7 @@ export const itemTools = [
   },
   {
     name: 'item_update',
-    description: 'Update an existing work item with partial fields. Requires item ID.',
+    description: 'Update an existing work item. Supports: title, description, status, priority, dependencies, parallel_group, outputs, assigned_agent, rejection_count.',
     inputSchema: zodToJsonSchema(ItemUpdateInputSchema),
     zodSchema: ItemUpdateInputSchema,
     handler: itemUpdate,

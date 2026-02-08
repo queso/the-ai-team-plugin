@@ -5,6 +5,44 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-02-07
+
+### Fixed
+
+- **Enforcement hooks now query API** - Both `enforce-completion-log.js` and `enforce-final-review.js` were completely inert, reading from a non-existent local `board.json` instead of the API database. Hooks now query `ATEAM_API_URL` for live mission state. Error messages reference MCP tools instead of legacy scripts. (Finding 1)
+
+- **Pipeline prompt contradictions** - Hannibal's "Handling Approvals" section skipped Amy's mandatory probing stage (review -> done). Lynch's per-feature review section allowed spawning Amy, duplicating the mandatory pipeline stage. Fixed approval flow to include probing, scoped Lynch's deep investigation to Final Mission Review only. (Findings 5, 6)
+
+- **Resume recovery strategies** - Three contradictory recovery approaches in `commands/resume.md`. Consolidated into a single consistent strategy with all stages covered (including `probing`), consistent across legacy and native teams modes. (Finding 7)
+
+- **HTTP client retries:0 bug** - `agents.ts` hardcoded `retries: 0` for agent lifecycle calls. A network blip during `agent_stop` could lose work completion records permanently. Now uses `config.retries` (default 3). (Finding 9)
+
+- **23 test failures across 5 files** - Fixed client retry tests, tool registration tests, server mock, config env var expectations, and API path mismatches. All 1,632 tests now pass (1,221 root + 411 MCP server). (Finding 8)
+
+- **CLAUDE.md documentation inaccuracies** - Updated `plugin.json` path to `.claude-plugin/plugin.json`, corrected Hannibal's hook references, listed all 5 hook scripts, clarified subagent type labels as role descriptions. (Findings 11, 12, 14)
+
+### Added
+
+- **Shared agent validation module** (`mcp-server/src/lib/agents.ts`) - Extracted agent name validation (VALID_AGENTS_LOWER, AGENT_NAME_MAP, normalizeAgentName, AgentNameSchema) from 3 duplicated copies across board.ts, agents.ts, and utils.ts. (Finding 2)
+
+- **Shared schema utilities** (`mcp-server/src/lib/schema-utils.ts`) - Unified `zodToJsonSchema`, `isOptional`, and `getPropertySchema` from 3 incomplete copies, each handling different Zod types. Single module now handles all: ZodEffects, ZodBoolean, ZodEnum, ZodOptional, ZodDefault, ZodString, ZodNumber, ZodArray, ZodObject. (Finding 3)
+
+- **Shared ToolResponse type** (`mcp-server/src/lib/tool-response.ts`) - Consolidated the `ToolResponse` interface from 4 duplicated definitions across all tool modules. (Finding 4)
+
+- **Biome linter** - Configured `@biomejs/biome` for the MCP server with TypeScript rules. `npm run lint` now produces real output. (Finding 17)
+
+### Changed
+
+- **Updated Kanban UI PRD** - Marked `docs/kanban-ui-prd.md` as superseded with pointer to the current API-based architecture. Updated agent roster (added Sosa, Amy, Tawnia) and stage list (added probing). (Finding 13)
+
+- **TDD workflow skill** - Enhanced `skills/tdd-workflow.md` with expanded testing guidance and stage-specific instructions.
+
+### Removed
+
+- **~1,600 lines of legacy dead code** - Removed `lib/board.js`, `lib/lock.js`, `lib/validate.js` (~600 lines) and 18 scripts in `scripts/` (~1,000 lines). These were the legacy CLI interface superseded by the MCP server + API. Cleaned up root `package.json` dependencies (`gray-matter`, `proper-lockfile`). (Finding 15)
+
+---
+
 ## [2.2.0] - 2026-01-28
 
 ### Changed

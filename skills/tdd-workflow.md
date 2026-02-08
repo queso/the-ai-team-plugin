@@ -116,6 +116,65 @@ After tests pass, B.A. can improve code knowing tests catch regressions.
 - Slow but comprehensive
 - Critical paths only
 
+## Test Granularity by Work Item Type
+
+**The `type` field determines how many tests to write:**
+
+| Type | Test Count | Focus |
+|------|------------|-------|
+| `feature` | 3-5 tests | Happy path, error path, key edge cases |
+| `task` | 1-3 smoke tests | "Does it compile? Does it run? Does it integrate?" |
+| `bug` | 2-3 tests | Reproduce bug, verify fix, regression guard |
+| `enhancement` | 2-4 tests | New/changed behavior only |
+
+### Scaffolding Work (`type: "task"`)
+
+Scaffolding items need minimal testing. Test the outcome, not the structure.
+
+**Good tests for scaffolding:**
+- "Does it compile/run without errors?"
+- "Does the integration work end-to-end?"
+- "Can I import and use the types?"
+
+```typescript
+// GOOD: Testing that types work together
+it('types are importable and usable', () => {
+  const order: Order = { id: '123', items: [], total: 0 };
+  expect(order.id).toBe('123');
+});
+
+// GOOD: Testing that config loads and works
+it('loads valid configuration', () => {
+  const config = loadConfig();
+  expect(config.name).toBeDefined();
+  expect(config.version).toMatch(/^\d+\.\d+\.\d+$/);
+});
+```
+
+### Feature Work (`type: "feature"`)
+
+Features need behavioral testing with proper coverage of paths.
+
+```typescript
+describe('OrderService.createOrder', () => {
+  it('creates order with valid items', async () => {
+    // Happy path
+  });
+
+  it('rejects order with empty items', async () => {
+    // Validation error
+  });
+
+  it('handles inventory shortage gracefully', async () => {
+    // Edge case
+  });
+
+  it('calculates total with tax correctly', async () => {
+    // Business logic
+  });
+});
+```
+
 ## A(i)-Team Test Strategy
 
 ```
@@ -124,7 +183,7 @@ Murdock writes:
 ├── Integration tests (integration items)
 └── E2E tests (final integration items)
 
-Coverage target: 80%+
+Coverage target: 80%+ for features, smoke tests for scaffolding
 ```
 
 ## Test Quality Checklist
@@ -138,6 +197,40 @@ Coverage target: 80%+
 - [ ] Tests document expected behavior
 
 ## Anti-Patterns
+
+### Field-by-Field Testing (Most Common Mistake)
+
+This is the #1 anti-pattern for scaffolding work. Don't test every property individually.
+
+```typescript
+// BAD: 39 tests for a Zod schema (actual example that shipped)
+describe('OrderSchema', () => {
+  it('validates id is string', () => { ... });
+  it('validates id is required', () => { ... });
+  it('validates name is string', () => { ... });
+  it('validates name is required', () => { ... });
+  it('validates items is array', () => { ... });
+  // ... 34 more tests like this
+});
+
+// GOOD: 3 tests that prove the schema works
+describe('OrderSchema', () => {
+  it('accepts valid order data', () => {
+    expect(() => OrderSchema.parse(validOrder)).not.toThrow();
+  });
+
+  it('rejects invalid order data', () => {
+    expect(() => OrderSchema.parse({})).toThrow();
+  });
+
+  it('provides useful error messages', () => {
+    const result = OrderSchema.safeParse({ id: 123 });
+    expect(result.error?.issues[0].message).toContain('string');
+  });
+});
+```
+
+**Rule of thumb:** If you're writing more than 5 tests for a type definition, config file, or schema - you're testing structure, not behavior. Step back and ask "what would break in production?"
 
 ### Testing Implementation
 ```typescript

@@ -43,7 +43,29 @@ After Face's first pass creates work items in `briefings` stage, you review them
 
 For each work item in `briefings` stage, systematically evaluate:
 
-### 1. Clarity & Completeness
+### 1. Type Selection
+Verify Face selected the appropriate `type` for each work item:
+
+**Should be `type: "task"`:**
+- Types/interfaces only (no runtime code)
+- Configuration files (package.json, tsconfig, vite.config, etc.)
+- Project scaffolding (directory structure, boilerplate)
+- Utility functions without business logic
+- Test fixtures/helpers
+
+**Should be `type: "feature"`:**
+- User-facing functionality
+- Business logic with behavioral requirements
+- API endpoints with request/response contracts
+- State management with side effects
+- Components that render and respond to user input
+
+**Red flags:**
+- Work item has `outputs.types` but no `outputs.impl` → likely should be `task`, not `feature`
+- Title contains "setup", "configure", "create types" → likely should be `task`
+- All acceptance criteria are about file existence, not behavior → likely should be `task`
+
+### 2. Clarity & Completeness
 - Is the objective unambiguous?
 - Are acceptance criteria specific, measurable, and testable?
 - Is the scope precisely bounded (what's IN vs OUT)?
@@ -51,13 +73,13 @@ For each work item in `briefings` stage, systematically evaluate:
 - **Would two different developers interpret this the same way?**
 - Is there enough context for Murdock to write tests?
 
-### 2. Sizing (Individual)
+### 3. Sizing (Individual)
 - Is this the smallest independently-completable unit?
 - Could it be split further without artificial boundaries?
 - Is it too large (>1 day of focused work)?
 - Does it mix concerns that should be separate items?
 
-### 3. Sizing (Mission-Wide) - CRITICAL
+### 4. Sizing (Mission-Wide) - CRITICAL
 
 **Over-splitting is a common failure mode.** Review the total decomposition:
 - **Item count**: 5-15 items is typical. 20+ is a red flag. 30+ is almost certainly over-split.
@@ -78,7 +100,7 @@ Example consolidation instruction:
 - Merge acceptance criteria from all three
 ```
 
-### 4. Dependencies & Ordering
+### 5. Dependencies & Ordering
 - Are all dependencies explicitly declared?
 - Are there hidden/implicit dependencies not listed?
 - Could circular dependencies form?
@@ -86,25 +108,25 @@ Example consolidation instruction:
 - Are dependencies on external systems/APIs noted?
 - Is the dependency direction correct?
 
-### 5. Output Paths (Critical for A(i)-Team)
+### 6. Output Paths (Critical for A(i)-Team)
 - Does the `outputs` field specify test, impl, and types paths?
 - Do `outputs.test` and `outputs.impl` paths make sense?
 - Do paths follow project conventions?
 - Will output paths conflict with existing files?
 - Are paths consistent across related items?
 
-### 6. Parallel Groups
+### 7. Parallel Groups
 - Are items that modify the same files in the same group?
 - Are independent items in separate groups?
 
-### 7. Testability
+### 8. Testability
 - Can Murdock write meaningful tests from this specification?
 - Are edge cases and error conditions specified?
 - Are performance/timing requirements testable?
 - Is the expected behavior for invalid inputs defined?
 - Are there implicit requirements that should be explicit?
 
-### 8. Architectural Fit
+### 9. Architectural Fit
 - Does this align with existing codebase patterns?
 - Are there integration points that need clarification?
 - Will this require changes to existing interfaces?
@@ -120,6 +142,7 @@ Example consolidation instruction:
 - Contradictory specifications
 - Missing essential acceptance criteria
 - Over-splitting (too many items for the scope)
+- Wrong type selection (scaffolding marked as `feature`)
 
 **WARNING** - Should be addressed but won't block:
 - Item too large (should be split)

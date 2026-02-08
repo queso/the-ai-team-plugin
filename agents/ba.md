@@ -279,6 +279,53 @@ Create the implementation file at `outputs.impl`:
 
 Report back to Hannibal with the file created.
 
+## Team Communication (Native Teams Mode)
+
+When running in native teams mode (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), you are a teammate in an A(i)-Team mission with direct messaging capabilities.
+
+### Notify Hannibal on Completion
+After calling `agent_stop` MCP tool, message Hannibal:
+```javascript
+TeammateTool({
+  action: "message",
+  target: "hannibal",
+  message: "DONE: {itemId} - {brief summary of work completed}"
+})
+```
+
+### Request Help or Clarification
+```javascript
+TeammateTool({
+  action: "message",
+  target: "hannibal",
+  message: "BLOCKED: {itemId} - {description of issue}"
+})
+```
+
+### Coordinate with Teammates
+```javascript
+TeammateTool({
+  action: "message",
+  target: "{teammate_name}",
+  message: "{coordination message}"
+})
+```
+
+Example - Ask Murdock about test expectations:
+```javascript
+TeammateTool({ action: "message", target: "murdock", message: "WI-003: What's the expected error type for invalid orders?" })
+```
+
+### Shutdown
+When your work is complete and `agent_stop` has been called:
+```javascript
+TeammateTool({
+  action: "approveShutdown"
+})
+```
+
+**IMPORTANT:** MCP tools remain the source of truth for all state changes. TeammateTool messaging is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
+
 ## Logging Progress
 
 Log your progress to the Live Feed using the `log` MCP tool:

@@ -61,23 +61,59 @@ export declare const ItemCreateInputSchema: z.ZodObject<{
 }>;
 /**
  * Schema for item_update tool input.
+ * Supports partial updates to any work item field.
  */
 export declare const ItemUpdateInputSchema: z.ZodObject<{
     id: z.ZodString;
     title: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
     status: z.ZodOptional<z.ZodString>;
+    priority: z.ZodOptional<z.ZodEnum<["critical", "high", "medium", "low"]>>;
     assigned_agent: z.ZodOptional<z.ZodString>;
     rejection_count: z.ZodOptional<z.ZodNumber>;
+    dependencies: z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>;
+    parallel_group: z.ZodOptional<z.ZodString>;
+    outputs: z.ZodOptional<z.ZodObject<{
+        test: z.ZodOptional<z.ZodString>;
+        impl: z.ZodOptional<z.ZodString>;
+        types: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        test?: string | undefined;
+        impl?: string | undefined;
+        types?: string | undefined;
+    }, {
+        test?: string | undefined;
+        impl?: string | undefined;
+        types?: string | undefined;
+    }>>;
 }, "strip", z.ZodTypeAny, {
     id: string;
     status?: string | undefined;
     title?: string | undefined;
+    description?: string | undefined;
+    priority?: "critical" | "high" | "medium" | "low" | undefined;
+    dependencies?: string[] | undefined;
+    parallel_group?: string | undefined;
+    outputs?: {
+        test?: string | undefined;
+        impl?: string | undefined;
+        types?: string | undefined;
+    } | undefined;
     assigned_agent?: string | undefined;
     rejection_count?: number | undefined;
 }, {
     id: string;
     status?: string | undefined;
     title?: string | undefined;
+    description?: string | undefined;
+    priority?: "critical" | "high" | "medium" | "low" | undefined;
+    dependencies?: string[] | undefined;
+    parallel_group?: string | undefined;
+    outputs?: {
+        test?: string | undefined;
+        impl?: string | undefined;
+        types?: string | undefined;
+    } | undefined;
     assigned_agent?: string | undefined;
     rejection_count?: number | undefined;
 }>;
@@ -256,19 +292,54 @@ export declare const itemTools: ({
     zodSchema: z.ZodObject<{
         id: z.ZodString;
         title: z.ZodOptional<z.ZodString>;
+        description: z.ZodOptional<z.ZodString>;
         status: z.ZodOptional<z.ZodString>;
+        priority: z.ZodOptional<z.ZodEnum<["critical", "high", "medium", "low"]>>;
         assigned_agent: z.ZodOptional<z.ZodString>;
         rejection_count: z.ZodOptional<z.ZodNumber>;
+        dependencies: z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>;
+        parallel_group: z.ZodOptional<z.ZodString>;
+        outputs: z.ZodOptional<z.ZodObject<{
+            test: z.ZodOptional<z.ZodString>;
+            impl: z.ZodOptional<z.ZodString>;
+            types: z.ZodOptional<z.ZodString>;
+        }, "strip", z.ZodTypeAny, {
+            test?: string | undefined;
+            impl?: string | undefined;
+            types?: string | undefined;
+        }, {
+            test?: string | undefined;
+            impl?: string | undefined;
+            types?: string | undefined;
+        }>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
         status?: string | undefined;
         title?: string | undefined;
+        description?: string | undefined;
+        priority?: "critical" | "high" | "medium" | "low" | undefined;
+        dependencies?: string[] | undefined;
+        parallel_group?: string | undefined;
+        outputs?: {
+            test?: string | undefined;
+            impl?: string | undefined;
+            types?: string | undefined;
+        } | undefined;
         assigned_agent?: string | undefined;
         rejection_count?: number | undefined;
     }, {
         id: string;
         status?: string | undefined;
         title?: string | undefined;
+        description?: string | undefined;
+        priority?: "critical" | "high" | "medium" | "low" | undefined;
+        dependencies?: string[] | undefined;
+        parallel_group?: string | undefined;
+        outputs?: {
+            test?: string | undefined;
+            impl?: string | undefined;
+            types?: string | undefined;
+        } | undefined;
         assigned_agent?: string | undefined;
         rejection_count?: number | undefined;
     }>;

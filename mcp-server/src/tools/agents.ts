@@ -9,56 +9,9 @@
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
-
-/**
- * Valid agent names (lowercase for input validation).
- */
-const VALID_AGENTS_LOWER = [
-  'murdock',
-  'ba',
-  'lynch',
-  'amy',
-  'hannibal',
-  'face',
-  'sosa',
-  'tawnia',
-] as const;
-
-type ValidAgentLower = (typeof VALID_AGENTS_LOWER)[number];
-
-/**
- * Map from lowercase agent names to API-expected format.
- */
-const AGENT_NAME_MAP: Record<ValidAgentLower, string> = {
-  murdock: 'Murdock',
-  ba: 'B.A.',
-  lynch: 'Lynch',
-  amy: 'Amy',
-  hannibal: 'Hannibal',
-  face: 'Face',
-  sosa: 'Sosa',
-  tawnia: 'Tawnia',
-};
-
-/**
- * Normalize agent name to lowercase key format.
- * Handles special cases like "B.A." -> "ba"
- */
-function normalizeAgentName(val: string): string {
-  return val.toLowerCase().replace(/\./g, '');
-}
-
-/**
- * Zod schema for agent name validation.
- * Accepts case-insensitive input, validates, and transforms to API format.
- */
-const AgentNameSchema = z
-  .string()
-  .transform((val) => normalizeAgentName(val) as ValidAgentLower)
-  .refine((val): val is ValidAgentLower => VALID_AGENTS_LOWER.includes(val), {
-    message: `Agent must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
-  })
-  .transform((val) => AGENT_NAME_MAP[val]);
+import { VALID_AGENTS_LOWER, AgentNameSchema } from '../lib/agents.js';
+import type { ToolResponse } from '../lib/tool-response.js';
+import { formatErrorMessage } from '../lib/tool-response.js';
 
 /**
  * Input schema for agent_start tool.
@@ -121,59 +74,15 @@ interface AgentStopResponse {
 }
 
 /**
- * MCP tool response content.
- */
-interface ToolContent {
-  type: 'text';
-  text: string;
-}
-
-/**
- * MCP tool response structure.
- */
-interface ToolResponse {
-  content: ToolContent[];
-  isError?: boolean;
-}
-
-/**
- * Error with status and message properties.
- */
-interface ApiErrorLike {
-  status?: number;
-  message?: string;
-  code?: string;
-}
-
-/**
- * Formats an error message from an API error response.
- */
-function formatErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    const apiError = error as Error & { code?: string };
-    if (apiError.code === 'ECONNREFUSED') {
-      return 'Connection refused - server may be unavailable';
-    }
-    return error.message;
-  }
-
-  const apiError = error as ApiErrorLike;
-  if (apiError.message) {
-    return apiError.message;
-  }
-
-  return 'Unknown error occurred';
-}
-
-/**
  * Creates the HTTP client for API calls.
  */
 function getClient() {
   return createClient({
     baseUrl: config.apiUrl,
     projectId: config.projectId,
-    timeout: 30000,
-    retries: 0,
+    apiKey: config.apiKey,
+    timeout: config.timeout,
+    retries: config.retries,
   });
 }
 

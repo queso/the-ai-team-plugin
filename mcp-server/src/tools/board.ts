@@ -6,6 +6,8 @@
 import { z } from 'zod';
 import { createClient, BoardState, KanbanApiClient, ApiRequestError } from '../client/index.js';
 import { config } from '../config.js';
+import { AgentNameSchema } from '../lib/agents.js';
+import type { ToolResponse, ToolErrorResponse } from '../lib/tool-response.js';
 
 /**
  * Valid stage transitions for the kanban board.
@@ -37,10 +39,11 @@ export const BoardMoveInputSchema = z.object({
 
 /**
  * Zod schema for board_claim input.
+ * Agent name accepts lowercase (murdock, ba, lynch, amy) and transforms to API format.
  */
 export const BoardClaimInputSchema = z.object({
   itemId: z.string().min(1, 'itemId is required'),
-  agent: z.string().min(1, 'agent name is required'),
+  agent: AgentNameSchema,
 });
 
 /**
@@ -85,22 +88,7 @@ export interface ReleaseResult {
   itemId: string;
 }
 
-/**
- * Successful tool response structure.
- */
-export interface ToolResponse<T = unknown> {
-  content: Array<{ type: 'text'; text: string }>;
-  data?: T;
-}
-
-/**
- * Error response structure for validation failures.
- */
-export interface ToolErrorResponse {
-  isError: true;
-  code: string;
-  message: string;
-}
+export type { ToolResponse, ToolErrorResponse };
 
 /**
  * Create a default HTTP client using the config.
