@@ -71,6 +71,53 @@ Write ONLY tests and type definitions. **Do NOT write implementation code** - th
 
 **Mindset:** "What would break in production?" - test that.
 
+## What NOT to Test
+
+Some things produce useless tests that waste pipeline time and clutter the codebase. These anti-patterns were identified in audit and are now explicitly forbidden.
+
+**NEVER write tests that:**
+- **Grep markdown/documentation files for content** - Testing that a README contains a specific heading or keyword is not a test. Documentation correctness is a review concern, not a testing concern.
+- **Verify config file existence or static JSON content** - Testing that `.eslintrc` exists or that `package.json` has a specific field is meaningless. These files are committed to git -- their existence is guaranteed.
+- **Check whether deleted files stay deleted** - Git handles file tracking. A test asserting a file does not exist is testing git, not your code.
+- **Assert static file content matches expectations** - If the test just reads a file and compares it to a hardcoded string, it is a snapshot of the file, not a behavioral test.
+- **Validate documentation accuracy** - "Does the README accurately describe the API?" is a review task for Lynch, not a test for Murdock.
+
+**Examples of useless tests (DO NOT write these):**
+```typescript
+// BAD: Testing markdown content
+it('should have API section in README', () => {
+  const content = fs.readFileSync('README.md', 'utf-8');
+  expect(content).toContain('## API');  // This tests nothing useful
+});
+
+// BAD: Testing config existence
+it('should have eslint config', () => {
+  expect(fs.existsSync('.eslintrc.json')).toBe(true);  // Git tracks this
+});
+
+// BAD: Testing static JSON
+it('should have correct package name', () => {
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+  expect(pkg.name).toBe('my-app');  // Not behavioral
+});
+
+// BAD: Testing file deletion
+it('should not have legacy config', () => {
+  expect(fs.existsSync('old-config.json')).toBe(false);  // Git handles this
+});
+```
+
+## Handling NO_TEST_NEEDED Items
+
+If you receive a work item with `NO_TEST_NEEDED` in the description and `outputs.test` is empty:
+
+**You should not be dispatched for this item at all.** Hannibal should skip the testing stage and move it directly to implementing. If you ARE dispatched for such an item by mistake:
+
+1. Log the situation: `log(agent: "Murdock", message: "Item {id} is flagged NO_TEST_NEEDED - no tests to write")`
+2. Call `agent_stop` with `status: "success"` and `summary: "No tests needed - item is a non-code change (documentation/config)"` with `files_created: []`
+3. Do NOT create an empty test file or a placeholder test
+4. Report back to Hannibal that no tests were written
+
 ## Testing Best Practices
 
 - **Start with the happy path**: Verify the main functionality works before testing edge cases

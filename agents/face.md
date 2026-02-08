@@ -85,6 +85,16 @@ Choose the appropriate type based on the nature of the work:
 - Test fixtures/helpers
 - Directory structure creation
 
+**Non-code work (use `type: "task"` with NO_TEST_NEEDED):**
+- Documentation updates (README, CHANGELOG, markdown files)
+- Config file changes (.gitignore, .eslintrc, prettier, CI configs)
+- Markdown spec fixes or PRD updates
+- File deletions or renames (git tracks these)
+- Comment-only changes or license updates
+- Static asset additions (images, fonts, SVGs)
+
+For these items, set `outputs.test: ""` (empty string) and include `NO_TEST_NEEDED` in the description. This tells Murdock and Hannibal that the item should bypass the testing stage entirely. See "Non-Code Work Items" below for details.
+
 **Feature indicators** (use `type: "feature"`):
 - User-facing functionality with behavioral requirements
 - Business logic with state changes
@@ -96,6 +106,9 @@ Choose the appropriate type based on the nature of the work:
 - "Implement order creation API" → `type: "feature"` (business logic, user-facing)
 - "Set up Vitest configuration" → `type: "task"` (infrastructure)
 - "Add order validation rules" → `type: "feature"` (business logic)
+- "Update README with API docs" → `type: "task"` + NO_TEST_NEEDED (documentation)
+- "Fix typos in CHANGELOG" → `type: "task"` + NO_TEST_NEEDED (markdown)
+- "Add .env.example" → `type: "task"` + NO_TEST_NEEDED (config)
 
 ## Work Item Sizing
 
@@ -139,6 +152,56 @@ acceptance:
   - "Specific, measurable criterion 2"
 context: "Any information the agents need"
 ```
+
+## Non-Code Work Items
+
+Some work items involve no executable code -- documentation updates, config changes, markdown fixes, file deletions. These items produce nothing that can be meaningfully unit tested.
+
+**How to flag a non-code work item:**
+
+1. Set `type: "task"`
+2. Set `outputs.test: ""` (empty string -- no test file)
+3. Set `outputs.impl` to the file being changed (e.g., `"README.md"`, `".gitignore"`)
+4. Include `NO_TEST_NEEDED` on its own line in the description field
+
+Example:
+```
+item_create(
+  title: "Update README with new API endpoints",
+  type: "task",
+  description: "Add documentation for the /orders and /refunds endpoints.\n\nNO_TEST_NEEDED\nThis is a documentation-only change.",
+  outputs: {"test": "", "impl": "README.md"},
+  priority: "low"
+)
+```
+
+**What this changes in the pipeline:**
+- Hannibal skips the testing stage for this item (moves directly from `ready` to `implementing`)
+- B.A. makes the change
+- Lynch still reviews (catches typos, formatting, accuracy)
+- Amy still probes (verifies links work, content is correct)
+
+**What qualifies as NO_TEST_NEEDED:**
+
+| Work | Reason |
+|------|--------|
+| Markdown/documentation updates | No runtime behavior to test |
+| Config file changes (.gitignore, .eslintrc, CI yaml) | Static config -- no assertions possible beyond "file exists" |
+| File deletions or renames | Git tracks these; testing deletion is meaningless |
+| Comment-only code changes | No behavior change |
+| License or legal text updates | Static content |
+| Static asset additions (images, fonts) | Not executable |
+
+**What does NOT qualify -- always needs tests:**
+
+| Work | Reason |
+|------|--------|
+| New TypeScript types that are used at runtime | Types affect compilation and behavior |
+| Config files that are loaded by code (vite.config, jest.config) | Config errors cause runtime failures |
+| Package.json script changes | Scripts are executable |
+| Any file imported by source code | Has runtime impact |
+
+When in doubt, leave `outputs.test` populated. A minimal smoke test is better than a false NO_TEST_NEEDED flag on something that has runtime impact.
 
 ## Pipeline Flow
 

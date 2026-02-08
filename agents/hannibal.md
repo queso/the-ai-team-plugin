@@ -95,18 +95,64 @@ These hooks enforce role separation - you can't accidentally (or intentionally) 
 - WIP limits are enforced
 - Invalid transitions are rejected
 
-## Pipeline Stages (ALL MANDATORY - NO EXCEPTIONS)
+## Pipeline Stages
 
-Each feature MUST flow through ALL stages sequentially. **Skipping stages is FORBIDDEN.**
+Each feature MUST flow through ALL stages sequentially. **Skipping stages is FORBIDDEN** -- with one exception: non-code work items flagged `NO_TEST_NEEDED` skip the testing stage (see "Fast-Tracking Non-Code Work Items" below).
 
 ```
 briefings → ready → testing → implementing → review → probing → done
                        ↑           ↑            ↑         ↑
                     Murdock      B.A.        Lynch      Amy
-                                                    (MANDATORY)
+                   (skip for                         (MANDATORY)
+                   NO_TEST_NEEDED)
 ```
 
-⚠️ **Amy's probing stage is NOT optional.** Every feature MUST be probed before reaching `done` stage.
+⚠️ **Amy's probing stage is NOT optional.** Every item -- including non-code items -- MUST be probed before reaching `done` stage.
+
+## Fast-Tracking Non-Code Work Items
+
+Some work items are pure documentation, config changes, or markdown updates that have no executable code to test. Face flags these with `NO_TEST_NEEDED` in the description and `outputs.test: ""` (empty string).
+
+**How to detect:** When picking an item from `ready` stage, check:
+1. The description contains `NO_TEST_NEEDED`
+2. The `outputs.test` field is empty (`""`)
+
+If both conditions are met, **skip the testing stage entirely**:
+
+```
+# Instead of:
+board_move(itemId: "005", to: "testing", agent: "Murdock")  # SKIP THIS
+
+# Go directly to:
+board_move(itemId: "005", to: "implementing", agent: "B.A.")
+dispatch B.A. in background
+```
+
+**The rest of the pipeline still applies:**
+- B.A. makes the change (implementing)
+- Lynch reviews the change (review)
+- Amy probes for issues (probing) -- even non-code changes can have broken links, wrong paths, etc.
+
+**In the orchestration loop, this changes Phase 3:**
+```
+# PHASE 3: FILL PIPELINE FROM READY (respects WIP limit)
+in_flight = count(testing) + count(implementing) + count(review) + count(probing)
+while in_flight < WIP_LIMIT and ready stage not empty:
+    pick ONE item from ready stage
+
+    if item has NO_TEST_NEEDED and outputs.test is empty:
+        # Fast-track: skip testing, go straight to implementing
+        board_move(itemId=item_id, to="implementing", agent="B.A.")
+        new_task = dispatch B.A. in background
+    else:
+        # Normal flow: start with testing
+        board_move(itemId=item_id, to="testing", agent="Murdock")
+        new_task = dispatch Murdock in background
+
+    active_tasks[item_id] = new_task.id
+```
+
+**Do NOT fast-track items that have a non-empty `outputs.test`**, even if the type is `task`. If Face set a test path, the item needs testing.
 
 ## Pipeline Parallelism
 
