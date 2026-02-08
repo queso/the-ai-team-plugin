@@ -10,9 +10,6 @@ node_modules/
 # OS files
 .DS_Store
 
-# Draft docs
-docs/kanban-ui-prd.md
-
 # Untracked nested directory (git submodule artifact)
 The-Ai-team/
 
