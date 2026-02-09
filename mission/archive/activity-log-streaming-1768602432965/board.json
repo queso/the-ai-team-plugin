@@ -1,0 +1,53 @@
+{
+  "mission": {
+    "name": "Activity Log Streaming",
+    "status": "planning",
+    "created_at": "2026-01-16T22:19:39.186Z"
+  },
+  "project": "Activity Log Streaming",
+  "wip_limit": 3,
+  "max_wip": 5,
+  "created_at": "2026-01-16T22:19:39.186Z",
+  "updated_at": "2026-01-16T22:19:39.186Z",
+  "stats": {
+    "total_items": 0,
+    "completed": 0,
+    "in_flight": 0,
+    "blocked": 0,
+    "rejected_count": 0
+  },
+  "phases": {
+    "briefings": [],
+    "ready": [],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "done": [],
+    "blocked": []
+  },
+  "assignments": {},
+  "agents": {
+    "Hannibal": {
+      "status": "idle"
+    },
+    "Face": {
+      "status": "idle"
+    },
+    "Murdock": {
+      "status": "idle"
+    },
+    "B.A.": {
+      "status": "idle"
+    },
+    "Lynch": {
+      "status": "idle"
+    }
+  },
+  "wip_limits": {
+    "testing": 2,
+    "implementing": 3,
+    "review": 2
+  },
+  "dependency_graph": {},
+  "parallel_groups": {}
+}

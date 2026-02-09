@@ -1,0 +1,103 @@
+{
+  "mission": {
+    "name": "Activity Log Streaming",
+    "status": "planning",
+    "created_at": "2026-01-16T22:27:12.967Z"
+  },
+  "project": "Activity Log Streaming",
+  "wip_limit": 3,
+  "max_wip": 5,
+  "created_at": "2026-01-16T22:27:12.968Z",
+  "updated_at": "2026-01-16T23:12:53.046Z",
+  "stats": {
+    "total_items": 5,
+    "completed": 5,
+    "in_flight": 0,
+    "blocked": 0,
+    "backlog": 0,
+    "rejected_count": 0
+  },
+  "phases": {
+    "briefings": [],
+    "ready": [],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "done": [
+      "001",
+      "002",
+      "003",
+      "004",
+      "005"
+    ],
+    "blocked": []
+  },
+  "assignments": {},
+  "agents": {
+    "Hannibal": {
+      "status": "idle"
+    },
+    "Face": {
+      "status": "idle"
+    },
+    "Murdock": {
+      "status": "idle"
+    },
+    "B.A.": {
+      "status": "idle"
+    },
+    "Lynch": {
+      "status": "idle"
+    },
+    "murdock": {
+      "status": "idle",
+      "current_item": null
+    },
+    "ba": {
+      "status": "idle",
+      "current_item": null
+    },
+    "lynch": {
+      "status": "idle",
+      "current_item": null
+    }
+  },
+  "wip_limits": {
+    "testing": 2,
+    "implementing": 3,
+    "review": 2
+  },
+  "dependency_graph": {
+    "001": [],
+    "002": [
+      "001"
+    ],
+    "003": [
+      "001"
+    ],
+    "004": [
+      "003"
+    ],
+    "005": [
+      "002",
+      "004"
+    ]
+  },
+  "parallel_groups": {
+    "types": [
+      "001"
+    ],
+    "sse": [
+      "002"
+    ],
+    "hooks": [
+      "003"
+    ],
+    "page": [
+      "004"
+    ],
+    "integration": [
+      "005"
+    ]
+  }
+}

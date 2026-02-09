@@ -1,0 +1,167 @@
+2026-01-18T19:25:10.713Z [Hannibal] Mission initialized: PRD 011: Filter Bar & Project Name
+2026-01-18T19:26:30.771Z [Face] Created item 001: Project name extraction in BoardService
+2026-01-18T19:26:37.333Z [Face] Created item 002: Project name in metadata API response
+2026-01-18T19:26:46.190Z [Face] Created item 003: Project name display in header
+2026-01-18T19:26:54.110Z [Face] Created item 004: Filter state types and hook
+2026-01-18T19:27:01.888Z [Face] Created item 005: Filter utility functions
+2026-01-18T19:27:09.772Z [Face] Created item 006: FilterBar component with dropdowns
+2026-01-18T19:27:17.587Z [Face] Created item 007: Search input in FilterBar
+2026-01-18T19:27:25.452Z [Face] Created item 008: Active filter indicators and clear button
+2026-01-18T19:27:33.115Z [Face] Created item 009: Filter integration in main page
+2026-01-18T19:27:40.651Z [Face] Created item 010: Empty state when no items match filters
+2026-01-18T19:27:48.079Z [Face] Created item 011: Keyboard shortcuts for search
+2026-01-18T19:32:28.694Z [Hannibal] Updated 001: outputs, context, objective
+2026-01-18T19:32:40.988Z [Hannibal] Updated 002: context, objective, acceptance
+2026-01-18T19:32:54.800Z [Hannibal] Updated 003: context, objective, acceptance
+2026-01-18T19:33:06.665Z [Hannibal] Updated 004: outputs, context
+2026-01-18T19:33:16.776Z [Hannibal] Updated 005: context
+2026-01-18T19:34:21.373Z [Hannibal] Feature 001 → ready
+2026-01-18T19:34:22.139Z [Hannibal] Feature 004 → ready
+[Hannibal] Mission PRD 011 activated. Moving items 001, 004 to testing.
+[Hannibal] Dispatching Murdock to write tests for items 001 and 004
+2026-01-18T19:39:01.074Z [Murdock] Started work on 001
+2026-01-18T19:39:02.579Z [Murdock] Started work on 004
+2026-01-18T19:39:04.599Z [Murdock] Starting tests for project name extraction in BoardService
+2026-01-18T19:39:16.602Z [Murdock] Writing tests for filter state types and useFilterState hook
+2026-01-18T19:40:13.125Z [Murdock] Created 13 test cases for project name extraction - 10 failing as expected (awaiting implementation)
+2026-01-18T19:40:18.968Z [Murdock] ✓ 001: Created 13 test cases covering getProjectName() happy path, edge cases (root path, trailing slash, nested paths), and getBoardMetadata integration. Added projectName to BoardMetadata type. All 10 implementation tests failing as expected.
+2026-01-18T19:40:23.126Z [Murdock] Created 23 test cases for filter state types and useFilterState hook
+2026-01-18T19:40:28.615Z [Murdock] ✓ 004: Created 23 test cases covering TypeFilter, AgentFilter, StatusFilter, FilterState types and useFilterState hook (default values, setters, resetFilters, stable references)
+[Hannibal] Items 001, 004 tests complete. Moving to implementing stage, dispatching B.A.
+2026-01-18T19:41:36.175Z [B.A.] Implementing filter state types and useFilterState hook
+2026-01-18T19:41:41.926Z [B.A.] Implementing getProjectName method for BoardService
+2026-01-18T19:42:20.614Z [B.A.] All 31 tests passing for filter state types and hook
+2026-01-18T19:42:21.339Z [B.A.] ✓ 004: Implemented filter state types (TypeFilter, AgentFilter, StatusFilter, FilterState) and useFilterState hook with setter functions and resetFilters. All 31 tests passing.
+2026-01-18T19:42:51.400Z [B.A.] All 13 project name tests passing. Implementation complete.
+2026-01-18T19:42:56.748Z [B.A.] ✓ 001: Implemented getProjectName() method in BoardService and updated getBoardMetadata() to include projectName. All 13 tests passing.
+[Hannibal] Items 001, 004 implementation complete. Moving to review, dispatching Lynch.
+2026-01-18T19:44:06.615Z [Lynch] Starting review of items 001 and 004
+2026-01-18T19:44:19.830Z [Lynch] Running test suite for items 001 and 004 - ALL 44 TESTS PASS
+2026-01-18T19:44:52.685Z [Lynch] APPROVED - Items 001 and 004 pass all checks
+2026-01-18T19:45:00.588Z [Lynch] ✓ 001: APPROVED - All 13 tests pass. getProjectName() correctly extracts parent folder using path.resolve/dirname/basename. Method integrated into getBoardMetadata(). Type properly added as optional for backwards compatibility. Edge cases covered.
+2026-01-18T19:45:01.338Z [Lynch] ✓ 004: APPROVED - All 31 tests pass. TypeFilter/AgentFilter/StatusFilter types match PRD exactly. AgentFilter smartly uses AgentName union. useFilterState hook has stable callbacks, proper state management, and reset function. Type safety verified with ts-expect-error tests.
+[Hannibal] Items 001, 004 approved by Lynch. Moving to probing with Amy. Starting wave 2: items 002, 005, 006 to testing.
+2026-01-18T19:46:02.393Z [Murdock] Started work on 002
+2026-01-18T19:46:08.393Z [Amy] Investigating items 001 and 004 for bugs beyond test coverage
+2026-01-18T19:46:22.878Z [Amy] Running Raptor Protocol on items 001 and 004
+2026-01-18T19:46:24.290Z [Murdock] Writing tests for API metadata projectName (item 002)
+2026-01-18T19:46:49.147Z [Murdock] ✓ 002: Created 8 test cases verifying projectName in API metadata response - all passing
+2026-01-18T19:46:49.999Z [Murdock] Started work on 005
+2026-01-18T19:46:55.475Z [Murdock] Starting tests for filter utility functions (item 005)
+2026-01-18T19:47:51.593Z [Murdock] ✓ 005: Created 32 test cases for filter utility functions covering matchesType, matchesAgent, matchesStatus, matchesSearch, and filterWorkItems with AND logic
+2026-01-18T19:47:52.358Z [Murdock] Started work on 006
+2026-01-18T19:47:59.004Z [Murdock] Starting tests for FilterBar component (item 006)
+2026-01-18T19:48:03.579Z [Amy] Executing edge case probes for items 001 and 004
+2026-01-18T19:48:50.617Z [Murdock] ✓ 006: Created 29 test cases for FilterBar component covering rendering, dropdowns, styling, selected states, and layout requirements
+2026-01-18T19:48:51.360Z [Murdock] Tests complete for items 002, 005, 006 - ready for implementation
+2026-01-18T19:48:54.492Z [Amy] VERIFIED - Items 001 and 004 pass all probes
+2026-01-18T20:26:35.3NZ [Hannibal] Items 001, 004 → done. Dispatching B.A. to implement items 002, 005, 006
+2026-01-18T20:27:19.772Z [B.A.] Starting implementation of filter utility functions
+2026-01-18T20:27:22.269Z [B.A.] Starting implementation of project name in metadata API response
+2026-01-18T20:27:32.192Z [B.A.] Implementing FilterBar component with three dropdowns
+2026-01-18T20:27:59.496Z [B.A.] All 8 tests passing for item 002 - implementation verified complete
+2026-01-18T20:28:00.295Z [B.A.] ✓ 002: Verified implementation complete - BoardMetadata type has projectName field, BoardService.getBoardMetadata() populates it, API route returns it. All 8 tests passing.
+2026-01-18T20:28:04.807Z [B.A.] All 30 FilterBar tests passing
+2026-01-18T20:28:05.121Z [B.A.] All 46 filter-utils tests passing
+2026-01-18T20:28:05.844Z [B.A.] ✓ 005: Implemented 5 filter utility functions: matchesType, matchesAgent, matchesStatus, matchesSearch, filterWorkItems. All 46 tests passing.
+2026-01-18T20:28:09.415Z [B.A.] ✓ 006: Implemented FilterBar component with three dropdowns (Type, Agent, Status). All 30 tests passing.
+2026-01-18T20:29:57.3NZ [B.A.] ✓ 002: Verified API metadata endpoint returns projectName - all 8 tests pass
+2026-01-18T20:29:57.3NZ [B.A.] ✓ 005: Implemented filter utils (matchesType, matchesAgent, matchesStatus, matchesSearch, filterWorkItems) - all 46 tests pass
+2026-01-18T20:29:57.3NZ [B.A.] ✓ 006: Implemented FilterBar component with 3 dropdowns and full styling - all 30 tests pass
+2026-01-18T20:30:07.3NZ [Hannibal] Items 002, 005, 006 implementation complete. Moving to review, dispatching Lynch.
+2026-01-18T20:30:32.590Z [Lynch] Starting review of items 002, 005, 006
+2026-01-18T20:31:20.924Z [Lynch] Running test suite for items 002, 005, 006
+2026-01-18T20:31:25.040Z [Lynch] APPROVED - All items (002, 005, 006) pass review. Tests pass, implementations match specs.
+2026-01-18T20:31:33.346Z [Lynch] ✓ 002: APPROVED - Tests pass (8 tests), projectName correctly flows from BoardService through API. Type is defined in BoardMetadata.
+2026-01-18T20:31:34.047Z [Lynch] ✓ 005: APPROVED - Tests pass (46 tests), all 5 filter functions correctly implemented with AND logic. Status filter matches PRD spec.
+2026-01-18T20:31:34.766Z [Lynch] ✓ 006: APPROVED - Tests pass (30 tests), FilterBar has correct styling (48px h-12, bg-gray-800), three dropdowns with proper options and interactions.
+2026-01-18T20:41:52.3NZ [Lynch] ✓ 002, 005, 006: APPROVED - All tests pass, implementations correct
+2026-01-18T20:41:55.3NZ [Hannibal] Items 002, 005, 006 approved. Moving to probing with Amy. Starting wave 2: items 003, 007, 008 to testing.
+2026-01-18T20:42:37.184Z [Murdock] Started work on 003
+2026-01-18T20:42:43.803Z [Amy] Starting investigation of items 002, 005, 006
+2026-01-18T20:43:01.273Z [Murdock] Starting tests for Wave 2 items: 003, 007, 008
+2026-01-18T20:43:14.003Z [Amy] Running Raptor Protocol on items 002, 005, 006
+2026-01-18T20:45:27.312Z [Murdock] Created 57 test cases across 3 files for Wave 2 items - all failing as expected
+2026-01-18T20:45:32.676Z [Murdock] Started work on 007
+2026-01-18T20:45:33.378Z [Murdock] Started work on 008
+2026-01-18T20:45:46.835Z [Murdock] ✓ 003: Created 16 test cases for project name display in header: container sizing (160px), border styling, text styling (Inter 14px, weight 600, white), hover effect (green), click handler, responsive hiding below 1024px, edge cases
+2026-01-18T20:45:47.629Z [Murdock] ✓ 007: Created 21 test cases for search input in FilterBar: positioning (right side, margin-left:auto), sizing (200px), search icon, placeholder styling, input styling (background, border-radius, padding), 300ms debounce behavior, clear button visibility and functionality
+2026-01-18T20:45:48.370Z [Murdock] ✓ 008: Created 20 test cases for active filter indicators: green tint on active dropdowns (bg/border), clear filters button visibility, button styling (gray text, white hover, X icon 12px), clear filters functionality, button positioning
+2026-01-18T20:46:42.567Z [Amy] VERIFIED - Items 002, 005, 006 pass all probes. Minor accessibility warning in FilterBar (aria-selected).
+2026-01-18T20:46:52.637Z [Amy] ✓ 002: VERIFIED - API wiring confirmed. projectName flows from BoardService.getProjectName() through API. 8 tests pass. Endpoint returns correct value.
+2026-01-18T20:46:53.369Z [Amy] ✓ 005: VERIFIED - All 5 filter functions work correctly. Edge cases for undefined/null handled by parser validation. 46 tests pass.
+2026-01-18T20:46:54.137Z [Amy] ✓ 006: VERIFIED - FilterBar renders 3 dropdowns correctly. Minor INFO: aria-selected missing on options (lint warning). 30 tests pass.
+2026-01-18T20:48:35.3NZ [Amy] ✓ 002, 005, 006: VERIFIED - All probes pass, implementations correct
+2026-01-18T20:48:35.3NZ [Murdock] ✓ 003: Created 16 tests for header project name display
+2026-01-18T20:48:35.3NZ [Murdock] ✓ 007: Created 21 tests for FilterBar search input with debounce
+2026-01-18T20:48:35.3NZ [Murdock] ✓ 008: Created 20 tests for active filter indicators and clear button
+2026-01-18T20:48:50.3NZ [Hannibal] Items 002, 005, 006 → done. Items 003, 007, 008 → implementing. Dispatching B.A.
+2026-01-18T20:49:29.663Z [B.A.] Implementing search input in FilterBar (item 007)
+2026-01-18T20:49:30.523Z [B.A.] Implementing project name display in header
+2026-01-18T20:49:31.695Z [B.A.] Implementing active filter indicators and clear button (item 008)
+2026-01-18T20:49:58.916Z [B.A.] All 16 project name tests passing
+2026-01-18T20:50:08.735Z [B.A.] ✓ 003: Implemented project name display in header: added projectName/onProjectNameClick props, 160px container with right border, Inter 14px font-semibold white text with green hover, responsive hiding below 1024px, all 16 tests passing
+2026-01-18T20:50:50.346Z [B.A.] All 71 filter-bar tests passing (20 active indicator tests + 21 search tests + 30 base tests)
+2026-01-18T20:50:56.218Z [B.A.] All 21 search input tests passing
+2026-01-18T20:50:56.987Z [B.A.] ✓ 008: Implemented active filter indicators: green tint (bg-green-500/20, border-green-500) on active dropdowns, clear filters button with X icon that appears when any filter is non-default. All 20 tests passing.
+2026-01-18T20:50:57.020Z [B.A.] ✓ 007: Implemented search input in FilterBar with 300ms debounce, all 21 tests passing
+2026-01-18T20:57:02.3NZ [B.A.] ✓ 003: Implemented project name display in header - all 16 tests pass
+2026-01-18T20:57:02.3NZ [B.A.] ✓ 007: Implemented search input with 300ms debounce - all 21 tests pass
+2026-01-18T20:57:02.3NZ [B.A.] ✓ 008: Implemented active filter indicators and clear button - all 20 tests pass
+2026-01-18T20:57:08.3NZ [Hannibal] Items 003, 007, 008 implementation complete. Moving to review, dispatching Lynch. Starting wave 3: items 009, 010, 011 to testing.
+2026-01-18T20:57:50.204Z [Murdock] Started work on 009
+2026-01-18T20:57:51.020Z [Murdock] Started work on 010
+2026-01-18T20:57:51.762Z [Murdock] Started work on 011
+2026-01-18T20:57:52.451Z [Murdock] Starting Wave 3 tests: items 009, 010, 011 - filter integration, empty state, keyboard shortcuts
+2026-01-18T20:57:56.021Z [Lynch] Reviewing items 003, 007, 008 for correctness and completeness
+2026-01-18T20:58:40.183Z [Lynch] Running test suite - 57 tests passing
+2026-01-18T20:59:26.806Z [Lynch] APPROVED - Items 003, 007, 008 all pass review. All acceptance criteria met.
+2026-01-18T20:59:37.412Z [Lynch] ✓ 003: APPROVED - All 16 tests pass, implementation matches spec: 160px container, border styling, Inter 14px font-semibold white text, green hover, click handler, responsive hiding below 1024px
+2026-01-18T20:59:38.136Z [Lynch] ✓ 007: APPROVED - All 21 tests pass, implementation matches spec: search input 200px width, ml-auto positioning, search icon, placeholder styling, 300ms debounce, clear button functionality
+2026-01-18T20:59:38.898Z [Lynch] ✓ 008: APPROVED - All 20 tests pass, implementation matches spec: green tint on active dropdowns (bg-green-500/20, border-green-500), clear filters button with X icon 12px, proper styling and functionality
+2026-01-18T21:01:06.858Z [Murdock] Wave 3 tests complete: 17 tests for filter integration, 14 tests for empty state, 24 tests for keyboard shortcuts
+2026-01-18T21:01:16.743Z [Murdock] ✓ 009: Created 17 test cases for page filter integration covering FilterBar rendering, filter state management with useFilterState hook, filtering with filterWorkItems, and display updates
+2026-01-18T21:01:17.506Z [Murdock] ✓ 010: Created 14 test cases for filter empty state covering empty state display, message styling (14px, #6b7280), Clear filters button (#22c55e), and filter reset behavior
+2026-01-18T21:01:18.259Z [Murdock] ✓ 011: Created 24 test cases for keyboard shortcuts covering / focus, Cmd+K/Ctrl+K focus, Escape to clear/close, and shortcut exclusion when typing in input
+2026-01-18T21:01:46.3NZ [Lynch] ✓ 003, 007, 008: APPROVED - All 57 tests pass, implementations correct
+2026-01-18T21:01:46.3NZ [Murdock] ✓ 009: Created 17 tests for filter integration in page.tsx
+2026-01-18T21:01:46.3NZ [Murdock] ✓ 010: Created 14 tests for empty state when no items match
+2026-01-18T21:01:46.3NZ [Murdock] ✓ 011: Created 24 tests for keyboard shortcuts
+2026-01-18T21:05:45.3NZ [Hannibal] Items 003, 007, 008 → probing with Amy. Items 009, 010, 011 → implementing with B.A.
+2026-01-18T21:06:22.040Z [B.A.] Starting implementation of keyboard shortcuts for search filter
+2026-01-18T21:06:22.650Z [Amy] Investigating items 003, 007, 008 - Project name display, search input, and filter indicators
+2026-01-18T21:06:23.142Z [B.A.] Starting implementation of empty state when no items match filters
+2026-01-18T21:06:34.694Z [B.A.] Implementing filter integration in page.tsx
+2026-01-18T21:07:13.940Z [Amy] Running Raptor Protocol - probing edge cases beyond test coverage
+2026-01-18T21:08:34.255Z [B.A.] All 14 filter-empty-state tests passing. Implementation complete.
+2026-01-18T21:08:36.255Z [B.A.] ✓ 010: Implemented empty state display when filters hide all items. Added FilterBar integration to page.tsx with filter state management and filterWorkItems utility. All 14 tests passing.
+2026-01-18T21:09:05.833Z [B.A.] All 17 filter integration tests passing
+2026-01-18T21:09:21.820Z [B.A.] ✓ 009: Integrated FilterBar into page.tsx with useFilterState hook and filterWorkItems utility. All 17 tests passing.
+2026-01-18T21:10:05.258Z [B.A.] All 24 keyboard shortcut tests passing
+2026-01-18T21:10:10.706Z [B.A.] ✓ 011: Implemented keyboard shortcuts in FilterBar: / and Cmd+K/Ctrl+K to focus search, Escape to clear search and close dropdowns. Used useImperativeHandle pattern to close dropdowns via refs. All 24 tests passing.
+2026-01-18T21:10:51.165Z [Amy] FLAG - Item 003: projectName prop not passed to HeaderBar in page.tsx - feature not user-visible
+2026-01-18T21:11:01.689Z [Amy] ✓ 003: FLAG - CRITICAL: projectName prop NOT wired to HeaderBar in page.tsx (line 347). Implementation exists but not connected. User cannot see project name in header.
+2026-01-18T21:11:02.503Z [Amy] ✓ 007: VERIFIED - Search input works correctly: 300ms debounce, clear button, edge cases (XSS, unicode, long strings) all pass. All 21 tests pass + 24 probe tests.
+2026-01-18T21:11:03.334Z [Amy] ✓ 008: VERIFIED - Active filter indicators and clear button work correctly: green tint toggles, clear filters resets all, whitespace search considered active. All 20 tests pass + probe tests.
+2026-01-18T21:12:09.3NZ [Amy] FLAG 003: projectName not wired to HeaderBar in page.tsx - REJECTED
+2026-01-18T21:12:09.3NZ [Amy] ✓ 007, 008: VERIFIED - All probes pass
+2026-01-18T21:12:09.3NZ [B.A.] ✓ 009: Integrated FilterBar and filter logic in page.tsx - all 17 tests pass
+2026-01-18T21:12:09.3NZ [B.A.] ✓ 010: Implemented empty state display - all 14 tests pass
+2026-01-18T21:12:09.3NZ [B.A.] ✓ 011: Implemented keyboard shortcuts for search - all 24 tests pass
+2026-01-18T21:12:54.3NZ [Hannibal] Fixed item 003: Added projectName={boardMetadata.projectName} to HeaderBar in page.tsx
+2026-01-18T21:13:06.3NZ [Hannibal] Items 007, 008 → done. Item 003 fix applied, returning to review. Items 009, 010, 011 → review.
+2026-01-18T21:13:42.932Z [Lynch] Reviewing items 003, 009, 010, 011 - running test suite
+2026-01-18T21:14:29.775Z [Lynch] All 1509 tests pass. Reviewing code for items 003, 009, 010, 011
+2026-01-18T21:14:48.440Z [Lynch] APPROVED - Items 003, 009, 010, 011 all pass review. 71 tests passing for these features.
+2026-01-18T21:15:23.185Z [Lynch] Review complete. All 4 items APPROVED (003, 009, 010, 011). Ready for done/
+2026-01-18T21:37:34.3NZ [Lynch] ✓ 003, 009, 010, 011: APPROVED - All 71 tests pass, implementations correct
+2026-01-19T03:21:45.3NZ [Hannibal] Items 003, 009, 010, 011 approved. Final probing with Amy.
+2026-01-19T03:22:12.911Z [Amy] Investigating items 003, 009, 010, 011 - final wave probing
+2026-01-19T04:04:55.386Z [Amy] Running Raptor Protocol - all features verified in browser
+2026-01-19T04:05:00.836Z [Amy] VERIFIED - Items 003, 009, 010, 011 all pass probes. All wiring confirmed, user-visible behavior correct.
+2026-01-19T04:05:12.558Z [Amy] ✓ 003: VERIFIED - Project name wiring fix confirmed. projectName prop passed to HeaderBar at line 352. User sees kanban-viewer in header. All 16 tests pass.
+2026-01-19T04:05:13.355Z [Amy] ✓ 009: VERIFIED - Filter integration works correctly. useFilterState hook wired at line 87, filterWorkItems at line 281. Filtering updates display in real-time. All 17 tests pass.
+2026-01-19T04:05:14.126Z [Amy] ✓ 010: VERIFIED - Empty state displays correctly when filters hide all items. Clear filters button resets all filters. All 14 tests pass.
+2026-01-19T04:05:14.895Z [Amy] ✓ 011: VERIFIED - Keyboard shortcuts work correctly. / focuses search, Cmd+K focuses search, Escape clears search and closes dropdowns. All 24 tests pass.
+2026-01-19T04:26:00.3NZ [Amy] ✓ 003, 009, 010, 011: VERIFIED - All probes pass, features work end-to-end
+2026-01-19T04:28:24.3NZ [Hannibal] ★ MISSION COMPLETE - PRD 011: Filter Bar & Project Name - All 11 items done

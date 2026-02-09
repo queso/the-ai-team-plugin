@@ -1,0 +1,223 @@
+{
+  "mission": {
+    "name": "PRD 011: Filter Bar & Project Name",
+    "status": "planning",
+    "created_at": "2026-01-18T19:25:10.712Z"
+  },
+  "project": "PRD 011: Filter Bar & Project Name",
+  "wip_limit": 4,
+  "max_wip": 6,
+  "created_at": "2026-01-18T19:25:10.712Z",
+  "updated_at": "2026-01-19T04:05:14.893Z",
+  "stats": {
+    "total_items": 11,
+    "completed": 0,
+    "in_flight": 0,
+    "blocked": 0,
+    "backlog": 11,
+    "rejected_count": 0
+  },
+  "phases": {
+    "briefings": [
+      "002",
+      "003",
+      "005",
+      "006",
+      "007",
+      "008",
+      "009",
+      "010",
+      "011"
+    ],
+    "ready": [
+      "001",
+      "004"
+    ],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "probing": [],
+    "done": [],
+    "blocked": []
+  },
+  "assignments": {
+    "001": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T19:39:01.072Z",
+      "completed_at": "2026-01-18T19:45:00.585Z",
+      "status": "completed",
+      "message": "APPROVED - All 13 tests pass. getProjectName() correctly extracts parent folder using path.resolve/dirname/basename. Method integrated into getBoardMetadata(). Type properly added as optional for backwards compatibility. Edge cases covered."
+    },
+    "004": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T19:39:02.574Z",
+      "completed_at": "2026-01-18T19:45:01.335Z",
+      "status": "completed",
+      "message": "APPROVED - All 31 tests pass. TypeFilter/AgentFilter/StatusFilter types match PRD exactly. AgentFilter smartly uses AgentName union. useFilterState hook has stable callbacks, proper state management, and reset function. Type safety verified with ts-expect-error tests."
+    },
+    "002": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T19:46:02.390Z",
+      "completed_at": "2026-01-18T20:46:52.633Z",
+      "status": "completed",
+      "message": "VERIFIED - API wiring confirmed. projectName flows from BoardService.getProjectName() through API. 8 tests pass. Endpoint returns correct value."
+    },
+    "005": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T19:46:49.996Z",
+      "completed_at": "2026-01-18T20:46:53.365Z",
+      "status": "completed",
+      "message": "VERIFIED - All 5 filter functions work correctly. Edge cases for undefined/null handled by parser validation. 46 tests pass."
+    },
+    "006": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T19:47:52.355Z",
+      "completed_at": "2026-01-18T20:46:54.133Z",
+      "status": "completed",
+      "message": "VERIFIED - FilterBar renders 3 dropdowns correctly. Minor INFO: aria-selected missing on options (lint warning). 30 tests pass."
+    },
+    "003": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T20:42:37.182Z",
+      "completed_at": "2026-01-19T04:05:12.554Z",
+      "status": "completed",
+      "message": "VERIFIED - Project name wiring fix confirmed. projectName prop passed to HeaderBar at line 352. User sees kanban-viewer in header. All 16 tests pass."
+    },
+    "007": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T20:45:32.674Z",
+      "completed_at": "2026-01-18T21:11:02.499Z",
+      "status": "completed",
+      "message": "VERIFIED - Search input works correctly: 300ms debounce, clear button, edge cases (XSS, unicode, long strings) all pass. All 21 tests pass + 24 probe tests."
+    },
+    "008": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T20:45:33.376Z",
+      "completed_at": "2026-01-18T21:11:03.331Z",
+      "status": "completed",
+      "message": "VERIFIED - Active filter indicators and clear button work correctly: green tint toggles, clear filters resets all, whitespace search considered active. All 20 tests pass + probe tests."
+    },
+    "009": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T20:57:50.201Z",
+      "completed_at": "2026-01-19T04:05:13.352Z",
+      "status": "completed",
+      "message": "VERIFIED - Filter integration works correctly. useFilterState hook wired at line 87, filterWorkItems at line 281. Filtering updates display in real-time. All 17 tests pass."
+    },
+    "010": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T20:57:51.018Z",
+      "completed_at": "2026-01-19T04:05:14.123Z",
+      "status": "completed",
+      "message": "VERIFIED - Empty state displays correctly when filters hide all items. Clear filters button resets all filters. All 14 tests pass."
+    },
+    "011": {
+      "agent": "Murdock",
+      "started_at": "2026-01-18T20:57:51.759Z",
+      "completed_at": "2026-01-19T04:05:14.892Z",
+      "status": "completed",
+      "message": "VERIFIED - Keyboard shortcuts work correctly. / focuses search, Cmd+K focuses search, Escape clears search and closes dropdowns. All 24 tests pass."
+    }
+  },
+  "agents": {
+    "Hannibal": {
+      "status": "idle"
+    },
+    "Face": {
+      "status": "idle"
+    },
+    "Murdock": {
+      "status": "idle",
+      "current_item": null
+    },
+    "B.A.": {
+      "status": "idle",
+      "current_item": null
+    },
+    "Lynch": {
+      "status": "idle",
+      "current_item": null
+    },
+    "Amy": {
+      "status": "idle",
+      "current_item": null
+    }
+  },
+  "wip_limits": {
+    "testing": 3,
+    "implementing": 4,
+    "review": 3,
+    "probing": 3
+  },
+  "dependency_graph": {
+    "001": [],
+    "002": [
+      "001"
+    ],
+    "003": [
+      "002"
+    ],
+    "004": [],
+    "005": [
+      "004"
+    ],
+    "006": [
+      "004"
+    ],
+    "007": [
+      "006"
+    ],
+    "008": [
+      "007"
+    ],
+    "009": [
+      "005",
+      "008"
+    ],
+    "010": [
+      "009"
+    ],
+    "011": [
+      "007"
+    ]
+  },
+  "parallel_groups": {
+    "board-service": [
+      "001"
+    ],
+    "api": [
+      "002"
+    ],
+    "header": [
+      "003"
+    ],
+    "filter": [
+      "004",
+      "005"
+    ],
+    "filter-ui": [
+      "006",
+      "007",
+      "008",
+      "011"
+    ],
+    "page": [
+      "009",
+      "010"
+    ]
+  },
+  "history": {
+    "001": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-18T19:34:21.372Z"
+      }
+    ],
+    "004": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-18T19:34:22.137Z"
+      }
+    ]
+  }
+}
