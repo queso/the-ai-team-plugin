@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { boardRead, boardMove, boardClaim, boardRelease } from '../../tools/board.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { boardMove, boardClaim, boardRelease } from '../../tools/board.js';
 import type { KanbanApiClient, ApiResponse, BoardState } from '../../client/types.js';
 import { ApiRequestError } from '../../client/types.js';
 import type { MoveResult, ClaimResult, ReleaseResult } from '../../tools/board.js';
@@ -44,25 +44,26 @@ describe('Board Tools', () => {
             status: 'pending',
             type: 'feature',
           },
-          {
-            id: 'WI-002',
-            title: 'Feature B',
-            status: 'pending',
-            type: 'feature',
-            dependencies: ['WI-001'],
-          },
         ],
         wip_limit: 3,
       };
 
-      // boardRead doesn't accept a client parameter, so we test it as-is
-      // In a real test suite, you'd mock the module-level createClient() function
-      // For now, this tests the return format assuming API works
+      // boardRead uses getDefaultClient() internally (no DI parameter),
+      // so we mock the client module for this test
+      vi.resetModules();
+      vi.doMock('../../client/index.js', () => ({
+        createClient: () => ({
+          get: async () => ({ data: mockBoardState }),
+        }),
+        ApiRequestError: ApiRequestError,
+      }));
+
+      const { boardRead } = await import('../../tools/board.js');
       const result = await boardRead({});
 
       expect(result.content).toBeDefined();
       expect(result.content[0].type).toBe('text');
-      expect(result.data).toBeDefined();
+      expect(result.data).toEqual(mockBoardState);
     });
   });
 
