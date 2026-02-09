@@ -203,6 +203,89 @@ item_create(
 
 When in doubt, leave `outputs.test` populated. A minimal smoke test is better than a false NO_TEST_NEEDED flag on something that has runtime impact.
 
+## Identifying Non-Behavioral Work Items
+
+During decomposition, actively scan the PRD for work that produces no testable runtime behavior. These items should be flagged with NO_TEST_NEEDED.
+
+**Detection criteria:**
+
+Ask yourself: "Does this change affect how code executes, or just what humans read?"
+
+- **If it's purely for human consumption** → NO_TEST_NEEDED
+- **If it affects compilation, runtime, or behavior** → Needs tests
+
+**Common patterns that qualify for NO_TEST_NEEDED:**
+
+| Pattern | Examples | Why No Tests |
+|---------|----------|--------------|
+| Markdown files | README.md, CHANGELOG.md, docs/*.md, PRDs | Static documentation |
+| Config files that aren't loaded by code | .gitignore, .prettierrc, .editorconfig, LICENSE | No runtime impact |
+| CI/CD configs (static) | .github/workflows/*.yml, Dockerfile comments | Behavior tested by CI execution, not unit tests |
+| File operations tracked by git | Deleting old files, renaming directories, moving assets | Git history is the test |
+| Agent prompt updates | agents/*.md files | Behavioral testing of agents is outside test scope |
+| Comment-only changes | JSDoc updates, explanatory comments | No runtime behavior change |
+
+**Common patterns that DO NOT qualify (always need tests):**
+
+| Pattern | Examples | Why Tests Needed |
+|---------|----------|------------------|
+| TypeScript types used in runtime code | src/types/*.ts imported by src/** | Type errors cause compilation failures |
+| Config files loaded by code | vite.config.ts, jest.config.js, package.json scripts | Config errors cause runtime failures |
+| Environment variable templates | .env.example when code reads from process.env | Documents runtime contract |
+| Any file imported by source code | Utilities, helpers, constants | Direct runtime impact |
+| Test files and test utilities | **/__tests__/*.ts, test/helpers/* | Test infrastructure must be tested |
+
+**Edge case: Agent prompts**
+
+Agent prompt files (agents/*.md) fall under NO_TEST_NEEDED because:
+- They're markdown documentation consumed by Claude, not compiled code
+- Their "test" is whether the agent follows the instructions (human evaluation)
+- Unit testing prompt effectiveness is not in scope for the codebase's test suite
+
+**How to flag during decomposition:**
+
+When you encounter work that qualifies:
+
+```typescript
+item_create({
+  title: "Update CHANGELOG with v2.0 release notes",
+  type: "task",
+  description: `Add release notes for v2.0 including:
+- New features shipped
+- Breaking changes
+- Migration guide
+
+NO_TEST_NEEDED
+This is a documentation-only change.`,
+  outputs: {
+    test: "",  // Empty string - no test file
+    impl: "CHANGELOG.md"
+  },
+  priority: "low"
+})
+```
+
+**Key indicators in PRD language:**
+
+Watch for verbs that suggest non-behavioral work:
+- "Update documentation"
+- "Add README section"
+- "Fix typos in"
+- "Delete unused files"
+- "Rename directory"
+- "Add .gitignore entry"
+- "Update agent prompt"
+- "Clarify comments in"
+
+**Verification checklist before flagging NO_TEST_NEEDED:**
+
+- [ ] File is not imported by any source code
+- [ ] File is not executed at runtime (not a script, config loaded by code, etc.)
+- [ ] Change affects only human-readable content, not machine-executable logic
+- [ ] No compilation or runtime errors could result from this change
+
+If any of the above fail, **do not use NO_TEST_NEEDED** - create a minimal test instead.
+
 ## Pipeline Flow
 
 Each feature item flows through:

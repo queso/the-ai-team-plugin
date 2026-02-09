@@ -596,37 +596,4 @@ describe('Agent Tools', () => {
     });
   });
 
-  describe('Tool Registration', () => {
-    it('should export tool definitions for MCP server registration', async () => {
-      const { agentTools } = await import('../../tools/agents.js');
-
-      expect(agentTools).toBeDefined();
-      expect(Array.isArray(agentTools)).toBe(true);
-      expect(agentTools.length).toBe(2);
-
-      const toolNames = agentTools.map((t: any) => t.name);
-      expect(toolNames).toContain('agent_start');
-      expect(toolNames).toContain('agent_stop');
-    });
-
-    it('should include proper descriptions for each tool', async () => {
-      const { agentTools } = await import('../../tools/agents.js');
-
-      for (const tool of agentTools) {
-        expect(tool.description).toBeDefined();
-        expect(typeof tool.description).toBe('string');
-        expect(tool.description.length).toBeGreaterThan(10);
-      }
-    });
-
-    it('should include input schema for each tool', async () => {
-      const { agentTools } = await import('../../tools/agents.js');
-
-      for (const tool of agentTools) {
-        expect(tool.inputSchema).toBeDefined();
-        expect(tool.inputSchema.type).toBe('object');
-        expect(tool.inputSchema.properties).toBeDefined();
-      }
-    });
-  });
 });

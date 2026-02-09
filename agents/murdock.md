@@ -81,6 +81,11 @@ Some things produce useless tests that waste pipeline time and clutter the codeb
 - **Check whether deleted files stay deleted** - Git handles file tracking. A test asserting a file does not exist is testing git, not your code.
 - **Assert static file content matches expectations** - If the test just reads a file and compares it to a hardcoded string, it is a snapshot of the file, not a behavioral test.
 - **Validate documentation accuracy** - "Does the README accurately describe the API?" is a review task for Lynch, not a test for Murdock.
+- **Assert on static exports or module structure** - Testing that a module exports exactly N functions or has specific named exports is a meta-test. If the code compiles and imports work, the structure is fine.
+- **Verify mocks return what they were told to return** - Tautological tests that configure a mock and then assert the mock returns that configuration are meaningless. Test real behavior, not mock setup.
+- **Grep source code for patterns** - Reading `.ts` files and checking for string patterns (e.g., "does this file contain 'async'?") is not a behavioral test. Code structure is a review concern.
+- **Duplicate TypeScript compiler checks** - Testing `typeof value === 'string'` or that interfaces compile is redundant. TypeScript already validates types at compile time.
+- **Re-test the same behavior in different describe blocks** - Duplicate tests that verify identical behavior with different test names waste time. One test per behavior.
 
 **Examples of useless tests (DO NOT write these):**
 ```typescript
@@ -104,6 +109,38 @@ it('should have correct package name', () => {
 // BAD: Testing file deletion
 it('should not have legacy config', () => {
   expect(fs.existsSync('old-config.json')).toBe(false);  // Git handles this
+});
+
+// BAD: Testing module structure
+it('should export exactly 5 functions', () => {
+  const exports = Object.keys(require('./module'));
+  expect(exports.length).toBe(5);  // Meta-test, not behavioral
+});
+
+// BAD: Tautological mock test
+it('should return mocked value', () => {
+  const mock = jest.fn().mockReturnValue(42);
+  expect(mock()).toBe(42);  // Testing the mock, not the code
+});
+
+// BAD: Grep-based source code test
+it('should use async/await', () => {
+  const source = fs.readFileSync('src/service.ts', 'utf-8');
+  expect(source).toContain('async');  // Not a behavioral test
+});
+
+// BAD: Type-check test
+it('should return a string', () => {
+  const result = myFunction();
+  expect(typeof result).toBe('string');  // TypeScript already checked this
+});
+
+// BAD: Duplicate test
+describe('OrderService', () => {
+  it('should create order', () => { /* test logic */ });
+});
+describe('Order Creation', () => {
+  it('should successfully create an order', () => { /* same test logic */ });
 });
 ```
 

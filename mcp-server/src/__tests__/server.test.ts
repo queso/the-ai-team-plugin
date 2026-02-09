@@ -197,27 +197,6 @@ describe('MCP Server Core Infrastructure', () => {
       );
     });
 
-    it('should create McpServer with version 1.0.0', async () => {
-      const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
-      const { createServer } = await import('../server.js');
-
-      createServer();
-
-      expect(McpServer).toHaveBeenCalledWith(
-        expect.objectContaining({
-          version: '1.0.0',
-        })
-      );
-    });
-
-    it('should return server instance with connect method', async () => {
-      const { createServer } = await import('../server.js');
-
-      const server = createServer();
-
-      expect(server).toHaveProperty('connect');
-      expect(typeof server.connect).toBe('function');
-    });
   });
 
   describe('server tool wiring', () => {
@@ -257,19 +236,6 @@ describe('MCP Server Core Infrastructure', () => {
       expect(registerAllToolsSpy).toHaveBeenCalled();
     });
 
-    it('should have tools registered after createServer returns', async () => {
-      // Verify by checking the server.ts source code for the proper wiring
-      const fs = await import('fs');
-      const path = await import('path');
-      const serverPath = path.join(import.meta.dirname, '../server.ts');
-      const serverCode = fs.readFileSync(serverPath, 'utf-8');
-
-      // Verify the import exists
-      expect(serverCode).toContain("import { registerAllTools } from './tools/index.js'");
-
-      // Verify registerAllTools is called within createServer function
-      expect(serverCode).toContain('registerAllTools(server)');
-    });
 
     it('should return server that can list all 20 tools', async () => {
       // Note: Full tool registration testing is done in index.test.ts (30 tests)
