@@ -119,14 +119,27 @@ Example consolidation instruction:
 - Are items that modify the same files in the same group?
 - Are independent items in separate groups?
 
-### 8. Testability
+### 8. Project Infrastructure (CRITICAL)
+Verify that the target project has the tooling the mission requires. Face should have run a Project Readiness Audit and created scaffolding items for anything missing. **If Face skipped this, flag it as CRITICAL.**
+
+Check for:
+- **Test runner**: If items have `outputs.test` paths, does the project have jest/vitest/mocha installed? Is there a test config? Is there a test script in package.json?
+- **TypeScript**: If items create `.ts` files, does the project have `tsconfig.json` and `typescript` installed?
+- **Linter**: If lint compliance is expected, is a linter installed and configured?
+- **Key dependencies**: Are libraries the work items assume present actually in package.json?
+
+**If infrastructure is missing and no scaffolding item exists for it:**
+- Flag as CRITICAL: "No test runner installed but N items specify outputs.test. Face must create a 'Set up test infrastructure' item in Wave 0."
+- Specify what's missing and what the scaffolding item should include.
+
+### 9. Testability
 - Can Murdock write meaningful tests from this specification?
 - Are edge cases and error conditions specified?
 - Are performance/timing requirements testable?
 - Is the expected behavior for invalid inputs defined?
 - Are there implicit requirements that should be explicit?
 
-### 9. Architectural Fit
+### 10. Architectural Fit
 - Does this align with existing codebase patterns?
 - Are there integration points that need clarification?
 - Will this require changes to existing interfaces?
@@ -143,6 +156,7 @@ Example consolidation instruction:
 - Missing essential acceptance criteria
 - Over-splitting (too many items for the scope)
 - Wrong type selection (scaffolding marked as `feature`)
+- Missing project infrastructure (no test runner, no TypeScript, etc.) without a scaffolding item
 
 **WARNING** - Should be addressed but won't block:
 - Item too large (should be split)

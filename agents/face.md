@@ -33,12 +33,53 @@ Face is invoked twice during `/ateam plan`:
 Create initial work items from the PRD:
 
 1. Analyze the PRD
-2. Create work items using the `item_create` MCP tool
-3. Items start in `briefings` stage - do NOT move them yet
-4. Run the `deps_check` MCP tool to validate
-5. Report summary and exit
+2. **Run Project Readiness Audit** (see below)
+3. Create scaffolding items for any missing infrastructure (Wave 0)
+4. Create feature/task work items using the `item_create` MCP tool
+5. Items start in `briefings` stage - do NOT move them yet
+6. Run the `deps_check` MCP tool to validate
+7. Report summary (including audit findings) and exit
 
 **First pass output**: Items in `briefings` stage, ready for Sosa's review.
+
+### Project Readiness Audit
+
+**Before creating any work items**, check whether the target project has the tooling the mission will need. If infrastructure is missing, create `type: "task"` scaffolding items in Wave 0 so later items can depend on them.
+
+**What to check:**
+
+| Check | How | If Missing |
+|-------|-----|------------|
+| **Test runner** | `package.json` devDependencies for jest/vitest/mocha; test script in scripts | Create "Set up test infrastructure" item |
+| **Test config** | Glob for jest.config.*, vitest.config.*, .mocharc.* | Include in test setup item |
+| **TypeScript** | tsconfig.json exists; `typescript` in devDependencies | Create "Set up TypeScript" item |
+| **Linter** | eslint/biome in devDependencies; lint script in package.json | Create "Set up linting" item if PRD requires lint compliance |
+| **Key dependencies** | Check package.json for libraries the PRD work requires | Create "Install dependencies" item |
+| **Build tooling** | build script in package.json; framework config (next.config, vite.config) | Note in summary; may need setup item |
+
+**How to check:** Read `package.json` (dependencies, devDependencies, scripts). Glob for config files (`*config*`, `tsconfig*`, `.eslintrc*`). This takes 2-3 tool calls.
+
+**When to create scaffolding items:**
+
+If **any** work items will have `outputs.test` but the project has no test runner → create a test setup item. Make it a dependency of the first item that needs tests (or all Wave 0 test items).
+
+Example:
+```
+item_create({
+  title: "Set up Vitest test infrastructure",
+  type: "task",
+  description: "Install vitest and configure for the project.\n\n- Add vitest to devDependencies\n- Create vitest.config.ts\n- Add test script to package.json\n- Create src/__tests__/ directory\n- Verify vitest runs with zero tests passing",
+  outputs: { test: "", impl: "vitest.config.ts" },
+  priority: "critical"
+})
+```
+
+Then reference its ID in dependencies for items that need tests.
+
+**If the project already has everything it needs**, skip this step — don't create unnecessary scaffolding items. Log the audit result:
+```
+log(agent: "Face", message: "Project readiness audit: test runner (vitest), linter (eslint), TypeScript — all present")
+```
 
 ### Second Pass: Refinement
 
