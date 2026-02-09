@@ -5,32 +5,13 @@
  * for the new API layer as specified in PRD 013-mcp-interface.md.
  */
 
+import type { StageId } from '@ai-team/shared';
 import type { ItemWithRelations } from './item';
 import type { AgentClaim } from './agent';
 import type { Mission } from './mission';
 
-/**
- * Valid stage identifiers for the kanban board.
- *
- * These 8 stages match the A-Team pipeline:
- * - briefings: Work items not yet started (was 'backlog')
- * - ready: Items ready for work
- * - testing: Items being tested (Murdock)
- * - implementing: Items being built (B.A.)
- * - probing: Items being investigated (Amy)
- * - review: Items under review (Lynch)
- * - done: Completed items
- * - blocked: Items needing human input
- */
-export type StageId =
-  | 'briefings'
-  | 'ready'
-  | 'testing'
-  | 'implementing'
-  | 'probing'
-  | 'review'
-  | 'done'
-  | 'blocked';
+// Re-export StageId for backward compatibility
+export type { StageId };
 
 /**
  * Stage configuration including display name, ordering, and WIP limits.

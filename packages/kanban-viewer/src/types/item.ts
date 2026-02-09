@@ -6,30 +6,15 @@
  */
 
 import type { StageId } from './board';
+import type { ItemType, ItemPriority, ItemOutputs } from '@ai-team/shared';
 
-/**
- * Valid item type classifications.
- */
-export type ItemType = 'feature' | 'bug' | 'enhancement' | 'task';
-
-/**
- * Valid item priority levels.
- */
-export type ItemPriority = 'critical' | 'high' | 'medium' | 'low';
+// Re-export shared types for backward compatibility
+export type { ItemType, ItemPriority, ItemOutputs };
 
 /**
  * Valid work log action types.
  */
 export type WorkLogAction = 'started' | 'completed' | 'rejected' | 'note';
-
-/**
- * Output file paths for a work item.
- */
-export interface ItemOutputs {
-  test?: string;
-  impl?: string;
-  types?: string;
-}
 
 /**
  * Base work item interface.

@@ -30,7 +30,7 @@
   "files": {
     "include": [
       "src/**/*.ts",
-      "../scripts/hooks/**/*.js"
+      "../../scripts/hooks/**/*.js"
     ],
     "ignore": [
       "dist/**",

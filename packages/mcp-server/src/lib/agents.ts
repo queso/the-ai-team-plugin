@@ -6,44 +6,32 @@
  */
 
 import { z } from 'zod';
+import {
+  VALID_AGENTS,
+  AGENT_DISPLAY_NAMES,
+  normalizeAgentName as sharedNormalizeAgentName,
+} from '@ai-team/shared';
 
 /**
  * Valid agent names (lowercase for input validation).
+ * Re-exported from @ai-team/shared for backward compatibility.
  */
-export const VALID_AGENTS_LOWER = [
-  'murdock',
-  'ba',
-  'lynch',
-  'amy',
-  'hannibal',
-  'face',
-  'sosa',
-  'tawnia',
-] as const;
+export const VALID_AGENTS_LOWER = VALID_AGENTS;
 
 export type ValidAgentLower = (typeof VALID_AGENTS_LOWER)[number];
 
 /**
  * Map from lowercase agent names to API-expected format.
+ * Re-exported from @ai-team/shared for backward compatibility.
  */
-export const AGENT_NAME_MAP: Record<ValidAgentLower, string> = {
-  murdock: 'Murdock',
-  ba: 'B.A.',
-  lynch: 'Lynch',
-  amy: 'Amy',
-  hannibal: 'Hannibal',
-  face: 'Face',
-  sosa: 'Sosa',
-  tawnia: 'Tawnia',
-};
+export const AGENT_NAME_MAP = AGENT_DISPLAY_NAMES;
 
 /**
  * Normalize agent name to lowercase key format.
  * Handles special cases like "B.A." -> "ba"
+ * Re-exported from @ai-team/shared.
  */
-export function normalizeAgentName(val: string): string {
-  return val.toLowerCase().replace(/\./g, '');
-}
+export const normalizeAgentName = sharedNormalizeAgentName;
 
 /**
  * Zod schema for agent name validation.

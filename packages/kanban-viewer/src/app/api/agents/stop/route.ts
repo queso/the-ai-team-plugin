@@ -20,19 +20,12 @@ import type { AgentStopRequest, AgentStopResponse, ApiError } from '@/types/api'
 import type { AgentName } from '@/types/agent';
 import type { StageId } from '@/types/board';
 import type { WorkLogEntry, WorkLogAction } from '@/types/item';
+import { AGENT_DISPLAY_NAMES } from '@ai-team/shared';
 
 /**
  * Valid agent names for validation.
  */
-const VALID_AGENTS: AgentName[] = [
-  'Hannibal',
-  'Face',
-  'Murdock',
-  'B.A.',
-  'Lynch',
-  'Amy',
-  'Tawnia',
-];
+const VALID_AGENTS: AgentName[] = Object.values(AGENT_DISPLAY_NAMES) as AgentName[];
 
 /**
  * Valid outcome values.

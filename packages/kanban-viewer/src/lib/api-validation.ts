@@ -3,6 +3,8 @@
  * This surfaces data corruption early in the pipeline.
  */
 
+import { ITEM_TYPES, AGENT_DISPLAY_NAMES, ALL_STAGES } from '@ai-team/shared';
+
 export class ValidationError extends Error {
   constructor(message: string, public readonly value: unknown) {
     super(message);
@@ -10,9 +12,9 @@ export class ValidationError extends Error {
   }
 }
 
-export const VALID_ITEM_TYPES = ['feature', 'bug', 'enhancement', 'task'] as const;
-export const VALID_AGENT_NAMES = ['Hannibal', 'Face', 'Murdock', 'B.A.', 'Lynch', 'Amy', 'Tawnia'] as const;
-export const VALID_STAGE_IDS = ['briefings', 'ready', 'testing', 'implementing', 'probing', 'review', 'done', 'blocked'] as const;
+export const VALID_ITEM_TYPES = ITEM_TYPES;
+export const VALID_AGENT_NAMES = Object.values(AGENT_DISPLAY_NAMES) as unknown as readonly string[];
+export const VALID_STAGE_IDS = ALL_STAGES;
 
 export type ValidItemType = typeof VALID_ITEM_TYPES[number];
 export type ValidAgentName = typeof VALID_AGENT_NAMES[number];

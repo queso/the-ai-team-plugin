@@ -86,6 +86,17 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 
 Native handles orchestration, MCP handles persistence.
 
+### Package Dependencies
+
+```
+@ai-team/shared
+    ↑
+    ├── @ai-team/mcp-server (MCP tools depend on shared types)
+    └── @ai-team/kanban-viewer (UI depends on shared types)
+```
+
+The `@ai-team/shared` package provides TypeScript types and constants used by both the MCP server and Kanban viewer, ensuring type consistency across the system.
+
 ### Pipeline Flow
 
 **Planning Phase (`/ateam plan`):**
@@ -357,24 +368,41 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 ai-team/
 ├── .claude-plugin/plugin.json  # Plugin configuration
 ├── .mcp.json                # MCP server configuration
-├── package.json             # Node.js dependencies (run `npm install`)
-├── mcp-server/              # MCP server for Claude Code integration
-│   ├── package.json         # MCP server dependencies
-│   ├── tsconfig.json
-│   ├── src/
-│   │   ├── index.ts         # Entry point (stdio transport)
-│   │   ├── server.ts        # McpServer instance
-│   │   ├── config.ts        # Environment configuration (projectId, apiUrl, etc.)
-│   │   ├── client/          # HTTP client with retry logic
-│   │   ├── lib/             # Error handling utilities
-│   │   └── tools/           # Tool implementations (20 tools)
-│   │       ├── board.ts     # Board operations (4 tools)
-│   │       ├── items.ts     # Item operations (6 tools)
-│   │       ├── agents.ts    # Agent lifecycle (2 tools)
-│   │       ├── missions.ts  # Mission lifecycle (5 tools)
-│   │       ├── utils.ts     # Utilities (3 tools)
-│   │       └── index.ts     # Tool registration
-│   └── dist/                # Compiled JavaScript
+├── package.json             # Bun workspaces root (run `bun install`)
+├── bun.lockb                # Bun lock file
+├── docker-compose.yml       # Docker setup for kanban-viewer
+├── packages/                # Monorepo packages
+│   ├── shared/              # @ai-team/shared - Shared types and constants
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   │       ├── index.ts     # Re-exports all types
+│   │       ├── stages.ts    # Stage definitions and validation
+│   │       ├── agents.ts    # Agent type definitions
+│   │       ├── items.ts     # Work item types
+│   │       ├── errors.ts    # Error types
+│   │       └── __tests__/   # Type tests
+│   ├── mcp-server/          # @ai-team/mcp-server - MCP server for Claude Code integration
+│   │   ├── package.json     # MCP server dependencies
+│   │   ├── tsconfig.json
+│   │   ├── src/
+│   │   │   ├── index.ts     # Entry point (stdio transport)
+│   │   │   ├── server.ts    # McpServer instance
+│   │   │   ├── config.ts    # Environment configuration (projectId, apiUrl, etc.)
+│   │   │   ├── client/      # HTTP client with retry logic
+│   │   │   ├── lib/         # Error handling utilities
+│   │   │   └── tools/       # Tool implementations (20 tools)
+│   │   │       ├── board.ts     # Board operations (4 tools)
+│   │   │       ├── items.ts     # Item operations (6 tools)
+│   │   │       ├── agents.ts    # Agent lifecycle (2 tools)
+│   │   │       ├── missions.ts  # Mission lifecycle (5 tools)
+│   │   │       ├── utils.ts     # Utilities (3 tools)
+│   │   │       └── index.ts     # Tool registration
+│   │   └── dist/            # Compiled JavaScript
+│   └── kanban-viewer/       # @ai-team/kanban-viewer - Web-based Kanban UI
+│       ├── package.json
+│       ├── Dockerfile
+│       └── src/             # React application
 ├── agents/                  # Agent prompts and behavior (with frontmatter hooks)
 │   ├── hannibal.md          # Orchestrator (main context, has PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer
@@ -402,6 +430,17 @@ ai-team/
 └── docs/
     └── kanban-ui-prd.md     # PRD for web-based kanban board
 ```
+
+**Monorepo Structure:**
+The repository uses bun workspaces with three packages:
+- `@ai-team/shared` - Shared types and constants used by other packages
+- `@ai-team/mcp-server` - MCP server (depends on @ai-team/shared)
+- `@ai-team/kanban-viewer` - Web UI (depends on @ai-team/shared)
+
+Plugin-specific files (agents/, commands/, skills/, scripts/) remain at the repository root.
+
+**MCP Server Configuration:**
+The `.mcp.json` file at the repository root points to `packages/mcp-server/src/index.ts` as the MCP server entry point. The server uses bun to run TypeScript directly without a separate build step for development.
 
 ## MCP Tools
 
@@ -564,6 +603,8 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
    - `pnpm-lock.yaml` → pnpm
    - `bun.lockb` → bun
 
+**Note:** The A(i)-Team plugin itself uses bun workspaces for development, but it detects and works with any package manager in user projects.
+
 ### Config File Format
 
 ```json
@@ -658,3 +699,23 @@ This will:
 3. Create `ateam.config.json` with project settings
 4. Verify API server connectivity
 5. Check for optional Playwright plugin
+
+### Development Setup
+
+For plugin development, the repository uses bun workspaces:
+
+```bash
+# Install dependencies for all packages
+bun install
+
+# Build shared package (must be built first)
+cd packages/shared && bun run build
+
+# Build MCP server
+cd packages/mcp-server && bun run build
+
+# Start Kanban UI (optional, for viewing mission progress)
+docker compose up -d
+```
+
+The shared package must be built before other packages since they depend on it.

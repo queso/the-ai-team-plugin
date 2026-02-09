@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { TRANSITION_MATRIX } from '@ai-team/shared';
 import { createClient, BoardState, KanbanApiClient, ApiRequestError } from '../client/index.js';
 import { config } from '../config.js';
 import { AgentNameSchema } from '../lib/agents.js';
@@ -13,16 +14,7 @@ import type { ToolResponse, ToolErrorResponse } from '../lib/tool-response.js';
  * Valid stage transitions for the kanban board.
  * Used to provide actionable guidance when an invalid transition is attempted.
  */
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  briefings: ['ready', 'blocked'],
-  ready: ['testing', 'implementing', 'probing', 'blocked', 'briefings'],
-  testing: ['review', 'blocked'],
-  implementing: ['review', 'blocked'],
-  probing: ['ready', 'done', 'blocked'],
-  review: ['done', 'testing', 'implementing', 'probing', 'blocked'],
-  done: [],
-  blocked: ['ready'],
-};
+const VALID_TRANSITIONS = TRANSITION_MATRIX;
 
 /**
  * Zod schema for board_read input (empty object).

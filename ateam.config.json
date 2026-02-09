@@ -1,11 +1,11 @@
 {
-  "packageManager": "npm",
+  "packageManager": "bun",
   "checks": {
-    "lint": "cd mcp-server && npm run lint",
-    "unit": "cd mcp-server && npm test",
+    "lint": "cd packages/mcp-server && bun run lint",
+    "unit": "cd packages/mcp-server && bun test",
     "e2e": null
   },
-  "precheck": [],
+  "precheck": ["lint", "unit"],
   "postcheck": ["lint", "unit"],
   "devServer": null
 }

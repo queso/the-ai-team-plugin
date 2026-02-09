@@ -5,19 +5,20 @@
  * and response formats as specified in PRD 013-mcp-interface.md.
  */
 
+import { ERROR_CODES as SHARED_ERROR_CODES } from '@ai-team/shared';
+
 /**
  * Error codes for all API errors.
  * These codes should be used for programmatic error handling.
+ *
+ * Combines shared error codes with kanban-viewer-specific codes.
  */
 export const ErrorCodes = {
-  ITEM_NOT_FOUND: 'ITEM_NOT_FOUND',
-  INVALID_TRANSITION: 'INVALID_TRANSITION',
+  ...SHARED_ERROR_CODES,
   INVALID_STAGE: 'INVALID_STAGE',
-  WIP_LIMIT_EXCEEDED: 'WIP_LIMIT_EXCEEDED',
   DEPENDENCY_CYCLE: 'DEPENDENCY_CYCLE',
   OUTPUT_COLLISION: 'OUTPUT_COLLISION',
   CLAIM_CONFLICT: 'CLAIM_CONFLICT',
-  VALIDATION_ERROR: 'VALIDATION_ERROR',
   UNAUTHORIZED: 'UNAUTHORIZED',
   SERVER_ERROR: 'SERVER_ERROR',
   DATABASE_ERROR: 'DATABASE_ERROR',

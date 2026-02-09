@@ -6,31 +6,7 @@
  */
 
 import type { StageId } from '@/types/board';
-
-/**
- * Stage transition matrix defining valid transitions.
- * Each stage maps to a set of stages it can transition to.
- *
- * A-Team Pipeline:
- * - briefings -> ready, blocked
- * - ready -> testing, implementing, probing, blocked, briefings
- * - testing -> review, blocked (Murdock completes)
- * - implementing -> review, blocked (B.A. completes)
- * - probing -> ready, done, blocked (Amy can return to ready or mark done)
- * - review -> done, testing, implementing, probing, blocked (Lynch can approve or reject)
- * - done -> (terminal, no transitions)
- * - blocked -> ready
- */
-const TRANSITION_MATRIX: Record<StageId, Set<StageId>> = {
-  briefings: new Set(['ready', 'blocked']),
-  ready: new Set(['testing', 'implementing', 'probing', 'blocked', 'briefings']),
-  testing: new Set(['review', 'blocked']),
-  implementing: new Set(['review', 'blocked']),
-  probing: new Set(['ready', 'done', 'blocked']),
-  review: new Set(['done', 'testing', 'implementing', 'probing', 'blocked']),
-  done: new Set(), // Terminal state
-  blocked: new Set(['ready']),
-};
+import { isValidTransition as sharedIsValidTransition } from '@ai-team/shared';
 
 /**
  * Check if a stage transition is valid according to the transition matrix.
@@ -45,8 +21,7 @@ export function isValidTransition(from: StageId, to: StageId): boolean {
     return false;
   }
 
-  const allowedTransitions = TRANSITION_MATRIX[from];
-  return allowedTransitions?.has(to) ?? false;
+  return sharedIsValidTransition(from, to);
 }
 
 /**

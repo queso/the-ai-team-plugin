@@ -28,19 +28,12 @@ import { getAndValidateProjectId } from '@/lib/project-utils';
 import { transformItemWithRelationsToResponse } from '@/lib/item-transform';
 import type { AgentStartRequest, AgentStartResponse, ApiError } from '@/types/api';
 import type { AgentName } from '@/types/agent';
+import { AGENT_DISPLAY_NAMES } from '@ai-team/shared';
 
 /**
  * Valid agent names for validation.
  */
-const VALID_AGENTS: AgentName[] = [
-  'Hannibal',
-  'Face',
-  'Murdock',
-  'B.A.',
-  'Lynch',
-  'Amy',
-  'Tawnia',
-];
+const VALID_AGENTS: AgentName[] = Object.values(AGENT_DISPLAY_NAMES) as AgentName[];
 
 /**
  * POST /api/agents/start

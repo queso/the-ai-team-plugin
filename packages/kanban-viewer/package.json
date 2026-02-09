@@ -1,5 +1,5 @@
 {
-  "name": "kanban-init",
+  "name": "@ai-team/kanban-viewer",
   "version": "0.7.0",
   "private": true,
   "prisma": {
@@ -13,6 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@ai-team/shared": "workspace:*",
     "@libsql/client": "^0.17.0",
     "@prisma/adapter-libsql": "^7.3.0",
     "@prisma/client": "^7.3.0",

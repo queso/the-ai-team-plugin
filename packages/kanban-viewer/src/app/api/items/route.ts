@@ -19,10 +19,11 @@ import { getAndValidateProjectId, ensureProject } from '@/lib/project-utils';
 import { transformItemWithRelationsToResponse } from '@/lib/item-transform';
 import type { ItemType, ItemPriority } from '@/types/item';
 import type { CreateItemRequest } from '@/types/api';
+import { ITEM_TYPES, ITEM_PRIORITIES } from '@ai-team/shared';
 
 // Valid values for type and priority
-const VALID_TYPES: ItemType[] = ['feature', 'bug', 'enhancement', 'task'];
-const VALID_PRIORITIES: ItemPriority[] = ['critical', 'high', 'medium', 'low'];
+const VALID_TYPES: ItemType[] = ITEM_TYPES as unknown as ItemType[];
+const VALID_PRIORITIES: ItemPriority[] = ITEM_PRIORITIES as unknown as ItemPriority[];
 
 /**
  * Generate next item ID in WI-NNN format.

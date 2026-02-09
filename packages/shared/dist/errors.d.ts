@@ -1,0 +1,11 @@
+export declare const ERROR_CODES: {
+    readonly ITEM_NOT_FOUND: "ITEM_NOT_FOUND";
+    readonly INVALID_TRANSITION: "INVALID_TRANSITION";
+    readonly WIP_LIMIT_EXCEEDED: "WIP_LIMIT_EXCEEDED";
+    readonly AGENT_BUSY: "AGENT_BUSY";
+    readonly DEPS_NOT_MET: "DEPS_NOT_MET";
+    readonly VALIDATION_ERROR: "VALIDATION_ERROR";
+    readonly MISSION_NOT_FOUND: "MISSION_NOT_FOUND";
+    readonly MISSION_ALREADY_ACTIVE: "MISSION_ALREADY_ACTIVE";
+};
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

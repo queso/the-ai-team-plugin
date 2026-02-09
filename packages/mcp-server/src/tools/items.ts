@@ -11,6 +11,7 @@
  */
 
 import { z } from 'zod';
+import { ITEM_TYPES, ITEM_PRIORITIES } from '@ai-team/shared';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
 import { withErrorBoundary, type McpErrorResponse } from '../lib/errors.js';
@@ -47,8 +48,8 @@ const dependencyIdSchema = z.string().refine(
 export const ItemCreateInputSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
-  type: z.enum(['feature', 'bug', 'task', 'enhancement']),
-  priority: z.enum(['critical', 'high', 'medium', 'low']),
+  type: z.enum(ITEM_TYPES as unknown as [string, ...string[]]),
+  priority: z.enum(ITEM_PRIORITIES as unknown as [string, ...string[]]),
   status: z.string().optional().default('pending'),
   dependencies: z.array(dependencyIdSchema).optional().default([]),
   parallel_group: z.string().optional(),
@@ -68,7 +69,7 @@ export const ItemUpdateInputSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   status: z.string().optional(),
-  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+  priority: z.enum(ITEM_PRIORITIES as unknown as [string, ...string[]]).optional(),
   assigned_agent: z.string().optional(),
   rejection_count: z.number().int().min(0).optional(),
   dependencies: z.array(dependencyIdSchema).optional(),
