@@ -1,0 +1,47 @@
+{
+  "mission": {
+    "name": "Real-Time SSE Integration",
+    "started_at": "2026-01-16T10:00:00Z",
+    "status": "completed"
+  },
+  "wip_limits": {
+    "testing": 2,
+    "implementing": 3,
+    "review": 2
+  },
+  "phases": {
+    "briefings": [],
+    "ready": [],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "done": ["200", "201", "202", "203", "204"],
+    "blocked": []
+  },
+  "assignments": {},
+  "agents": {
+    "Hannibal": { "status": "idle" },
+    "Face": { "status": "idle" },
+    "Murdock": { "status": "idle" },
+    "B.A.": { "status": "idle" },
+    "Lynch": { "status": "idle" }
+  },
+  "stats": {
+    "total_items": 5,
+    "completed": 5,
+    "in_progress": 0,
+    "blocked": 0,
+    "backlog": 0
+  },
+  "dependency_graph": {
+    "200": [],
+    "201": ["200"],
+    "202": ["201"],
+    "203": ["202"],
+    "204": ["203"]
+  },
+  "parallel_groups": {
+    "sse-integration": ["200", "201", "202", "203", "204"]
+  },
+  "last_updated": "2026-01-16T10:11:00Z"
+}

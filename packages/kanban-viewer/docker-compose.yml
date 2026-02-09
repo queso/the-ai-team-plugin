@@ -1,0 +1,10 @@
+services:
+  kanban-viewer:
+    image: kanban-viewer
+    build: .
+    container_name: kanban-viewer
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./prisma/data:/app/prisma/data
+    restart: unless-stopped

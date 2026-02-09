@@ -1,0 +1,121 @@
+2026-01-15T18:25:00Z [Hannibal] Mission started - Kanban Board UI
+2026-01-15T18:25:01Z [Hannibal] Project infrastructure initialized (Next.js 16, shadcn/ui, Tailwind)
+2026-01-15T18:25:02Z [Hannibal] 001 → testing, dispatching Murdock
+2026-01-15T18:28:00Z [Murdock] Created 25 type tests for 001
+2026-01-15T18:30:00Z [Hannibal] 001 → review, dispatching Lynch
+2026-01-15T18:31:00Z [Lynch] REJECTED 001 - type field needs Stage type
+2026-01-15T18:32:00Z [Hannibal] Fixed 001, re-submitting
+2026-01-15T18:33:00Z [Lynch] APPROVED 001-core-types
+2026-01-15T18:34:00Z [Hannibal] 001 → done
+2026-01-15T18:35:00Z [Hannibal] Moving 15 items to ready (dependencies met)
+2026-01-15T18:37:00Z [Hannibal] Dispatching 002, 003, 005 to Murdock in parallel
+2026-01-15T18:37:01Z [Murdock] Writing tests for 002-markdown-parser
+2026-01-15T18:37:02Z [Murdock] Writing tests for 003-stage-detector
+2026-01-15T18:37:03Z [Murdock] Writing tests for 005-sse-event-formatter
+2026-01-15T18:39:00Z [Murdock] Completed 002 - 17 tests + implementation
+2026-01-15T18:39:01Z [Murdock] Completed 003 - 22 tests + implementation
+2026-01-15T18:39:02Z [Murdock] Completed 005 - 15 tests + implementation
+2026-01-15T18:40:00Z [Hannibal] 002, 003 → review, dispatching Lynch (WIP=2)
+2026-01-15T18:40:01Z [Lynch] Reviewing 002-markdown-parser
+2026-01-15T18:40:02Z [Lynch] Reviewing 003-stage-detector
+2026-01-15T18:41:00Z [Lynch] APPROVED 002-markdown-parser
+2026-01-15T18:41:01Z [Lynch] APPROVED 003-stage-detector
+2026-01-15T18:41:02Z [Hannibal] 002, 003 → done
+2026-01-15T18:42:00Z [Hannibal] 010 dependencies met (001, 002, 003 done), moving to ready
+2026-01-15T18:42:01Z [Hannibal] 005 → review, dispatching Lynch
+2026-01-15T18:43:00Z [Lynch] APPROVED 005-sse-event-formatter
+2026-01-15T18:43:01Z [Hannibal] 005 → done
+2026-01-15T18:44:00Z [Hannibal] Dispatching 004, 006 to testing (WIP=2)
+2026-01-15T18:44:01Z [Murdock] Writing tests for 004-board-watcher
+2026-01-15T18:44:02Z [Murdock] Writing tests for 006-work-item-loader
+2026-01-15T18:46:00Z [Murdock] Completed 004 - 20 tests + implementation
+2026-01-15T18:46:01Z [Murdock] Completed 006 - 22 tests + implementation
+2026-01-15T18:46:02Z [Hannibal] Total tests now: 121 (all passing)
+2026-01-15T18:47:00Z [Hannibal] 004, 006 → review, dispatching Lynch (WIP=2)
+2026-01-15T18:48:00Z [Lynch] APPROVED 004-stats-calculator
+2026-01-15T18:48:01Z [Lynch] APPROVED 006-activity-log-parser
+2026-01-15T18:48:02Z [Hannibal] 004, 006 → done
+2026-01-15T18:48:03Z [Hannibal] 033 dependencies met (001, 006 done), moving to ready
+2026-01-15T18:49:00Z [Hannibal] Dispatching 010, 011 to testing (WIP=2)
+2026-01-15T18:49:01Z [Murdock] Writing tests for 010-board-data-service
+2026-01-15T18:49:02Z [Murdock] Writing tests for 011-dependency-checker
+2026-01-15T18:51:00Z [Murdock] Completed 010 - 27 tests + implementation (BoardService)
+2026-01-15T18:51:01Z [Murdock] Completed 011 - 31 tests + implementation (dependency-utils)
+2026-01-15T18:51:02Z [Hannibal] Total tests now: 179 (all passing)
+2026-01-15T18:52:00Z [Hannibal] 010, 011 → review, dispatching Lynch (WIP=2)
+2026-01-15T18:53:00Z [Lynch] APPROVED 010-board-data-service
+2026-01-15T18:53:01Z [Lynch] APPROVED 011-dependency-checker
+2026-01-15T18:53:02Z [Hannibal] 010, 011 → done
+2026-01-15T18:53:03Z [Hannibal] DATA LAYER COMPLETE (7/7 items done)
+2026-01-15T18:53:04Z [Hannibal] API layer dependencies met (020-025), moving to ready
+2026-01-15T18:54:00Z [Hannibal] Dispatching 030, 032 to testing (UI components - WIP=2)
+2026-01-15T18:54:01Z [Murdock] Writing tests for 030-ui-work-item-card
+2026-01-15T18:54:02Z [Murdock] Writing tests for 032-ui-header-bar
+2026-01-15T18:56:00Z [Murdock] Completed 030 - 27 tests + WorkItemCard component
+2026-01-15T18:56:01Z [Murdock] Completed 032 - 20 tests + HeaderBar component
+2026-01-15T18:57:00Z [Hannibal] Total tests now: 226 (all passing)
+2026-01-15T18:57:01Z [Hannibal] 031 dependencies met (030 done), moving to ready
+2026-01-15T18:58:00Z [Hannibal] 030, 032 → review, dispatching Lynch (WIP=2)
+2026-01-15T18:59:00Z [Lynch] APPROVED 030-WorkItemCard
+2026-01-15T18:59:01Z [Lynch] APPROVED 032-HeaderBar
+2026-01-15T18:59:02Z [Hannibal] 030, 032 → done
+2026-01-15T18:59:03Z [Hannibal] 031, 041 dependencies met (030 done), moving to ready
+2026-01-15T18:59:04Z [Hannibal] MILESTONE: 10/34 items complete (29%)
+2026-01-15T19:00:00Z [Hannibal] Dispatching 034, 035 to testing (UI components - WIP=2)
+2026-01-15T19:00:01Z [Murdock] Writing tests for 034-ui-agent-status-bar
+2026-01-15T19:00:02Z [Murdock] Writing tests for 035-ui-type-badge
+2026-01-15T19:02:00Z [Murdock] Completed 034 - 22 tests + AgentStatusBar component
+2026-01-15T19:02:01Z [Murdock] Completed 035 - 13 tests + TypeBadge component
+2026-01-15T19:03:00Z [Hannibal] Total tests now: 261 (all passing)
+2026-01-15T19:04:00Z [Hannibal] 034, 035 → review, dispatching Lynch (WIP=2)
+2026-01-15T19:04:01Z [Lynch] Reviewing 034-AgentStatusBar
+2026-01-15T19:04:02Z [Lynch] Reviewing 035-TypeBadge
+2026-01-15T19:05:00Z [Lynch] APPROVED 034-AgentStatusBar
+2026-01-15T19:05:01Z [Lynch] APPROVED 035-TypeBadge
+2026-01-15T19:05:02Z [Hannibal] 034, 035 → done
+2026-01-15T19:05:03Z [Hannibal] 12/34 items complete (35%)
+2026-01-15T19:05:04Z [Hannibal] Dispatching 031, 033 to testing (critical path for 050)
+2026-01-15T19:05:05Z [Murdock] Writing tests for 031-ui-stage-column
+2026-01-15T19:05:06Z [Murdock] Writing tests for 033-ui-activity-log-panel
+2026-01-15T19:27:00Z [Murdock] Completed 031 - 26 tests + BoardColumn component
+2026-01-15T19:27:01Z [Murdock] Completed 033 - 25 tests + LiveFeedPanel component
+2026-01-15T19:28:00Z [Hannibal] Total tests now: 312 (all passing)
+2026-01-15T19:29:00Z [Hannibal] 031, 033 → review, dispatching Lynch (WIP=2)
+2026-01-15T19:29:01Z [Lynch] Reviewing 031-BoardColumn
+2026-01-15T19:29:02Z [Lynch] Reviewing 033-LiveFeedPanel
+2026-01-15T19:30:00Z [Lynch] APPROVED 031-BoardColumn
+2026-01-15T19:30:01Z [Lynch] APPROVED 033-LiveFeedPanel
+2026-01-15T19:30:02Z [Hannibal] 031, 033 → done
+2026-01-15T19:30:03Z [Hannibal] 14/34 items complete (41%)
+2026-01-15T19:30:04Z [Hannibal] 050 dependencies met (031,032,033,034 done), moving to ready
+2026-01-15T19:30:05Z [Hannibal] UI COMPONENTS: 8/12 done, continuing with 036, 037
+2026-01-15T19:30:06Z [Hannibal] Dispatching 036, 037 to testing (WIP=2)
+2026-01-15T19:30:07Z [Murdock] Writing tests for 036-ui-dependency-indicator
+2026-01-15T19:30:08Z [Murdock] Writing tests for 037-ui-rejection-badge
+2026-01-15T19:33:00Z [Murdock] Completed 036 - 13 tests + DependencyIndicator component
+2026-01-15T19:33:01Z [Murdock] Completed 037 - 10 tests + RejectionBadge component
+2026-01-15T19:34:00Z [Hannibal] Total tests now: 335 (all passing)
+2026-01-15T19:34:01Z [Hannibal] 036, 037 → review, dispatching Lynch (WIP=2)
+2026-01-15T19:34:02Z [Lynch] Reviewing 036-DependencyIndicator
+2026-01-15T19:34:03Z [Lynch] Reviewing 037-RejectionBadge
+2026-01-15T19:35:00Z [Lynch] APPROVED 036-DependencyIndicator
+2026-01-15T19:35:01Z [Lynch] APPROVED 037-RejectionBadge
+2026-01-15T19:35:02Z [Hannibal] 036, 037 → done
+2026-01-15T19:35:03Z [Hannibal] 16/34 items complete (47%)
+2026-01-15T19:35:04Z [Hannibal] UI COMPONENTS: 10/12 done, continuing with 038, 039
+2026-01-15T19:35:05Z [Hannibal] Dispatching 038, 039 to testing (WIP=2)
+2026-01-15T19:35:06Z [Murdock] Writing tests for 038-ui-agent-badge
+2026-01-15T19:35:07Z [Murdock] Writing tests for 039-ui-progress-bar
+2026-01-15T19:36:00Z [Murdock] Completed 038 - 18 tests + AgentBadge component
+2026-01-15T19:36:01Z [Murdock] Completed 039 - 18 tests + ProgressBar component
+2026-01-15T19:37:00Z [Hannibal] Total tests now: 371 (all passing)
+2026-01-15T19:37:01Z [Hannibal] 038, 039 → review, dispatching Lynch (WIP=2)
+2026-01-15T19:37:02Z [Lynch] Reviewing 038-AgentBadge
+2026-01-15T19:37:03Z [Lynch] Reviewing 039-ProgressBar
+2026-01-15T19:38:00Z [Lynch] APPROVED 038-AgentBadge
+2026-01-15T19:38:01Z [Lynch] APPROVED 039-ProgressBar
+2026-01-15T19:38:02Z [Hannibal] 038, 039 → done
+2026-01-15T19:38:03Z [Hannibal] 18/34 items complete (53%) - HALFWAY MILESTONE
+2026-01-15T19:38:04Z [Hannibal] UI COMPONENTS: Final batch - dispatching 040, 041
+2026-01-15T19:38:05Z [Murdock] Writing tests for 040-ui-mission-timer
+2026-01-15T19:38:06Z [Murdock] Writing tests for 041-ui-item-detail-modal

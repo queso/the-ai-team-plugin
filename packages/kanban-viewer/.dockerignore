@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js build output
+.next
+out
+
+# Testing
+coverage
+test-results
+playwright-report
+
+# Mission data (will be mounted as volume)
+mission
+
+# Database (will be mounted as volume in production)
+prisma/data
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Misc
+.DS_Store
+*.md
+!README.md
+.env*
+.playwright-mcp

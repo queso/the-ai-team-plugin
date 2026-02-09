@@ -1,0 +1,33 @@
+{
+  "mission": null,
+  "project": null,
+  "wip_limit": 4,
+  "max_wip": 6,
+  "created_at": null,
+  "updated_at": null,
+  "stats": {
+    "total_items": 0,
+    "completed": 0,
+    "in_flight": 0,
+    "blocked": 0,
+    "backlog": 0,
+    "rejected_count": 0
+  },
+  "agents": {},
+  "phases": {
+    "briefings": [],
+    "ready": [],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "probing": [],
+    "done": [],
+    "blocked": []
+  },
+  "wip_limits": {
+    "testing": 3,
+    "implementing": 4,
+    "review": 3,
+    "probing": 3
+  }
+}

@@ -1,0 +1,99 @@
+/**
+ * Card Movement Animations
+ *
+ * CSS animations for smooth transitions when work items move between columns.
+ * Uses CSS transforms for GPU acceleration.
+ */
+
+/* Animation timing */
+:root {
+  --card-animation-duration: 300ms;
+  --layout-shift-duration: 200ms;
+  --card-animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Exit animation - card leaving a column */
+.card-exiting {
+  animation: card-exit var(--card-animation-duration) var(--card-animation-easing) forwards;
+}
+
+.card-exiting-left {
+  --exit-direction: -50px;
+}
+
+.card-exiting-right {
+  --exit-direction: 50px;
+}
+
+@keyframes card-exit {
+  0% {
+    transform: scale(1) translateX(0) translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02) translateX(0) translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  }
+  100% {
+    transform: scale(0.95) translateX(var(--exit-direction, 0)) translateY(0);
+    opacity: 0;
+  }
+}
+
+/* Enter animation - card arriving at a column */
+.card-entering {
+  animation: card-enter var(--card-animation-duration) var(--card-animation-easing) forwards;
+}
+
+.card-entering-left {
+  --enter-direction: -50px;
+}
+
+.card-entering-right {
+  --enter-direction: 50px;
+}
+
+@keyframes card-enter {
+  0% {
+    transform: scale(0.95) translateX(var(--enter-direction, 0)) translateY(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.02) translateX(0) translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  }
+  100% {
+    transform: scale(1) translateX(0) translateY(0);
+    opacity: 1;
+    box-shadow: none;
+  }
+}
+
+/* Layout shift animation for other cards repositioning */
+.card-layout-shift {
+  transition: transform var(--layout-shift-duration) var(--card-animation-easing);
+}
+
+/* Idle state - no animation */
+.card-idle {
+  transform: scale(1) translateX(0) translateY(0);
+  opacity: 1;
+}
+
+/* Accessibility: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .card-exiting,
+  .card-entering,
+  .card-layout-shift {
+    animation: none;
+    transition: none;
+  }
+
+  .card-exiting {
+    opacity: 0;
+  }
+
+  .card-entering {
+    opacity: 1;
+  }
+}
