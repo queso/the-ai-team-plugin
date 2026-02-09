@@ -1,574 +1,657 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { z } from 'zod';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-/**
- * Tests for item-related MCP tools.
- *
- * These tools provide CRUD operations for work items:
- * - item_create: Create a new work item
- * - item_update: Update an existing work item
- * - item_get: Retrieve a single item by ID
- * - item_list: List items with optional filtering
- * - item_reject: Record rejection with reason
- * - item_render: Get markdown representation
- */
+// Mock the HTTP client
+const mockGet = vi.fn();
+const mockPost = vi.fn();
+const mockPatch = vi.fn();
 
-// Mock HTTP client
-const mockClient = {
-  get: vi.fn(),
-  post: vi.fn(),
-  put: vi.fn(),
-  delete: vi.fn(),
-};
-
-// Mock the client module
 vi.mock('../../client/index.js', () => ({
-  createClient: () => mockClient,
+  createClient: () => ({
+    get: mockGet,
+    post: mockPost,
+    patch: mockPatch,
+  }),
 }));
-
-// Expected Zod schemas for input validation
-const ItemCreateInputSchema = z.object({
-  title: z.string().min(1),
-  type: z.enum(['feature', 'bug', 'task']),
-  status: z.string().optional().default('pending'),
-  dependencies: z.array(z.string()).optional().default([]),
-  parallel_group: z.string().optional(),
-  outputs: z.object({
-    test: z.string(),
-    impl: z.string(),
-    types: z.string().optional(),
-  }).optional(),
-});
-
-const ItemUpdateInputSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1).optional(),
-  status: z.string().optional(),
-  assigned_agent: z.string().optional(),
-  rejection_count: z.number().int().min(0).optional(),
-});
-
-const ItemGetInputSchema = z.object({
-  id: z.string().min(1),
-});
-
-const ItemListInputSchema = z.object({
-  status: z.string().optional(),
-  stage: z.string().optional(),
-  agent: z.string().optional(),
-});
-
-const ItemRejectInputSchema = z.object({
-  id: z.string().min(1),
-  reason: z.string().min(1),
-  agent: z.string().optional(),
-});
-
-const ItemRenderInputSchema = z.object({
-  id: z.string().min(1),
-});
-
-// Sample work item for testing
-const sampleItem = {
-  id: '001',
-  title: 'Test Feature',
-  type: 'feature',
-  status: 'pending',
-  rejection_count: 0,
-  dependencies: [],
-  parallel_group: 'core',
-  outputs: {
-    test: 'src/__tests__/feature.test.ts',
-    impl: 'src/services/feature.ts',
-  },
-};
 
 describe('Item Tools', () => {
   beforeEach(() => {
-    // Reset all mocks between tests - this clears both call records AND mock implementations
-    mockClient.get.mockReset();
-    mockClient.post.mockReset();
-    mockClient.put.mockReset();
-    mockClient.delete.mockReset();
+    vi.resetModules();
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockPatch.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('item_create', () => {
-    it('should create a work item with required fields and return created item with ID', async () => {
-      const createInput = {
-        title: 'New Feature',
-        type: 'feature' as const,
-        outputs: {
-          test: 'src/__tests__/new.test.ts',
-          impl: 'src/services/new.ts',
-        },
-      };
+    describe('happy path', () => {
+      it('should create work item with valid input', async () => {
+        const mockResponse = {
+          data: {
+            id: 'WI-001',
+            title: 'Add user authentication',
+            description: 'Implement JWT-based auth',
+            type: 'feature',
+            priority: 'high',
+            status: 'pending',
+            stage: 'briefings',
+            dependencies: [],
+            rejection_count: 0,
+          },
+          status: 201,
+          headers: {},
+        };
+        mockPost.mockResolvedValueOnce(mockResponse);
 
-      const expectedResponse = {
-        ...createInput,
-        id: '002',
-        status: 'pending',
-        rejection_count: 0,
-        dependencies: [],
-      };
+        const { itemCreate } = await import('../../tools/items.js');
 
-      mockClient.post.mockResolvedValueOnce({
-        data: expectedResponse,
-        status: 201,
-        headers: {},
+        const result = await itemCreate({
+          title: 'Add user authentication',
+          description: 'Implement JWT-based auth',
+          type: 'feature',
+          priority: 'high',
+        });
+
+        expect(mockPost).toHaveBeenCalledWith('/api/items', {
+          title: 'Add user authentication',
+          description: 'Implement JWT-based auth',
+          type: 'feature',
+          priority: 'high',
+          status: 'pending',
+          dependencies: [],
+        });
+        expect(result.content[0].text).toContain('WI-001');
+        expect(result.content[0].text).toContain('Add user authentication');
       });
 
-      // Validate input schema accepts the input
-      const validatedInput = ItemCreateInputSchema.parse(createInput);
-      expect(validatedInput.title).toBe('New Feature');
-      expect(validatedInput.type).toBe('feature');
+      it('should create item with optional fields', async () => {
+        const mockResponse = {
+          data: {
+            id: 'WI-002',
+            title: 'Fix login bug',
+            description: 'Users cannot login with email',
+            type: 'bug',
+            priority: 'critical',
+            status: 'pending',
+            stage: 'briefings',
+            dependencies: ['WI-001'],
+            parallel_group: 'auth-group',
+            outputs: {
+              test: 'src/__tests__/login.test.ts',
+              impl: 'src/auth/login.ts',
+            },
+            rejection_count: 0,
+          },
+          status: 201,
+          headers: {},
+        };
+        mockPost.mockResolvedValueOnce(mockResponse);
 
-      // Simulate tool calling the API
-      const result = await mockClient.post('/api/items', createInput);
+        const { itemCreate } = await import('../../tools/items.js');
 
-      expect(mockClient.post).toHaveBeenCalledWith('/api/items', createInput);
-      expect(result.data.id).toBe('002');
-      expect(result.status).toBe(201);
+        const result = await itemCreate({
+          title: 'Fix login bug',
+          description: 'Users cannot login with email',
+          type: 'bug',
+          priority: 'critical',
+          dependencies: ['WI-001'],
+          parallel_group: 'auth-group',
+          outputs: {
+            test: 'src/__tests__/login.test.ts',
+            impl: 'src/auth/login.ts',
+          },
+        });
+
+        expect(mockPost).toHaveBeenCalledWith('/api/items', expect.objectContaining({
+          dependencies: ['WI-001'],
+          parallel_group: 'auth-group',
+          outputs: expect.objectContaining({
+            test: 'src/__tests__/login.test.ts',
+            impl: 'src/auth/login.ts',
+          }),
+        }));
+        expect(result.content[0].text).toContain('WI-002');
+      });
     });
 
-    it('should apply default status of pending when not provided', () => {
-      const input = {
-        title: 'Test',
-        type: 'feature' as const,
-      };
+    describe('validation', () => {
+      it('should reject missing title', async () => {
+        const { itemCreate } = await import('../../tools/items.js');
 
-      const validated = ItemCreateInputSchema.parse(input);
-      expect(validated.status).toBe('pending');
+        const result = await itemCreate({
+          description: 'Test description',
+          type: 'feature',
+          priority: 'high',
+        } as any);
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('Required');
+        }
+      });
+
+      it('should reject invalid dependency ID format', async () => {
+        const { itemCreate } = await import('../../tools/items.js');
+
+        const result = await itemCreate({
+          title: 'Test item',
+          description: 'Test description',
+          type: 'feature',
+          priority: 'high',
+          dependencies: ['001'], // Invalid format - should be WI-001
+        });
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('Invalid dependency ID');
+          expect(result.message).toContain('WI-XXX');
+        }
+      });
+
+      it('should accept valid dependency ID format WI-001', async () => {
+        const mockResponse = {
+          data: {
+            id: 'WI-002',
+            title: 'Test',
+            description: 'Test',
+            type: 'feature',
+            priority: 'high',
+            status: 'pending',
+            dependencies: ['WI-001'],
+            rejection_count: 0,
+          },
+          status: 201,
+          headers: {},
+        };
+        mockPost.mockResolvedValueOnce(mockResponse);
+
+        const { itemCreate } = await import('../../tools/items.js');
+
+        const result = await itemCreate({
+          title: 'Test',
+          description: 'Test',
+          type: 'feature',
+          priority: 'high',
+          dependencies: ['WI-001'],
+        });
+
+        expect(mockPost).toHaveBeenCalled();
+        expect(result.isError).not.toBe(true);
+      });
     });
 
-    it('should reject invalid item type', () => {
-      const invalidInput = {
-        title: 'Test',
-        type: 'invalid-type',
-      };
+    describe('error handling', () => {
+      it('should handle API errors', async () => {
+        const error = {
+          status: 400,
+          message: 'Invalid work item data',
+          code: 'VALIDATION_ERROR',
+        };
+        mockPost.mockRejectedValueOnce(error);
 
-      expect(() => ItemCreateInputSchema.parse(invalidInput)).toThrow();
-    });
+        const { itemCreate } = await import('../../tools/items.js');
 
-    it('should reject empty title', () => {
-      const invalidInput = {
-        title: '',
-        type: 'feature',
-      };
+        const result = await itemCreate({
+          title: 'Test',
+          description: 'Test',
+          type: 'feature',
+          priority: 'high',
+        });
 
-      expect(() => ItemCreateInputSchema.parse(invalidInput)).toThrow();
-    });
-
-    it('should accept optional dependencies array', () => {
-      const input = {
-        title: 'Dependent Feature',
-        type: 'feature' as const,
-        dependencies: ['001', '002'],
-      };
-
-      const validated = ItemCreateInputSchema.parse(input);
-      expect(validated.dependencies).toEqual(['001', '002']);
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('Invalid');
+        }
+      });
     });
   });
 
   describe('item_update', () => {
-    it('should update an existing item with partial fields', async () => {
-      const updateInput = {
-        id: '001',
-        status: 'testing',
-      };
+    describe('happy path', () => {
+      it('should update work item with partial data', async () => {
+        const mockResponse = {
+          data: {
+            id: 'WI-001',
+            title: 'Updated title',
+            description: 'Original description',
+            type: 'feature',
+            priority: 'high',
+            status: 'pending',
+            rejection_count: 0,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockPatch.mockResolvedValueOnce(mockResponse);
 
-      const updatedItem = {
-        ...sampleItem,
-        status: 'testing',
-      };
+        const { itemUpdate } = await import('../../tools/items.js');
 
-      mockClient.put.mockResolvedValueOnce({
-        data: updatedItem,
-        status: 200,
-        headers: {},
+        const result = await itemUpdate({
+          id: 'WI-001',
+          title: 'Updated title',
+        });
+
+        expect(mockPatch).toHaveBeenCalledWith('/api/items/WI-001', {
+          title: 'Updated title',
+        });
+        expect(result.content[0].text).toContain('Updated title');
       });
 
-      // Validate input schema
-      const validatedInput = ItemUpdateInputSchema.parse(updateInput);
-      expect(validatedInput.id).toBe('001');
-      expect(validatedInput.status).toBe('testing');
+      it('should update multiple fields at once', async () => {
+        const mockResponse = {
+          data: {
+            id: 'WI-001',
+            title: 'Updated title',
+            description: 'Updated description',
+            priority: 'critical',
+            status: 'pending',
+            type: 'feature',
+            rejection_count: 0,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockPatch.mockResolvedValueOnce(mockResponse);
 
-      // Simulate tool calling the API
-      const result = await mockClient.put('/api/items/001', { status: 'testing' });
+        const { itemUpdate } = await import('../../tools/items.js');
 
-      expect(mockClient.put).toHaveBeenCalledWith('/api/items/001', { status: 'testing' });
-      expect(result.data.status).toBe('testing');
+        const result = await itemUpdate({
+          id: 'WI-001',
+          title: 'Updated title',
+          description: 'Updated description',
+          priority: 'critical',
+        });
+
+        expect(mockPatch).toHaveBeenCalledWith('/api/items/WI-001', {
+          title: 'Updated title',
+          description: 'Updated description',
+          priority: 'critical',
+        });
+        expect(result.content[0].text).toContain('Updated title');
+      });
     });
 
-    it('should support updating assigned_agent field', async () => {
-      const updateInput = {
-        id: '001',
-        assigned_agent: 'Murdock',
-      };
+    describe('validation', () => {
+      it('should reject missing id', async () => {
+        const { itemUpdate } = await import('../../tools/items.js');
 
-      mockClient.put.mockResolvedValueOnce({
-        data: { ...sampleItem, assigned_agent: 'Murdock' },
-        status: 200,
-        headers: {},
+        const result = await itemUpdate({
+          title: 'Test',
+        } as any);
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('Required');
+        }
       });
 
-      const validatedInput = ItemUpdateInputSchema.parse(updateInput);
-      expect(validatedInput.assigned_agent).toBe('Murdock');
+      it('should reject invalid dependency ID format in update', async () => {
+        const { itemUpdate } = await import('../../tools/items.js');
 
-      const result = await mockClient.put('/api/items/001', { assigned_agent: 'Murdock' });
-      expect(result.data.assigned_agent).toBe('Murdock');
-    });
+        const result = await itemUpdate({
+          id: 'WI-001',
+          dependencies: ['002'], // Invalid format
+        });
 
-    it('should reject update without item ID', () => {
-      const invalidInput = {
-        status: 'testing',
-      };
-
-      expect(() => ItemUpdateInputSchema.parse(invalidInput)).toThrow();
-    });
-
-    it('should reject empty item ID', () => {
-      const invalidInput = {
-        id: '',
-        status: 'testing',
-      };
-
-      expect(() => ItemUpdateInputSchema.parse(invalidInput)).toThrow();
-    });
-
-    it('should handle 404 when item not found', async () => {
-      mockClient.put.mockRejectedValueOnce({
-        status: 404,
-        message: 'Item not found',
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('Invalid dependency ID');
+        }
       });
+    });
 
-      await expect(mockClient.put('/api/items/999', { status: 'testing' }))
-        .rejects.toMatchObject({ status: 404 });
+    describe('error handling', () => {
+      it('should handle item not found', async () => {
+        const error = {
+          status: 404,
+          message: 'Item not found: WI-999',
+          code: 'ITEM_NOT_FOUND',
+        };
+        mockPatch.mockRejectedValueOnce(error);
+
+        const { itemUpdate } = await import('../../tools/items.js');
+
+        const result = await itemUpdate({
+          id: 'WI-999',
+          title: 'Updated title',
+        });
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('not found');
+        }
+      });
     });
   });
 
   describe('item_get', () => {
-    it('should retrieve a single item by ID', async () => {
-      mockClient.get.mockResolvedValueOnce({
-        data: sampleItem,
-        status: 200,
-        headers: {},
+    describe('happy path', () => {
+      it('should retrieve work item by ID', async () => {
+        const mockResponse = {
+          data: {
+            id: 'WI-001',
+            title: 'Add user authentication',
+            description: 'Implement JWT-based auth',
+            type: 'feature',
+            priority: 'high',
+            status: 'pending',
+            stage: 'briefings',
+            rejection_count: 0,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockGet.mockResolvedValueOnce(mockResponse);
+
+        const { itemGet } = await import('../../tools/items.js');
+
+        const result = await itemGet({ id: 'WI-001' });
+
+        expect(mockGet).toHaveBeenCalledWith('/api/items/WI-001');
+        expect(result.content[0].text).toContain('WI-001');
+        expect(result.content[0].text).toContain('Add user authentication');
       });
-
-      // Validate input schema
-      const validatedInput = ItemGetInputSchema.parse({ id: '001' });
-      expect(validatedInput.id).toBe('001');
-
-      // Simulate tool calling the API
-      const result = await mockClient.get('/api/items/001');
-
-      expect(mockClient.get).toHaveBeenCalledWith('/api/items/001');
-      expect(result.data).toEqual(sampleItem);
     });
 
-    it('should reject empty item ID', () => {
-      expect(() => ItemGetInputSchema.parse({ id: '' })).toThrow();
-    });
+    describe('error handling', () => {
+      it('should handle item not found', async () => {
+        const error = {
+          status: 404,
+          message: 'Item not found: WI-999',
+          code: 'ITEM_NOT_FOUND',
+        };
+        mockGet.mockRejectedValueOnce(error);
 
-    it('should handle 404 when item does not exist', async () => {
-      mockClient.get.mockRejectedValueOnce({
-        status: 404,
-        message: 'Item not found',
+        const { itemGet } = await import('../../tools/items.js');
+
+        const result = await itemGet({ id: 'WI-999' });
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('not found');
+        }
       });
-
-      await expect(mockClient.get('/api/items/nonexistent'))
-        .rejects.toMatchObject({ status: 404 });
     });
   });
 
   describe('item_list', () => {
-    const multipleItems = [
-      sampleItem,
-      { ...sampleItem, id: '002', title: 'Second Feature', status: 'testing' },
-      { ...sampleItem, id: '003', title: 'Third Feature', status: 'done', assigned_agent: 'B.A.' },
-    ];
+    describe('happy path', () => {
+      it('should list all items without filters', async () => {
+        const mockResponse = {
+          data: [
+            {
+              id: 'WI-001',
+              title: 'Item 1',
+              description: 'First item',
+              type: 'feature',
+              priority: 'high',
+              status: 'pending',
+              rejection_count: 0,
+            },
+            {
+              id: 'WI-002',
+              title: 'Item 2',
+              description: 'Second item',
+              type: 'bug',
+              priority: 'critical',
+              status: 'pending',
+              rejection_count: 0,
+            },
+          ],
+          status: 200,
+          headers: {},
+        };
+        mockGet.mockResolvedValueOnce(mockResponse);
 
-    it('should list all items without filters', async () => {
-      mockClient.get.mockResolvedValueOnce({
-        data: multipleItems,
-        status: 200,
-        headers: {},
+        const { itemList } = await import('../../tools/items.js');
+
+        const result = await itemList({});
+
+        expect(mockGet).toHaveBeenCalledWith('/api/items');
+        expect(result.content[0].text).toContain('WI-001');
+        expect(result.content[0].text).toContain('WI-002');
       });
 
-      // Validate empty input is acceptable
-      const validatedInput = ItemListInputSchema.parse({});
-      expect(validatedInput).toEqual({});
+      it('should list items filtered by status', async () => {
+        const mockResponse = {
+          data: [
+            {
+              id: 'WI-001',
+              title: 'Item 1',
+              description: 'First item',
+              type: 'feature',
+              priority: 'high',
+              status: 'active',
+              rejection_count: 0,
+            },
+          ],
+          status: 200,
+          headers: {},
+        };
+        mockGet.mockResolvedValueOnce(mockResponse);
 
-      const result = await mockClient.get('/api/items');
-      expect(result.data).toHaveLength(3);
+        const { itemList } = await import('../../tools/items.js');
+
+        const result = await itemList({ status: 'active' });
+
+        expect(mockGet).toHaveBeenCalledWith('/api/items?status=active');
+        expect(result.content[0].text).toContain('WI-001');
+      });
+
+      it('should list items with multiple filters', async () => {
+        const mockResponse = {
+          data: [],
+          status: 200,
+          headers: {},
+        };
+        mockGet.mockResolvedValueOnce(mockResponse);
+
+        const { itemList } = await import('../../tools/items.js');
+
+        const result = await itemList({
+          status: 'active',
+          stage: 'testing',
+          agent: 'murdock',
+        });
+
+        expect(mockGet).toHaveBeenCalledWith('/api/items?status=active&stage=testing&agent=murdock');
+        expect(result.content[0].text).toContain('[]');
+      });
     });
 
-    it('should filter items by status', async () => {
-      const testingItems = multipleItems.filter(i => i.status === 'testing');
+    describe('error handling', () => {
+      it('should handle API errors', async () => {
+        const error = {
+          status: 500,
+          message: 'Internal server error',
+          code: 'INTERNAL_ERROR',
+        };
+        mockGet.mockRejectedValueOnce(error);
 
-      mockClient.get.mockResolvedValueOnce({
-        data: testingItems,
-        status: 200,
-        headers: {},
+        const { itemList } = await import('../../tools/items.js');
+
+        const result = await itemList({});
+
+        expect(result.isError).toBe(true);
       });
-
-      const validatedInput = ItemListInputSchema.parse({ status: 'testing' });
-      expect(validatedInput.status).toBe('testing');
-
-      const result = await mockClient.get('/api/items?status=testing');
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].status).toBe('testing');
-    });
-
-    it('should filter items by stage', async () => {
-      mockClient.get.mockResolvedValueOnce({
-        data: [sampleItem],
-        status: 200,
-        headers: {},
-      });
-
-      const validatedInput = ItemListInputSchema.parse({ stage: 'ready' });
-      expect(validatedInput.stage).toBe('ready');
-
-      const result = await mockClient.get('/api/items?stage=ready');
-      expect(mockClient.get).toHaveBeenCalledWith('/api/items?stage=ready');
-    });
-
-    it('should filter items by assigned agent', async () => {
-      const agentItems = multipleItems.filter(i => i.assigned_agent === 'B.A.');
-
-      mockClient.get.mockResolvedValueOnce({
-        data: agentItems,
-        status: 200,
-        headers: {},
-      });
-
-      const validatedInput = ItemListInputSchema.parse({ agent: 'B.A.' });
-      expect(validatedInput.agent).toBe('B.A.');
-
-      const result = await mockClient.get('/api/items?agent=B.A.');
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].assigned_agent).toBe('B.A.');
-    });
-
-    it('should support combining multiple filters', async () => {
-      mockClient.get.mockResolvedValueOnce({
-        data: [],
-        status: 200,
-        headers: {},
-      });
-
-      const validatedInput = ItemListInputSchema.parse({
-        status: 'testing',
-        stage: 'implementing',
-        agent: 'Murdock',
-      });
-
-      expect(validatedInput.status).toBe('testing');
-      expect(validatedInput.stage).toBe('implementing');
-      expect(validatedInput.agent).toBe('Murdock');
-    });
-
-    it('should return empty array when no items match filters', async () => {
-      mockClient.get.mockResolvedValueOnce({
-        data: [],
-        status: 200,
-        headers: {},
-      });
-
-      const result = await mockClient.get('/api/items?status=nonexistent');
-      expect(result.data).toEqual([]);
     });
   });
 
   describe('item_reject', () => {
-    it('should record rejection with reason', async () => {
-      const rejectedItem = {
-        ...sampleItem,
-        rejection_count: 1,
-      };
+    describe('happy path', () => {
+      it('should record rejection with reason', async () => {
+        const mockResponse = {
+          data: {
+            item: {
+              id: 'WI-001',
+              title: 'Test item',
+              description: 'Test',
+              type: 'feature',
+              priority: 'high',
+              status: 'pending',
+              rejection_count: 1,
+            },
+            escalated: false,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockPost.mockResolvedValueOnce(mockResponse);
 
-      mockClient.post.mockResolvedValueOnce({
-        data: {
-          item: rejectedItem,
-          escalated: false,
-        },
-        status: 200,
-        headers: {},
+        const { itemReject } = await import('../../tools/items.js');
+
+        const result = await itemReject({
+          id: 'WI-001',
+          reason: 'Tests do not cover edge cases',
+        });
+
+        expect(mockPost).toHaveBeenCalledWith('/api/items/WI-001/reject', {
+          reason: 'Tests do not cover edge cases',
+        });
+        expect(result.content[0].text).toContain('escalated');
       });
 
-      const validatedInput = ItemRejectInputSchema.parse({
-        id: '001',
-        reason: 'Tests do not cover edge cases',
+      it('should include agent in rejection', async () => {
+        const mockResponse = {
+          data: {
+            item: {
+              id: 'WI-001',
+              title: 'Test item',
+              description: 'Test',
+              type: 'feature',
+              priority: 'high',
+              status: 'pending',
+              rejection_count: 1,
+            },
+            escalated: false,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockPost.mockResolvedValueOnce(mockResponse);
+
+        const { itemReject } = await import('../../tools/items.js');
+
+        const result = await itemReject({
+          id: 'WI-001',
+          reason: 'Implementation incomplete',
+          agent: 'lynch',
+        });
+
+        expect(mockPost).toHaveBeenCalledWith('/api/items/WI-001/reject', {
+          reason: 'Implementation incomplete',
+          agent: 'lynch',
+        });
       });
 
-      expect(validatedInput.id).toBe('001');
-      expect(validatedInput.reason).toBe('Tests do not cover edge cases');
+      it('should handle escalation after max rejections', async () => {
+        const mockResponse = {
+          data: {
+            item: {
+              id: 'WI-001',
+              title: 'Test item',
+              description: 'Test',
+              type: 'feature',
+              priority: 'high',
+              status: 'blocked',
+              stage: 'blocked',
+              rejection_count: 3,
+            },
+            escalated: true,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockPost.mockResolvedValueOnce(mockResponse);
 
-      const result = await mockClient.post('/api/items/001/reject', {
-        reason: 'Tests do not cover edge cases',
+        const { itemReject } = await import('../../tools/items.js');
+
+        const result = await itemReject({
+          id: 'WI-001',
+          reason: 'Third rejection',
+        });
+
+        expect(result.content[0].text).toContain('escalated');
+        expect(result.content[0].text).toContain('true');
       });
-
-      expect(result.data.item.rejection_count).toBe(1);
-      expect(result.data.escalated).toBe(false);
     });
 
-    it('should handle escalation after max rejections (2)', async () => {
-      const escalatedItem = {
-        ...sampleItem,
-        rejection_count: 2,
-        status: 'blocked',
-      };
+    describe('error handling', () => {
+      it('should handle item not found', async () => {
+        const error = {
+          status: 404,
+          message: 'Item not found: WI-999',
+          code: 'ITEM_NOT_FOUND',
+        };
+        mockPost.mockRejectedValueOnce(error);
 
-      mockClient.post.mockResolvedValueOnce({
-        data: {
-          item: escalatedItem,
-          escalated: true,
-        },
-        status: 200,
-        headers: {},
+        const { itemReject } = await import('../../tools/items.js');
+
+        const result = await itemReject({
+          id: 'WI-999',
+          reason: 'Test rejection',
+        });
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('not found');
+        }
       });
-
-      const result = await mockClient.post('/api/items/001/reject', {
-        reason: 'Still failing tests',
-      });
-
-      expect(result.data.item.rejection_count).toBe(2);
-      expect(result.data.escalated).toBe(true);
-      expect(result.data.item.status).toBe('blocked');
-    });
-
-    it('should optionally record the rejecting agent', async () => {
-      const validatedInput = ItemRejectInputSchema.parse({
-        id: '001',
-        reason: 'Code review failed',
-        agent: 'Lynch',
-      });
-
-      expect(validatedInput.agent).toBe('Lynch');
-    });
-
-    it('should reject empty reason', () => {
-      expect(() => ItemRejectInputSchema.parse({
-        id: '001',
-        reason: '',
-      })).toThrow();
-    });
-
-    it('should reject missing item ID', () => {
-      expect(() => ItemRejectInputSchema.parse({
-        reason: 'Some reason',
-      })).toThrow();
-    });
-
-    it('should handle 404 when item not found', async () => {
-      mockClient.post.mockRejectedValueOnce({
-        status: 404,
-        message: 'Item not found',
-      });
-
-      await expect(mockClient.post('/api/items/999/reject', { reason: 'test' }))
-        .rejects.toMatchObject({ status: 404 });
     });
   });
 
   describe('item_render', () => {
-    it('should return markdown representation of item', async () => {
-      const markdownContent = `---
-id: '001'
-title: Test Feature
+    describe('happy path', () => {
+      it('should return markdown representation of item', async () => {
+        const mockResponse = {
+          data: {
+            markdown: `---
+id: WI-001
+title: Add user authentication
 type: feature
+priority: high
 status: pending
 ---
-## Objective
 
-Test feature implementation
+# Add user authentication
 
-## Acceptance Criteria
+Implement JWT-based authentication for the API.`,
+          },
+          status: 200,
+          headers: {},
+        };
+        mockGet.mockResolvedValueOnce(mockResponse);
 
-- [ ] Feature works correctly
-`;
+        const { itemRender } = await import('../../tools/items.js');
 
-      mockClient.get.mockResolvedValueOnce({
-        data: { markdown: markdownContent },
-        status: 200,
-        headers: {},
+        const result = await itemRender({ id: 'WI-001' });
+
+        expect(mockGet).toHaveBeenCalledWith('/api/items/WI-001/render');
+        expect(result.content[0].text).toContain('markdown');
+        expect(result.content[0].text).toContain('Add user authentication');
       });
-
-      const validatedInput = ItemRenderInputSchema.parse({ id: '001' });
-      expect(validatedInput.id).toBe('001');
-
-      const result = await mockClient.get('/api/items/001/render');
-
-      expect(mockClient.get).toHaveBeenCalledWith('/api/items/001/render');
-      expect(result.data).toBeDefined();
-      expect(typeof result.data.markdown).toBe('string');
-      expect(result.data.markdown.includes('---')).toBe(true);
-      expect(result.data.markdown.includes('id:')).toBe(true);
-      expect(result.data.markdown.includes('title:')).toBe(true);
     });
 
-    it('should reject empty item ID', () => {
-      expect(() => ItemRenderInputSchema.parse({ id: '' })).toThrow();
-    });
+    describe('error handling', () => {
+      it('should handle item not found', async () => {
+        const error = {
+          status: 404,
+          message: 'Item not found: WI-999',
+          code: 'ITEM_NOT_FOUND',
+        };
+        mockGet.mockRejectedValueOnce(error);
 
-    it('should handle 404 when item not found', async () => {
-      mockClient.get.mockRejectedValueOnce({
-        status: 404,
-        message: 'Item not found',
+        const { itemRender } = await import('../../tools/items.js');
+
+        const result = await itemRender({ id: 'WI-999' });
+
+        expect(result.isError).toBe(true);
+        if ('message' in result) {
+          expect(result.message).toContain('not found');
+        }
       });
-
-      await expect(mockClient.get('/api/items/nonexistent/render'))
-        .rejects.toMatchObject({ status: 404 });
-    });
-  });
-
-  describe('Zod Schema Validation', () => {
-    it('ItemCreateInputSchema validates all fields correctly', () => {
-      const fullInput = {
-        title: 'Complete Feature',
-        type: 'feature' as const,
-        status: 'ready',
-        dependencies: ['001', '002'],
-        parallel_group: 'tools',
-        outputs: {
-          test: 'test.ts',
-          impl: 'impl.ts',
-          types: 'types.ts',
-        },
-      };
-
-      const validated = ItemCreateInputSchema.parse(fullInput);
-      expect(validated.title).toBe('Complete Feature');
-      expect(validated.dependencies).toEqual(['001', '002']);
-      expect(validated.outputs?.types).toBe('types.ts');
-    });
-
-    it('ItemUpdateInputSchema allows partial updates', () => {
-      // Only ID required, everything else optional
-      const minimalUpdate = { id: '001' };
-      const validated = ItemUpdateInputSchema.parse(minimalUpdate);
-      expect(validated.id).toBe('001');
-      expect(validated.title).toBeUndefined();
-      expect(validated.status).toBeUndefined();
-    });
-
-    it('ItemListInputSchema allows all empty filters', () => {
-      const emptyFilters = {};
-      const validated = ItemListInputSchema.parse(emptyFilters);
-      expect(validated).toEqual({});
-    });
-
-    it('schemas reject null values for required fields', () => {
-      expect(() => ItemCreateInputSchema.parse({ title: null, type: 'feature' })).toThrow();
-      expect(() => ItemGetInputSchema.parse({ id: null })).toThrow();
-      expect(() => ItemRejectInputSchema.parse({ id: null, reason: 'test' })).toThrow();
-    });
-
-    it('schemas reject undefined required fields', () => {
-      expect(() => ItemCreateInputSchema.parse({ type: 'feature' })).toThrow();
-      expect(() => ItemGetInputSchema.parse({})).toThrow();
-      expect(() => ItemRejectInputSchema.parse({ id: '001' })).toThrow();
     });
   });
 });

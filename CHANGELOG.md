@@ -5,6 +5,24 @@ All notable changes to the A(i)-Team plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **MCP Server test suite cleanup** - Removed 170 dead tests and replaced with 62 behavioral tests
+  - Deleted 6 fake MCP server test files testing mock schemas instead of real code (129 tests)
+  - Deleted 2 root-level useless test files (6 tests)
+  - Trimmed 48 low-value tests from 6 files (meta-tests, tautological tests, duplicate tests)
+  - Trimmed 6 legacy migration guard tests from enforce-hooks.test.js
+  - Added 14 real behavioral tests for board.ts handlers (DI pattern for client mocking)
+  - Added 23 real behavioral tests for items.ts handlers (vi.mock() pattern)
+  - Added 25 real behavioral tests for missions.ts handlers (vi.mock() pattern)
+  - Updated agents/murdock.md with "What NOT to Test" anti-pattern examples
+  - Updated agents/face.md with NO_TEST_NEEDED identification guidance
+  - Net result: 407 tests → 304 tests (all behavioral)
+
+---
+
 ## [2.3.0] - 2026-02-07
 
 ### Fixed

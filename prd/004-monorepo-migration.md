@@ -42,12 +42,12 @@ The two repositories share 10+ domain concepts with no compile-time safety betwe
 
 ### 1.3 Solution
 
-Merge both repositories into a single npm workspaces monorepo. Extract shared domain concepts into a `@ai-team/shared` package that both the MCP server and kanban-viewer import. A single `npm install` at the root installs everything. A single `docker compose up` starts the kanban-viewer.
+Merge both repositories into a single bun workspaces monorepo. Extract shared domain concepts into a `@ai-team/shared` package that both the MCP server and kanban-viewer import. A single `bun install` at the root installs everything. A single `docker compose up` starts the kanban-viewer.
 
 ### 1.4 Scope
 
 This PRD covers:
-- Repository restructuring into npm workspaces
+- Repository restructuring into bun workspaces
 - Moving `mcp-server/` to `packages/mcp-server/`
 - Importing kanban-viewer source into `packages/kanban-viewer/`
 - Extracting shared types into `packages/shared/`
@@ -135,8 +135,9 @@ The-Ai-team/
 ├── scripts/                     # UNCHANGED
 ├── .claude-plugin/              # UNCHANGED
 │   └── plugin.json
-├── .mcp.json                    # UPDATED path: packages/mcp-server/dist/index.js
-├── package.json                 # Workspace root (npm workspaces)
+├── .mcp.json                    # UPDATED path: packages/mcp-server/src/index.ts (bun runs TS natively)
+├── package.json                 # Workspace root (bun workspaces)
+├── bun.lockb                    # Lock file (replaces package-lock.json)
 ├── docker-compose.yml           # Root-level for easy startup
 └── CLAUDE.md                    # UPDATED with monorepo structure
 ```
@@ -326,13 +327,13 @@ These items restructure the repository without changing any module behavior. Aft
 
 ---
 
-#### WI-001: Set up npm workspaces in root package.json
+#### WI-001: Set up bun workspaces in root package.json
 
 **Type:** task
 **Priority:** high
 
 **Description:**
-Convert the root `package.json` to a workspace root. The current root `package.json` is named `@ai-team/scripts` with vitest as a dev dependency. Update it to define npm workspaces pointing to `packages/*`.
+Convert the root `package.json` to a workspace root. The current root `package.json` is named `@ai-team/scripts` with vitest as a dev dependency. Update it to define bun workspaces pointing to `packages/*`.
 
 **Current root `package.json`:**
 ```json
@@ -360,12 +361,13 @@ Convert the root `package.json` to a workspace root. The current root `package.j
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces --if-present",
+    "build": "bun run build --workspace",
+    "test": "bun run test --workspace --if-present",
     "test:root": "vitest run"
   },
   "devDependencies": {
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "typescript": "^5.3.0"
   }
 }
 ```
@@ -374,7 +376,7 @@ Convert the root `package.json` to a workspace root. The current root `package.j
 - [ ] Root `package.json` declares `workspaces: ["packages/*"]`
 - [ ] Root `package.json` has `"private": true` (workspace roots must be private)
 - [ ] Root-level vitest config (`vitest.config.js`) still works for `scripts/` tests
-- [ ] `npm install` at root completes without errors
+- [ ] `bun install` at root completes without errors
 
 ---
 
@@ -390,8 +392,8 @@ Move the `mcp-server/` directory to `packages/mcp-server/`. Update all internal 
 **Acceptance Criteria:**
 - [ ] `mcp-server/` directory moved to `packages/mcp-server/`
 - [ ] `packages/mcp-server/package.json` exists and is valid
-- [ ] `npm run build` in `packages/mcp-server/` succeeds
-- [ ] `npm test` in `packages/mcp-server/` passes all existing tests
+- [ ] `bun run build` in `packages/mcp-server/` succeeds
+- [ ] `bun run test` in `packages/mcp-server/` passes all existing tests
 - [ ] No dangling references to `mcp-server/` at the old location
 
 ---
@@ -403,7 +405,7 @@ Move the `mcp-server/` directory to `packages/mcp-server/`. Update all internal 
 **Dependencies:** WI-002
 
 **Description:**
-Update `.mcp.json` to point to the new MCP server location. The current path uses `${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js` and must change to `${CLAUDE_PLUGIN_ROOT}/packages/mcp-server/dist/index.js`.
+Update `.mcp.json` to point to the new MCP server location. The current path uses `${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js` and must change to `${CLAUDE_PLUGIN_ROOT}/packages/mcp-server/src/index.ts`. Since bun natively executes TypeScript files, we can point directly to the source without requiring a build step.
 
 **Current `.mcp.json`:**
 ```json
@@ -417,22 +419,24 @@ Update `.mcp.json` to point to the new MCP server location. The current path use
 }
 ```
 
-**Target `.mcp.json`:**
+**Target `.mcp.json` (using bun):**
 ```json
 {
   "mcpServers": {
     "ateam": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/mcp-server/dist/index.js"]
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/packages/mcp-server/src/index.ts"]
     }
   }
 }
 ```
 
 **Acceptance Criteria:**
-- [ ] `.mcp.json` path points to `packages/mcp-server/dist/index.js`
+- [ ] `.mcp.json` path points to `packages/mcp-server/src/index.ts`
+- [ ] `.mcp.json` uses `"command": "bun"` instead of `"node"`
 - [ ] Plugin loads correctly in Claude Code with the updated path
 - [ ] All 20 MCP tools are available after the path change
+- [ ] `bun` is available in the system PATH (verified during setup)
 
 ---
 
@@ -450,13 +454,13 @@ End-to-end verification that the plugin still works after restructuring. This is
 2. Verify all MCP tools are registered (use `mission_current` to test connectivity)
 3. Verify slash commands work (`/ateam status`)
 4. Verify agent prompts are discovered (agents/ directory)
-5. Run `npm test` at workspace root to confirm all tests pass
+5. Run `bun test` at workspace root to confirm all tests pass
 
 **Acceptance Criteria:**
 - [ ] Plugin loads without errors
 - [ ] All 20 MCP tools respond to invocations
 - [ ] `/ateam status` command executes
-- [ ] `npm test` passes across all workspaces
+- [ ] `bun test` passes across all workspaces
 
 ---
 
@@ -485,9 +489,10 @@ Bring the kanban-viewer repository into `packages/kanban-viewer/`. Use `git subt
 
 **Acceptance Criteria:**
 - [ ] `packages/kanban-viewer/` contains the full kanban-viewer source
-- [ ] `packages/kanban-viewer/package.json` exists and is recognized by npm workspaces
+- [ ] `packages/kanban-viewer/package.json` exists and is recognized by bun workspaces
 - [ ] Git history is preserved (via subtree) or the original repo is referenced
 - [ ] No files from kanban-viewer pollute the repository root
+- [ ] Next.js + bun compatibility verified (see wave 1 notes below)
 
 ---
 
@@ -538,11 +543,11 @@ volumes:
 Verify the kanban-viewer works correctly from its new location within the monorepo. Test both local development and Docker workflows.
 
 **Verification steps:**
-1. `cd packages/kanban-viewer && npm run dev` starts the dev server
+1. `cd packages/kanban-viewer && bun run dev` starts the dev server
 2. `docker compose up` from repo root starts the container
 3. API endpoints respond correctly (`/api/board`, `/api/items`, etc.)
 4. SSE endpoint delivers real-time updates
-5. `npm run build` in `packages/kanban-viewer/` produces a production build
+5. `bun run build` in `packages/kanban-viewer/` produces a production build
 6. Prisma migrations run successfully
 
 **Acceptance Criteria:**
@@ -550,6 +555,7 @@ Verify the kanban-viewer works correctly from its new location within the monore
 - [ ] Docker container builds and runs
 - [ ] All API endpoints respond with correct data
 - [ ] Existing kanban-viewer tests pass from the new location
+- [ ] **Important:** Flag any Next.js + bun compatibility issues for resolution (bun's Node.js compat layer may have gaps)
 
 ---
 
@@ -577,7 +583,7 @@ Create the `packages/shared/` package with types, constants, and validation func
 
 **Acceptance Criteria:**
 - [ ] `packages/shared/package.json` is valid with name `@ai-team/shared`
-- [ ] All types compile without errors (`npm run build`)
+- [ ] All types compile without errors (`bun run build`)
 - [ ] Zero runtime dependencies (types, constants, and pure functions only)
 - [ ] All exported types match the current definitions in both MCP server and kanban-viewer
 - [ ] `tsconfig.json` targets ES modules with declaration output
@@ -606,7 +612,7 @@ Replace locally-defined types and constants in the MCP server with imports from 
 **Acceptance Criteria:**
 - [ ] MCP server imports all shared concepts from `@ai-team/shared`
 - [ ] No duplicate definitions of shared types remain in the MCP server
-- [ ] `npm run build` in `packages/mcp-server/` succeeds
+- [ ] `bun run build` in `packages/mcp-server/` succeeds
 - [ ] All existing MCP server tests pass (behavior unchanged)
 - [ ] Zod schemas in tool files use the shared constants (e.g., `z.enum(ITEM_TYPES)`)
 
@@ -631,7 +637,7 @@ Replace locally-defined types and constants in the kanban-viewer with imports fr
 **Acceptance Criteria:**
 - [ ] Kanban-viewer imports all shared concepts from `@ai-team/shared`
 - [ ] No duplicate definitions of shared types remain in the kanban-viewer
-- [ ] `npm run build` in `packages/kanban-viewer/` succeeds
+- [ ] `bun run build` in `packages/kanban-viewer/` succeeds
 - [ ] All existing kanban-viewer tests pass (behavior unchanged)
 - [ ] The Sosa agent appears in the kanban-viewer (drift fixed)
 
@@ -655,8 +661,8 @@ After both packages import from `@ai-team/shared`, sweep for any remaining dupli
 
 **Acceptance Criteria:**
 - [ ] No file outside `packages/shared/src/` defines `VALID_AGENTS`, `ALL_STAGES`, `TRANSITION_MATRIX`, `ITEM_TYPES`, `ITEM_PRIORITIES`, or `ERROR_CODES`
-- [ ] `npm run build` succeeds for all three packages
-- [ ] `npm test` passes across the entire workspace
+- [ ] `bun run build` succeeds for all three packages
+- [ ] `bun test` passes across the entire workspace
 
 ---
 
@@ -671,7 +677,7 @@ Prove the compile-time safety goal: a single-file edit to a shared type propagat
 
 **Verification steps:**
 1. Add a new stage (e.g., `'qa-hold'`) to `ALL_STAGES` in `packages/shared/src/stages.ts`
-2. Run `npm run build` at workspace root -- both packages should report type errors where stage exhaustiveness checks fail
+2. Run `bun run build` at workspace root -- both packages should report type errors where stage exhaustiveness checks fail
 3. Revert the change
 4. Rename an agent in `VALID_AGENTS` -- both packages should fail to build
 5. Revert the change
@@ -759,17 +765,35 @@ These items ensure the monorepo is properly tested in CI. They can be worked in 
 **Dependencies:** WI-001, WI-002, WI-005
 
 **Description:**
-Update `.github/` CI workflows to handle the npm workspaces monorepo. The build should:
+Update `.github/` CI workflows to handle the bun workspaces monorepo. The build should use the `oven-sh/setup-bun@v2` action and:
 
-1. Install all workspace dependencies with `npm install` at root
+1. Install all workspace dependencies with `bun install` at root
 2. Build `packages/shared/` first (other packages depend on it)
 3. Build `packages/mcp-server/` and `packages/kanban-viewer/` in parallel
-4. Run tests for all packages
+4. Run tests for all packages with vitest (not bun test)
+
+**Example workflow:**
+```yaml
+- name: Setup bun
+  uses: oven-sh/setup-bun@v2
+  with:
+    bun-version: latest
+
+- name: Install dependencies
+  run: bun install
+
+- name: Build packages
+  run: bun run build --workspace
+
+- name: Run tests
+  run: bun run test --workspace --if-present
+```
 
 **Acceptance Criteria:**
-- [ ] CI runs `npm install` at workspace root
+- [ ] CI uses `oven-sh/setup-bun@v2` action instead of `actions/setup-node`
+- [ ] CI runs `bun install` at workspace root
 - [ ] `@ai-team/shared` builds before dependent packages
-- [ ] All package tests run in CI
+- [ ] All package tests run in CI (vitest still used as test runner)
 - [ ] CI passes on the main branch after migration
 
 ---
@@ -794,6 +818,8 @@ on:
 
 Changes to `packages/shared/` should trigger builds for both dependent packages. Changes to a leaf package should only trigger that package's build.
 
+**Note:** All CI jobs use `bun` (via `oven-sh/setup-bun@v2`) instead of `npm`.
+
 **Acceptance Criteria:**
 - [ ] Changes to `packages/shared/` trigger builds for all packages
 - [ ] Changes to only `packages/mcp-server/` skip kanban-viewer build
@@ -809,37 +835,41 @@ Changes to `packages/shared/` should trigger builds for both dependent packages.
 Users who have the plugin installed as a git submodule at `.claude/ai-team/` need to update after this migration.
 
 **Steps:**
-1. `cd .claude/ai-team && git pull origin main` -- Pull the restructured repo
-2. `npm install` -- Install workspace dependencies (replaces per-package installs)
-3. No changes to `.claude/settings.local.json` (env vars unchanged)
-4. The `.mcp.json` update is automatic (pulled with git)
+1. Ensure `bun` is installed: `curl -fsSL https://bun.sh/install | bash`
+2. `cd .claude/ai-team && git pull origin main` -- Pull the restructured repo
+3. `bun install` -- Install workspace dependencies (replaces per-package installs)
+4. No changes to `.claude/settings.local.json` (env vars unchanged)
+5. The `.mcp.json` update is automatic (pulled with git)
 
-**Breaking change:** The `.mcp.json` path changes from `mcp-server/dist/index.js` to `packages/mcp-server/dist/index.js`. This is handled by `${CLAUDE_PLUGIN_ROOT}` variable expansion -- users do not need to update their config. However, they must rebuild the MCP server after pulling:
+**Breaking changes:**
+- The `.mcp.json` path changes from `mcp-server/dist/index.js` to `packages/mcp-server/src/index.ts`
+- The `.mcp.json` command changes from `node` to `bun`
+- These changes are handled automatically -- users do not need to update their config manually
 
-```bash
-cd .claude/ai-team && npm install && npm run build -w packages/mcp-server
-```
+**No rebuild required:** Since bun executes TypeScript natively, the MCP server no longer needs a build step. `bun install` is sufficient.
 
 ### 5.2 Plugin-dir Users
 
 Users testing with `--plugin-dir` need to:
-1. Pull the updated repo
-2. Run `npm install` at the repo root
-3. Rebuild: `npm run build -w packages/shared && npm run build -w packages/mcp-server`
+1. Ensure `bun` is installed: `curl -fsSL https://bun.sh/install | bash`
+2. Pull the updated repo
+3. Run `bun install` at the repo root
+
+**Note:** No build step is required. Since bun executes TypeScript natively, the MCP server runs directly from `packages/mcp-server/src/index.ts`.
 
 ### 5.3 Migration Automation
 
-Consider adding a `postinstall` script in the root `package.json` that builds the shared package and MCP server automatically:
+Consider adding a `postinstall` script in the root `package.json` that builds the shared package automatically (though the MCP server no longer requires a build):
 
 ```json
 {
   "scripts": {
-    "postinstall": "npm run build -w packages/shared && npm run build -w packages/mcp-server"
+    "postinstall": "bun run build -w packages/shared"
   }
 }
 ```
 
-This ensures the MCP server is always built after `npm install`, regardless of how the user installed the plugin.
+This ensures the shared package is built after `bun install`, making its types available to dependent packages.
 
 ---
 
@@ -891,7 +921,7 @@ This preserves the kanban-viewer's commit history as a single squashed commit. T
 
 If subtree proves problematic (e.g., due to submodule conflicts), a plain copy with a README noting the source repo and last commit hash is acceptable.
 
-### 6.3 TypeScript Project References
+### 6.3 TypeScript Project References and Bun Native TS Support
 
 For optimal build performance, consider using TypeScript project references between packages:
 
@@ -906,7 +936,16 @@ For optimal build performance, consider using TypeScript project references betw
 
 This enables incremental builds: changes to `shared` only rebuild what depends on it. This is an optimization and not strictly required for correctness.
 
-### 6.4 Kanban-Viewer Standalone Docker
+**Bun Benefit:** Since bun natively executes TypeScript files without compilation, the MCP server doesn't need a build step. TypeScript errors are caught at runtime or via `bun run tsc --noEmit` for type-checking.
+
+### 6.4 TypeScript Dependency Notes
+
+- Keep `typescript` as a devDependency for type-checking via `bun run tsc --noEmit`
+- Drop `tsx` devDependency -- bun runs `.ts` files natively without intermediaries
+- Keep `vitest` as the test runner (do NOT replace with `bun test`)
+- Kanban-viewer's Next.js build still requires `typescript` for production type-checking
+
+### 6.5 Kanban-Viewer Standalone Docker
 
 The kanban-viewer's `packages/kanban-viewer/docker-compose.yml` must continue to work independently. Users who only want the dashboard (without the Claude Code plugin) should be able to:
 
@@ -917,22 +956,28 @@ docker compose up
 
 The root-level `docker-compose.yml` is a convenience for developers working on the full stack.
 
-### 6.5 Risk: npm Workspace Hoisting
+### 6.6 Risk: Bun Workspace Hoisting
 
-npm workspaces hoist shared dependencies to the root `node_modules/`. This can cause issues if:
+Bun workspaces hoist shared dependencies to the root `node_modules/`. This can cause issues if:
 - The MCP server and kanban-viewer depend on different major versions of the same package
 - A package uses `require.resolve` with assumptions about `node_modules` layout
 
-Mitigate by auditing dependency versions across packages before the migration. If version conflicts exist, use the `overrides` field in the root `package.json` or install conflicting packages with `--workspace` to keep them local.
+Mitigate by auditing dependency versions across packages before the migration. Bun's dependency resolution is generally more predictable than npm's, but conflicts should still be tested.
 
-### 6.6 Risk: Next.js Monorepo Configuration
+### 6.7 Risk: Next.js + Bun Compatibility
 
-Next.js has specific monorepo requirements:
-- `next.config.ts` may need `transpilePackages: ['@ai-team/shared']` to compile the shared package
-- The `Dockerfile` must copy the shared package into the container build context
-- Turbopack (if used) needs workspace-aware configuration
+**This is a known area of potential friction.** Verify during WI-007 that:
+- Next.js build process works with bun (no breaking API changes)
+- Bun's Node.js compatibility layer supports all Next.js dependencies
+- `next.config.ts` can import from `@ai-team/shared` without issues
+- The Dockerfile's build context includes `packages/shared/`
 
-These will surface during WI-005/WI-007 and should be resolved there.
+If Next.js doesn't run smoothly with bun, consider:
+- Keeping `packages/kanban-viewer` on `npm` while other packages use `bun` (dual package managers)
+- Using `bun` only for local development, `npm` in Docker (CI workaround)
+- Waiting for bun's Next.js support to mature before full migration
+
+These compatibility issues will surface during WI-007 and should be resolved before moving forward.
 
 ---
 
@@ -941,10 +986,12 @@ These will surface during WI-005/WI-007 and should be resolved there.
 The monorepo migration is complete when:
 
 1. **Single repo, single clone** -- Developers clone one repository and get the complete A(i)-Team system
-2. **Single install** -- `npm install` at root installs all workspace dependencies for all packages
+2. **Single install** -- `bun install` at root installs all workspace dependencies for all packages
 3. **One-command dashboard** -- `docker compose up` from the repo root starts the kanban-viewer
 4. **Compile-time safety** -- Changing a shared type (e.g., adding a stage, renaming an agent) is a single-file edit in `packages/shared/` that produces build errors in both dependent packages until they are updated
 5. **Zero drift** -- The kanban-viewer's agent list, stage list, and transition matrix are guaranteed to match the MCP server's (proven by shared imports, not manual coordination)
-6. **All tests pass** -- `npm test` at workspace root runs all package tests successfully
-7. **Plugin loads correctly** -- Claude Code discovers the plugin and all 20 MCP tools are available
-8. **Existing users can update** -- Submodule and plugin-dir users can migrate with documented steps
+6. **All tests pass** -- `bun test` at workspace root runs all package tests successfully (vitest remains the test runner)
+7. **Plugin loads correctly** -- Claude Code discovers the plugin, `.mcp.json` points to `packages/mcp-server/src/index.ts`, and all 20 MCP tools are available
+8. **No build step for MCP server** -- Since bun runs `.ts` files natively, the MCP server executes directly from source with no compilation required
+9. **Existing users can update** -- Submodule and plugin-dir users can migrate with documented steps (requires bun installation)
+10. **Next.js + bun verified** -- Kanban-viewer builds and runs with bun (compatibility confirmed or workarounds documented)

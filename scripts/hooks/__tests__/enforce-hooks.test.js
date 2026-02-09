@@ -200,17 +200,6 @@ describe('enforce-completion-log', () => {
     });
   });
 
-  describe('source code: no legacy references', () => {
-    it('should not contain item-agent-stop.js references in source', () => {
-      const source = readFileSync(COMPLETION_HOOK, 'utf8');
-      expect(source).not.toMatch(/item-agent-stop\.js/);
-    });
-
-    it('should reference agent_stop MCP tool in its messages', () => {
-      const source = readFileSync(COMPLETION_HOOK, 'utf8');
-      expect(source).toMatch(/agent_stop/);
-    });
-  });
 });
 
 // =============================================================================
@@ -360,63 +349,6 @@ describe('enforce-final-review', () => {
       });
 
       expect(result.exitCode).toBe(0);
-    });
-  });
-
-  describe('error messages - no legacy references', () => {
-    it('should not reference item-agent-stop.js anywhere in stderr', () => {
-      const result = runHook(FINAL_REVIEW_HOOK, {
-        __TEST_MOCK_BOARD__: JSON.stringify({
-          columns: {
-            testing: [{ id: 'WI-001' }],
-            done: [{ id: 'WI-002' }],
-          },
-        }),
-        __TEST_MOCK_MISSION__: JSON.stringify({ status: 'active' }),
-      });
-
-      expect(result.stderr).not.toMatch(/item-agent-stop\.js/);
-    });
-
-    it('should not reference scripts/mission-postcheck.js anywhere in stderr', () => {
-      // Test all three blocking paths
-      const scenarios = [
-        // Active items
-        {
-          __TEST_MOCK_BOARD__: JSON.stringify({ columns: { testing: [{ id: 'WI-001' }] } }),
-          __TEST_MOCK_MISSION__: JSON.stringify({ status: 'active' }),
-        },
-        // No final review
-        {
-          __TEST_MOCK_BOARD__: JSON.stringify({ columns: { done: [{ id: 'WI-001' }] } }),
-          __TEST_MOCK_MISSION__: JSON.stringify({ status: 'active', final_review_verdict: null }),
-        },
-        // No postchecks
-        {
-          __TEST_MOCK_BOARD__: JSON.stringify({ columns: { done: [{ id: 'WI-001' }] } }),
-          __TEST_MOCK_MISSION__: JSON.stringify({ status: 'active', final_review_verdict: 'approved', postcheck: null }),
-        },
-      ];
-
-      for (const env of scenarios) {
-        const result = runHook(FINAL_REVIEW_HOOK, env);
-        expect(result.stderr).not.toMatch(/mission-postcheck\.js/);
-        expect(result.stderr).not.toMatch(/scripts\/mission-postcheck/);
-        expect(result.stderr).not.toMatch(/node scripts\//);
-      }
-    });
-  });
-
-  describe('source code: no legacy references', () => {
-    it('should not contain mission-postcheck.js references in source', () => {
-      const source = readFileSync(FINAL_REVIEW_HOOK, 'utf8');
-      expect(source).not.toMatch(/mission-postcheck\.js/);
-      expect(source).not.toMatch(/scripts\/mission-postcheck/);
-    });
-
-    it('should reference mission_postcheck MCP tool in its messages', () => {
-      const source = readFileSync(FINAL_REVIEW_HOOK, 'utf8');
-      expect(source).toMatch(/mission_postcheck/);
     });
   });
 
