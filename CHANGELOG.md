@@ -54,7 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-detects Docker Compose installation
   - Provides one-command startup instructions for kanban-viewer
   - Updates `ateam.config.json` with dev server configuration
-
 ---
 
 ## [2.3.0] - 2026-02-07
