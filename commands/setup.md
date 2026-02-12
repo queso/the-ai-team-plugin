@@ -13,7 +13,7 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 1. **Auto-detects** project settings from CLAUDE.md and package.json
 2. **Configures** the project ID environment variable for multi-project isolation
 3. **Sets up** permissions for background agents
-4. **Configures** native Agent Teams (TeammateTool) if desired (optional)
+4. **Configures** native Agent Teams if desired (optional)
 5. **Creates** `ateam.config.json` with project-specific settings
 6. **Injects** A(i)-Team instructions into CLAUDE.md (so Claude uses the workflow)
 7. **Detects** Docker and offers to start kanban-viewer if not running
@@ -108,16 +108,16 @@ Background agents (`run_in_background: true`) cannot prompt for user approval, s
 
 ### Step 4: Configure Native Teams (Optional)
 
-Claude Code supports native Agent Teams via the TeammateTool, which provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.
+Claude Code supports native Agent Teams via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, which provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.
 
 **Ask the user if they want to enable native teams:**
 ```
 AskUserQuestion({
   questions: [{
-    question: "Enable native Agent Teams (TeammateTool)? This provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.",
+    question: "Enable native Agent Teams? This provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.",
     header: "Native Agent Teams",
     options: [
-      { label: "Yes (Recommended)", description: "Enable TeammateTool for enhanced agent orchestration" },
+      { label: "Yes (Recommended)", description: "Enable native teams for enhanced agent orchestration" },
       { label: "No", description: "Use standard background task dispatch" }
     ],
     multiSelect: false
@@ -487,7 +487,7 @@ The MCP server reads the following environment variables:
 | `ATEAM_API_KEY` | No | - | Optional API key for authentication |
 | `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
 | `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native TeammateTool integration |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native teams dispatch |
 | `ATEAM_TEAMMATE_MODE` | No | `auto` | Teammate mode: `auto`, `tmux`, or `in-process` |
 
 ## Example Output
@@ -507,7 +507,7 @@ Checking permissions...
   + Edit(src/**)
 
 Configuring native teams...
-  ✓ Agent Teams (TeammateTool) enabled
+  ✓ Agent Teams enabled
   ✓ Teammate mode: auto
 
 Settings updated: .claude/settings.local.json

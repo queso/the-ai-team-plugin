@@ -352,45 +352,50 @@ When running in native teams mode (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), yo
 ### Notify Hannibal on Completion
 After calling `agent_stop` MCP tool, message Hannibal:
 ```javascript
-TeammateTool({
-  action: "message",
-  target: "hannibal",
-  message: "DONE: {itemId} - {brief summary of work completed}"
+SendMessage({
+  type: "message",
+  recipient: "hannibal",
+  content: "DONE: {itemId} - {brief summary of work completed}",
+  summary: "Tests complete for {itemId}"
 })
 ```
 
 ### Request Help or Clarification
 ```javascript
-TeammateTool({
-  action: "message",
-  target: "hannibal",
-  message: "BLOCKED: {itemId} - {description of issue}"
+SendMessage({
+  type: "message",
+  recipient: "hannibal",
+  content: "BLOCKED: {itemId} - {description of issue}",
+  summary: "Blocked on {itemId}"
 })
 ```
 
 ### Coordinate with Teammates
 ```javascript
-TeammateTool({
-  action: "message",
-  target: "{teammate_name}",
-  message: "{coordination message}"
+SendMessage({
+  type: "message",
+  recipient: "{teammate_name}",
+  content: "{coordination message}",
+  summary: "Coordination with {teammate_name}"
 })
 ```
 
 Example - Tell B.A. about test structure:
 ```javascript
-TeammateTool({ action: "message", target: "ba", message: "WI-003: Tests expect OrderService.process() to return Promise<OrderResult>. See src/__tests__/order.test.ts" })
+SendMessage({ type: "message", recipient: "ba", content: "WI-003: Tests expect OrderService.process() to return Promise<OrderResult>. See src/__tests__/order.test.ts", summary: "Test expectations for WI-003" })
 ```
 
 ### Shutdown
-When your work is complete and `agent_stop` has been called:
+When you receive a shutdown request from Hannibal:
 ```javascript
-TeammateTool({
-  action: "approveShutdown"
+SendMessage({
+  type: "shutdown_response",
+  request_id: "{id from shutdown request}",
+  approve: true
 })
 ```
 
-**IMPORTANT:** MCP tools remain the source of truth for all state changes. TeammateTool messaging is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
+**IMPORTANT:** MCP tools remain the source of truth for all state changes. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
 
 ## Completion
 

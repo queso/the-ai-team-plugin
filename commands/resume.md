@@ -54,66 +54,23 @@ Resume an interrupted mission from where it left off.
    - `review`: Lynch can re-review (tests + implementation exist, review is idempotent)
    - `probing`: Amy can re-probe (all prior work exists, probing is idempotent)
 
-4. **Native Teams Recovery** (if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)
+4. **Load dispatch playbook and re-dispatch agents**
 
-   Native teams are ephemeral - they don't survive session restarts. On resume,
-   re-spawn agents at their current stage (same strategy as legacy mode).
+   Check the environment variable (same as `/ateam run`):
+   ```
+   Bash("echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS")
+   ```
 
-   1. **Log warning about lost team context:**
-      ```
-      [Hannibal] Previous team session lost. Spawning fresh teammates from board state.
-      ```
+   - If "1": `Read("playbooks/orchestration-native.md")`
+   - Otherwise: `Read("playbooks/orchestration-legacy.md")`
 
-   2. **Initialize fresh team:**
-      ```javascript
-      TeammateTool({
-        action: "spawnTeam",
-        team_name: \`mission-\${missionId}\`,
-        config: { display_mode: process.env.ATEAM_TEAMMATE_MODE || "auto" }
-      })
-      ```
+   Follow the playbook's resume/recovery section for dispatch mechanics.
 
-   3. **Re-dispatch agents at current stage:**
-      Use `board_read` to find items in active stages, clear stale assignments,
-      then spawn fresh teammates at the item's current stage:
-
-      ```javascript
-      const board = await mcp.board_read();
-
-      // Items in testing stage -> re-dispatch Murdock
-      for (const itemId of board.columns.testing) {
-        const item = await mcp.item_get({ id: itemId });
-        await mcp.board_release({ itemId }); // Clear stale assignment
-        spawnTeammate("murdock", item);       // Resume at testing stage
-      }
-
-      // Items in implementing stage -> re-dispatch B.A.
-      for (const itemId of board.columns.implementing) {
-        const item = await mcp.item_get({ id: itemId });
-        await mcp.board_release({ itemId });
-        spawnTeammate("ba", item);            // Resume at implementing stage
-      }
-
-      // Items in review stage -> re-dispatch Lynch
-      for (const itemId of board.columns.review) {
-        const item = await mcp.item_get({ id: itemId });
-        await mcp.board_release({ itemId });
-        spawnTeammate("lynch", item);         // Resume at review stage
-      }
-
-      // Items in probing stage -> re-dispatch Amy
-      for (const itemId of board.columns.probing) {
-        const item = await mcp.item_get({ id: itemId });
-        await mcp.board_release({ itemId });
-        spawnTeammate("amy", item);           // Resume at probing stage
-      }
-      ```
-
-   4. **MCP state is source of truth:**
-      - Work items track all progress via `work_log`
-      - Board stage positions are preserved in the database
-      - Only the teammate sessions are lost - not the work state
-      - Agents pick up from the current board state, not from memory
+   **MCP state is the source of truth:**
+   - Work items track all progress via `work_log`
+   - Board stage positions are preserved in the database
+   - Only the agent sessions are lost - not the work state
+   - Agents pick up from the current board state, not from memory
 
 5. **Validate board integrity**
    - Use `deps_check` MCP tool to verify dependency graph
@@ -212,26 +169,21 @@ This command:
 
 1. Uses `board_read` MCP tool to get current state
 2. Uses `board_release` MCP tool to clear stale agent assignments
-3. Re-dispatches agents at their current stage (no backward board moves needed)
-4. Respawns native team if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is set (teammates are ephemeral and lost on restart; board state in MCP is the source of truth)
+3. Loads the orchestration playbook (same env var check as `/ateam run`)
+4. Re-dispatches agents at their current stage using the playbook's resume/recovery section
 5. Main Claude BECOMES Hannibal and continues orchestration
 
 **Architecture:**
 ```
 Main Claude (as Hannibal)
-    ├── Task → Murdock (subagent)
-    ├── Task → B.A. (subagent)
-    └── Task → Lynch (subagent)
+    ├── subagent → Murdock (testing)
+    ├── subagent → B.A. (implementing)
+    ├── subagent → Lynch (review)
+    ├── subagent → Amy (probing)
+    └── subagent → Tawnia (documentation)
 ```
 
-**With Native Teams (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`):**
-```
-Main Claude (as Hannibal)
-    ├── Teammate → Murdock (native team member)
-    ├── Teammate → B.A. (native team member)
-    ├── Teammate → Lynch (native team member)
-    └── Teammate → Amy (native team member)
-```
+The dispatch mode (legacy Task/TaskOutput vs. native TeamCreate/SendMessage) is determined by the orchestration playbook loaded in step 4.
 
 ## MCP Tools Used
 

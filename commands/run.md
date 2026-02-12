@@ -81,52 +81,46 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - Establishes baseline before mission work begins
    - If checks fail, abort mission and report to user
 
-2.5. **Initialize team (if native teams enabled)**
-   Check if `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is set to "1".
-   If enabled:
-   ```javascript
-   TeammateTool({
-     action: "spawnTeam",
-     team_name: `mission-${missionId}`,
-     config: {
-       display_mode: process.env.ATEAM_TEAMMATE_MODE || "auto"
-     }
-   })
+3. **Detect dispatch mode and load orchestration playbook**
+
+   Check the environment variable:
    ```
-   This creates the team container. Individual agents are spawned on-demand as items enter their stages.
+   Bash("echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS")
+   ```
 
-   If not enabled, skip this step (legacy Task dispatch will be used).
+   - If output is "1": `Read("playbooks/orchestration-native.md")`
+   - Otherwise: `Read("playbooks/orchestration-legacy.md")`
 
-3. **Main Claude becomes Hannibal**
+   **Read exactly ONE playbook. Do not read both.**
+   The playbook contains your complete orchestration loop, dispatch
+   patterns, completion detection, and concrete examples.
+
+4. **Main Claude becomes Hannibal**
    - Orchestration runs in the main context (visible to user)
    - Worker agents dispatched as direct subagents
 
-4. **Orchestration loop:**
-   - Poll `TaskOutput` for completed agents, advance items to next stage via `board_move`
+5. **Orchestration loop:**
+   Follow the loaded orchestration playbook for the complete loop,
+   dispatch patterns, and completion detection.
+   - Use `board_move` to advance items between stages
    - Use `deps_check` to find items ready to move from briefings → ready
    - Start new features if under WIP limit
-   - Use `board_claim` before dispatching agent, `board_release` on completion
 
-
-   **Dispatch mode:**
-   - **Native teams** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`): Use `TeammateTool({ action: "spawn", ... })` to create teammates. Completion detected via mailbox messages instead of TaskOutput polling.
-   - **Legacy mode** (default): Use `Task(run_in_background: true)` with TaskOutput polling.
-
-5. **Final Mission Review:**
+6. **Final Mission Review:**
    - When ALL items reach `done` stage, trigger final review
    - Lynch reviews entire codebase for cross-cutting issues
    - Focus: readability, security, race conditions, code quality
    - If FINAL APPROVED → proceed to post-checks
    - If FINAL REJECTED → specified items return to pipeline
 
-6. **Post-Mission Checks:**
+7. **Post-Mission Checks:**
    Use the `mission_postcheck` MCP tool.
    - Run after final review approves
    - Verifies lint, unit tests, and e2e tests all pass
    - Updates mission state with postcheck results
    - If checks fail, items return to pipeline for fixes
 
-7. **Documentation Phase (Tawnia):**
+8. **Documentation Phase (Tawnia):**
    - Dispatch Tawnia when ALL three conditions are met:
      1. All items in `done` stage
      2. Final review passed
@@ -137,28 +131,13 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - Tawnia makes the **final commit** bundling all mission work + documentation
    - Updates mission state with documentation completion and commit hash
 
-7.5. **Team shutdown (if native teams enabled)**
-   If native teams mode was used:
-   ```javascript
-   // Shutdown remaining agents (Amy, Lynch may still be active)
-   for (const agent of activeAgents) {
-     TeammateTool({ action: "requestShutdown", target: agent.name })
-   }
-   ```
-   Note: Don't clean up the team yet - Tawnia still needs to run.
-
-8. **Completion (ALL conditions required):**
+9. **Completion (ALL conditions required):**
    - ✓ All items in `done` stage
    - ✓ Final review passed
    - ✓ Post-checks passed
    - ✓ Tawnia documentation committed ← **REQUIRED**
    - Then and ONLY then: "I love it when a plan comes together."
 
-
-   - If native teams mode: clean up team resources
-   ```javascript
-   TeammateTool({ action: "cleanup", team_name: `mission-${missionId}` })
-   ```
 
    **Mission is NOT complete until Tawnia commits. No exceptions.**
 
@@ -214,11 +193,11 @@ The main Claude session becomes Hannibal and orchestrates directly:
 
 ```
 Main Claude (as Hannibal)
-    ├── Task → Murdock (testing stage)
-    ├── Task → B.A. (implementing stage)
-    ├── Task → Lynch (review stage, final review)
-    ├── Task → Amy (probing stage)
-    └── Task → Tawnia (documentation, after post-checks pass)
+    ├── subagent → Murdock (testing stage)
+    ├── subagent → B.A. (implementing stage)
+    ├── subagent → Lynch (review stage, final review)
+    ├── subagent → Amy (probing stage)
+    └── subagent → Tawnia (documentation, after post-checks pass)
 ```
 
 This flat structure:
@@ -226,24 +205,7 @@ This flat structure:
 - Allows mid-run intervention
 - Avoids nested subagent memory overhead
 
-
-**Native Teams Mode:**
-
-When `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`:
-```
-Main Claude (as Hannibal / Team Lead)
-    ├── TeammateTool → Murdock  (tester, testing stage)
-    ├── TeammateTool → B.A.     (coder, implementing stage)
-    ├── TeammateTool → Lynch    (reviewer, review + final review)
-    ├── TeammateTool → Amy      (researcher, probing stage)
-    └── TeammateTool → Tawnia   (documenter, after post-checks)
-```
-
-Benefits over legacy mode:
-- Direct mailbox communication (no TaskOutput polling)
-- Split pane visualization (tmux)
-- Interactive user control (Shift+Up/Down to select agents)
-- Plan approval for complex items
+The dispatch mode (legacy Task/TaskOutput vs. native TeamCreate/SendMessage) is determined by the orchestration playbook loaded in step 3.
 
 ## MCP Tools Used
 
