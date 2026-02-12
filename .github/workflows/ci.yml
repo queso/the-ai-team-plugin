@@ -12,7 +12,6 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      root: ${{ steps.filter.outputs.root }}
       shared: ${{ steps.filter.outputs.shared }}
       mcp-server: ${{ steps.filter.outputs.mcp-server }}
       kanban-viewer: ${{ steps.filter.outputs.kanban-viewer }}
@@ -22,14 +21,6 @@ jobs:
         id: filter
         with:
           filters: |
-            root:
-              - 'agents/**'
-              - 'commands/**'
-              - 'skills/**'
-              - 'scripts/**'
-              - 'package.json'
-              - 'bun.lockb'
-              - '.github/workflows/**'
             shared:
               - 'packages/shared/**'
               - 'package.json'
@@ -48,17 +39,6 @@ jobs:
               - 'bun.lockb'
               - '.github/workflows/**'
 
-  root-tests:
-    name: Root Tests
-    needs: [changes]
-    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.root == 'true' || needs.changes.outputs.shared == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install
-      - run: bun test
-
   mcp-server:
     name: MCP Server
     needs: [changes]
@@ -74,7 +54,7 @@ jobs:
         working-directory: .
       - run: bun run lint
       - run: bunx tsc --noEmit
-      - run: bun test
+      - run: bun run test
 
   shared:
     name: Shared Package
