@@ -6,8 +6,14 @@ FROM node:20-slim AS base
 FROM base AS deps
 WORKDIR /app
 
-# Copy package.json only (generate fresh lockfile for Linux)
-COPY package.json ./
+# Copy and build the shared package first
+COPY packages/shared/package.json packages/shared/tsconfig.json ./shared/
+COPY packages/shared/src ./shared/src
+COPY packages/shared/dist ./shared/dist
+
+# Copy kanban-viewer package.json and rewrite workspace:* to local path
+COPY packages/kanban-viewer/package.json ./package.json
+RUN sed -i 's|"workspace:\*"|"file:./shared"|g' package.json
 
 # Install dependencies (fresh install for Linux platform)
 RUN npm install
@@ -16,7 +22,8 @@ RUN npm install
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/shared ./node_modules/@ai-team/shared
+COPY packages/kanban-viewer/ .
 
 # Generate Prisma client and initialize database
 ENV DATABASE_URL="file:./prisma/data/ateam.db"

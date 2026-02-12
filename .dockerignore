@@ -1,0 +1,19 @@
+# Only send what the kanban-viewer Dockerfile needs
+*
+
+# Include shared package
+!packages/shared/package.json
+!packages/shared/tsconfig.json
+!packages/shared/src
+!packages/shared/dist
+
+# Include kanban-viewer
+!packages/kanban-viewer
+packages/kanban-viewer/node_modules
+packages/kanban-viewer/.next
+packages/kanban-viewer/coverage
+packages/kanban-viewer/test-results
+packages/kanban-viewer/playwright-report
+packages/kanban-viewer/prisma/data
+packages/kanban-viewer/.git
+packages/kanban-viewer/.env*
