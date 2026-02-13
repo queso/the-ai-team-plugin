@@ -152,8 +152,8 @@ export async function boardMove(
       let message = error.message;
 
       // Build actionable guidance for invalid transitions
-      if (error.code === 'INVALID_TRANSITION' && fromStage && VALID_TRANSITIONS[fromStage]) {
-        const validNext = VALID_TRANSITIONS[fromStage];
+      if (error.code === 'INVALID_TRANSITION' && fromStage && fromStage in VALID_TRANSITIONS) {
+        const validNext = VALID_TRANSITIONS[fromStage as keyof typeof VALID_TRANSITIONS];
         const suggestedStage = validNext[0]; // First valid option (usually the main path)
 
         message = `Cannot move directly from '${fromStage}' to '${toStage}'. `;
