@@ -1,0 +1,394 @@
+{
+  "mission": {
+    "name": "PRD 012 - Tawnia & Mission Completion Flow",
+    "status": "completed",
+    "created_at": "2026-01-20T18:17:22.692Z",
+    "started_at": "2026-01-20T18:56:01.831Z",
+    "completed_at": "2026-01-20T19:42:09.875Z",
+    "duration_ms": 2768044
+  },
+  "project": "PRD 012 - Tawnia & Mission Completion Flow",
+  "wip_limit": 4,
+  "max_wip": 6,
+  "created_at": "2026-01-20T18:17:22.692Z",
+  "updated_at": "2026-01-20T19:42:09.877Z",
+  "stats": {
+    "total_items": 8,
+    "completed": 8,
+    "in_flight": 0,
+    "blocked": 0,
+    "backlog": 0,
+    "rejected_count": 0
+  },
+  "phases": {
+    "briefings": [],
+    "ready": [],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "probing": [],
+    "done": [
+      "001",
+      "004",
+      "006",
+      "002",
+      "003",
+      "005",
+      "007",
+      "008"
+    ],
+    "blocked": []
+  },
+  "assignments": {},
+  "agents": {
+    "Hannibal": {
+      "status": "idle"
+    },
+    "Face": {
+      "status": "idle"
+    },
+    "Murdock": {
+      "status": "idle"
+    },
+    "B.A.": {
+      "status": "idle"
+    },
+    "Lynch": {
+      "status": "idle"
+    },
+    "Amy": {
+      "status": "idle"
+    }
+  },
+  "wip_limits": {
+    "testing": 3,
+    "implementing": 4,
+    "review": 3,
+    "probing": 3
+  },
+  "dependency_graph": {
+    "001": [],
+    "002": [
+      "001"
+    ],
+    "003": [
+      "002"
+    ],
+    "004": [
+      "001"
+    ],
+    "005": [
+      "001",
+      "002"
+    ],
+    "006": [
+      "001"
+    ],
+    "007": [
+      "002"
+    ],
+    "008": [
+      "003",
+      "004",
+      "005",
+      "006",
+      "007"
+    ]
+  },
+  "parallel_groups": {},
+  "history": {
+    "001": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T18:24:46.867Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T18:56:20.278Z",
+        "completed_at": "2026-01-20T19:04:49.917Z",
+        "duration_ms": 509639
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:05:05.719Z",
+        "completed_at": "2026-01-20T19:06:28.312Z",
+        "duration_ms": 82593
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:06:43.785Z",
+        "completed_at": "2026-01-20T19:07:31.517Z",
+        "duration_ms": 47732
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:07:47.339Z",
+        "completed_at": "2026-01-20T19:09:43.567Z",
+        "duration_ms": 116228
+      }
+    ],
+    "002": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:09:51.498Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:10:25.964Z",
+        "completed_at": "2026-01-20T19:12:29.472Z",
+        "duration_ms": 123508
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:12:51.176Z",
+        "completed_at": "2026-01-20T19:14:40.186Z",
+        "duration_ms": 109010
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:14:54.160Z",
+        "completed_at": "2026-01-20T19:16:34.091Z",
+        "duration_ms": 99931
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:20:27.954Z",
+        "completed_at": "2026-01-20T19:23:42.957Z",
+        "duration_ms": 195003
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:23:42.957Z",
+        "completed_at": "2026-01-20T19:23:43.016Z",
+        "duration_ms": 59
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:23:43.016Z",
+        "completed_at": "2026-01-20T19:24:15.668Z",
+        "duration_ms": 32652
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:24:15.668Z",
+        "completed_at": "2026-01-20T19:24:15.727Z",
+        "duration_ms": 59
+      }
+    ],
+    "004": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:09:51.559Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:10:25.828Z",
+        "completed_at": "2026-01-20T19:12:29.537Z",
+        "duration_ms": 123709
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:12:50.967Z",
+        "completed_at": "2026-01-20T19:14:40.249Z",
+        "duration_ms": 109282
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:14:54.880Z",
+        "completed_at": "2026-01-20T19:16:43.773Z",
+        "duration_ms": 108893
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:20:36.349Z",
+        "completed_at": "2026-01-20T19:23:31.617Z",
+        "duration_ms": 175268
+      }
+    ],
+    "006": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:09:51.615Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:10:26.694Z",
+        "completed_at": "2026-01-20T19:12:29.599Z",
+        "duration_ms": 122905
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:12:51.245Z",
+        "completed_at": "2026-01-20T19:14:40.311Z",
+        "duration_ms": 109066
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:14:55.634Z",
+        "completed_at": "2026-01-20T19:16:43.837Z",
+        "duration_ms": 108203
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:21:41.215Z",
+        "completed_at": "2026-01-20T19:23:31.675Z",
+        "duration_ms": 110460
+      }
+    ],
+    "003": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:24:23.784Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:24:56.608Z",
+        "completed_at": "2026-01-20T19:27:16.242Z",
+        "duration_ms": 139634
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:27:33.958Z",
+        "completed_at": "2026-01-20T19:31:53.384Z",
+        "duration_ms": 259426
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:32:07.573Z",
+        "completed_at": "2026-01-20T19:33:55.882Z",
+        "duration_ms": 108309
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:33:55.882Z",
+        "completed_at": "2026-01-20T19:38:07.000Z",
+        "duration_ms": 251118
+      }
+    ],
+    "005": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:24:23.841Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:24:57.875Z",
+        "completed_at": "2026-01-20T19:27:16.298Z",
+        "duration_ms": 138423
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:27:34.010Z",
+        "completed_at": "2026-01-20T19:31:53.443Z",
+        "duration_ms": 259433
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:32:08.265Z",
+        "completed_at": "2026-01-20T19:33:55.943Z",
+        "duration_ms": 107678
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:33:55.943Z",
+        "completed_at": "2026-01-20T19:38:07.064Z",
+        "duration_ms": 251121
+      }
+    ],
+    "007": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:24:23.897Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:24:56.780Z",
+        "completed_at": "2026-01-20T19:27:16.356Z",
+        "duration_ms": 139576
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:27:33.855Z",
+        "completed_at": "2026-01-20T19:31:53.503Z",
+        "duration_ms": 259648
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:32:08.973Z",
+        "completed_at": "2026-01-20T19:33:56.001Z",
+        "duration_ms": 107028
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:33:56.001Z",
+        "completed_at": "2026-01-20T19:38:26.359Z",
+        "duration_ms": 270358
+      }
+    ],
+    "008": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-20T19:38:33.224Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-20T19:38:52.740Z",
+        "completed_at": "2026-01-20T19:41:49.670Z",
+        "duration_ms": 176930
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-20T19:41:49.670Z",
+        "completed_at": "2026-01-20T19:41:49.733Z",
+        "duration_ms": 63
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-20T19:41:49.733Z",
+        "completed_at": "2026-01-20T19:42:09.810Z",
+        "duration_ms": 20077
+      },
+      {
+        "stage": "probing",
+        "agent": "Amy",
+        "started_at": "2026-01-20T19:42:09.810Z",
+        "completed_at": "2026-01-20T19:42:09.875Z",
+        "duration_ms": 65
+      }
+    ]
+  }
+}

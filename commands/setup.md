@@ -13,11 +13,12 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 1. **Auto-detects** project settings from CLAUDE.md and package.json
 2. **Configures** the project ID environment variable for multi-project isolation
 3. **Sets up** permissions for background agents
-4. **Configures** native Agent Teams (TeammateTool) if desired (optional)
+4. **Configures** native Agent Teams if desired (optional)
 5. **Creates** `ateam.config.json` with project-specific settings
 6. **Injects** A(i)-Team instructions into CLAUDE.md (so Claude uses the workflow)
-7. **Verifies** API server connectivity
-8. **Checks** for Playwright plugin (optional, for browser testing)
+7. **Detects** Docker and offers to start kanban-viewer if not running
+8. **Verifies** API server connectivity
+9. **Checks** for Playwright plugin (optional, for browser testing)
 
 ## Behavior
 
@@ -107,16 +108,16 @@ Background agents (`run_in_background: true`) cannot prompt for user approval, s
 
 ### Step 4: Configure Native Teams (Optional)
 
-Claude Code supports native Agent Teams via the TeammateTool, which provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.
+Claude Code supports native Agent Teams via `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, which provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.
 
 **Ask the user if they want to enable native teams:**
 ```
 AskUserQuestion({
   questions: [{
-    question: "Enable native Agent Teams (TeammateTool)? This provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.",
+    question: "Enable native Agent Teams? This provides direct agent-to-agent communication, interactive control via Shift+Up/Down arrows, and split pane visualization in the terminal.",
     header: "Native Agent Teams",
     options: [
-      { label: "Yes (Recommended)", description: "Enable TeammateTool for enhanced agent orchestration" },
+      { label: "Yes (Recommended)", description: "Enable native teams for enhanced agent orchestration" },
       { label: "No", description: "Use standard background task dispatch" }
     ],
     multiSelect: false
@@ -339,7 +340,80 @@ Checking CLAUDE.md...
   ✓ A(i)-Team section already present
 ```
 
-### Step 9: Verify API Connectivity
+### Step 9: Docker Detection and Kanban-Viewer Startup
+
+The A(i)-Team kanban-viewer is included in this monorepo and provides a web-based Kanban board for mission tracking. It also serves as the API backend.
+
+**Check Docker availability and kanban-viewer status:**
+
+1. **Check if Docker is installed:**
+   ```
+   Run: which docker || docker --version
+   ```
+
+2. **Check if Docker is running:**
+   ```
+   Run: docker info 2>/dev/null
+   ```
+
+3. **Check if kanban-viewer is already running:**
+   ```
+   Run: curl -s http://localhost:3000/api/missions/current 2>/dev/null
+   Or: docker ps | grep kanban-viewer
+   ```
+
+**If kanban-viewer already running:**
+```
+✓ Kanban-viewer already running at http://localhost:3000
+```
+
+**If Docker available and kanban-viewer NOT running:**
+
+Ask the user if they want to start it:
+```
+AskUserQuestion({
+  questions: [{
+    question: "The kanban-viewer is included in this monorepo. Would you like to start it now?",
+    header: "Kanban UI",
+    options: [
+      { label: "Start with Docker (Recommended)", description: "Run 'docker compose up -d' from repo root" },
+      { label: "Skip for now", description: "You can start it later with 'docker compose up -d'" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**If user chooses "Start with Docker":**
+1. Run `docker compose up -d` from the repo root
+2. Wait 3-5 seconds for startup
+3. Verify API responds: `curl -s http://localhost:3000/api/missions/current`
+4. Show confirmation:
+```
+✓ Kanban-viewer started at http://localhost:3000
+✓ Docker container running
+```
+
+**If Docker NOT available:**
+
+Show installation instructions:
+```
+The kanban-viewer provides a web-based Kanban board for mission tracking.
+
+To use it, you need Docker installed:
+  macOS:  brew install --cask docker
+  Linux:  https://docs.docker.com/engine/install/
+
+Once Docker is running:
+  docker compose up -d
+
+The kanban board will be available at http://localhost:3000
+
+Alternatively, you can start it manually:
+  cd packages/kanban-viewer && bun run dev
+```
+
+### Step 10: Verify API Connectivity
 
 Test connection to the A(i)-Team API server:
 
@@ -354,14 +428,17 @@ If connection fails:
 ```
 ⚠ Could not connect to A(i)-Team API at http://localhost:3000
 
-Make sure the API server is running:
-  cd /path/to/ateam-api && npm run dev
+Make sure the kanban-viewer is running:
+  docker compose up -d    (from repo root)
+
+Or start it manually:
+  cd packages/kanban-viewer && bun run dev
 
 Or configure a different URL:
   Set ATEAM_API_URL in .claude/settings.local.json
 ```
 
-### Step 10: Check Plugin Dependencies
+### Step 11: Check Plugin Dependencies
 
 Check for Playwright plugin availability (see Plugin Dependencies section below).
 
@@ -410,7 +487,7 @@ The MCP server reads the following environment variables:
 | `ATEAM_API_KEY` | No | - | Optional API key for authentication |
 | `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
 | `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native TeammateTool integration |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native teams dispatch |
 | `ATEAM_TEAMMATE_MODE` | No | `auto` | Teammate mode: `auto`, `tmux`, or `in-process` |
 
 ## Example Output
@@ -430,7 +507,7 @@ Checking permissions...
   + Edit(src/**)
 
 Configuring native teams...
-  ✓ Agent Teams (TeammateTool) enabled
+  ✓ Agent Teams enabled
   ✓ Teammate mode: auto
 
 Settings updated: .claude/settings.local.json

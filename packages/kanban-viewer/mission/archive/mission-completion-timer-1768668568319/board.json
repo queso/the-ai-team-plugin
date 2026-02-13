@@ -1,0 +1,192 @@
+{
+  "mission": {
+    "name": "Mission Completion Timer",
+    "status": "planning",
+    "created_at": "2026-01-17T16:09:44.856Z",
+    "started_at": "2026-01-17T16:13:36.106Z",
+    "completed_at": "2026-01-17T16:28:58.908Z",
+    "duration_ms": 922802
+  },
+  "project": "Mission Completion Timer",
+  "wip_limit": 3,
+  "max_wip": 5,
+  "created_at": "2026-01-17T16:09:44.856Z",
+  "updated_at": "2026-01-17T16:28:58.910Z",
+  "stats": {
+    "total_items": 4,
+    "completed": 4,
+    "in_flight": 0,
+    "blocked": 0,
+    "backlog": 0,
+    "rejected_count": 0
+  },
+  "phases": {
+    "briefings": [],
+    "ready": [],
+    "testing": [],
+    "implementing": [],
+    "review": [],
+    "done": [
+      "001",
+      "002",
+      "003",
+      "004"
+    ],
+    "blocked": []
+  },
+  "assignments": {},
+  "agents": {
+    "Hannibal": {
+      "status": "idle"
+    },
+    "Face": {
+      "status": "idle"
+    },
+    "Murdock": {
+      "status": "idle"
+    },
+    "B.A.": {
+      "status": "idle"
+    },
+    "Lynch": {
+      "status": "idle"
+    }
+  },
+  "wip_limits": {
+    "testing": 2,
+    "implementing": 3,
+    "review": 2
+  },
+  "dependency_graph": {
+    "001": [],
+    "002": [
+      "001"
+    ],
+    "003": [
+      "002"
+    ],
+    "004": [
+      "002"
+    ]
+  },
+  "parallel_groups": {
+    "mission-types": [
+      "001"
+    ],
+    "header-bar": [
+      "002",
+      "003",
+      "004"
+    ]
+  },
+  "history": {
+    "001": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-17T16:13:28.273Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-17T16:13:36.106Z",
+        "completed_at": "2026-01-17T16:15:46.745Z",
+        "duration_ms": 130639
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-17T16:15:46.745Z",
+        "completed_at": "2026-01-17T16:16:38.823Z",
+        "duration_ms": 52078
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-17T16:16:38.823Z",
+        "completed_at": "2026-01-17T16:17:30.008Z",
+        "duration_ms": 51185
+      }
+    ],
+    "002": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-17T16:17:39.164Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-17T16:17:43.676Z",
+        "completed_at": "2026-01-17T16:19:14.596Z",
+        "duration_ms": 90920
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-17T16:19:14.596Z",
+        "completed_at": "2026-01-17T16:22:30.915Z",
+        "duration_ms": 196319
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-17T16:22:30.915Z",
+        "completed_at": "2026-01-17T16:23:30.980Z",
+        "duration_ms": 60065
+      }
+    ],
+    "003": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-17T16:23:37.036Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-17T16:23:46.008Z",
+        "completed_at": "2026-01-17T16:26:27.758Z",
+        "duration_ms": 161750
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-17T16:26:27.758Z",
+        "completed_at": "2026-01-17T16:27:47.839Z",
+        "duration_ms": 80081
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-17T16:27:47.839Z",
+        "completed_at": "2026-01-17T16:28:58.843Z",
+        "duration_ms": 71004
+      }
+    ],
+    "004": [
+      {
+        "stage": "briefings",
+        "completed_at": "2026-01-17T16:23:37.096Z"
+      },
+      {
+        "stage": "testing",
+        "agent": "Murdock",
+        "started_at": "2026-01-17T16:23:46.067Z",
+        "completed_at": "2026-01-17T16:26:27.819Z",
+        "duration_ms": 161752
+      },
+      {
+        "stage": "implementing",
+        "agent": "B.A.",
+        "started_at": "2026-01-17T16:26:27.819Z",
+        "completed_at": "2026-01-17T16:27:47.904Z",
+        "duration_ms": 80085
+      },
+      {
+        "stage": "review",
+        "agent": "Lynch",
+        "started_at": "2026-01-17T16:27:47.904Z",
+        "completed_at": "2026-01-17T16:28:58.908Z",
+        "duration_ms": 71004
+      }
+    ]
+  }
+}

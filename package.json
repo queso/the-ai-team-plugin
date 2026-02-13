@@ -1,17 +1,19 @@
 {
-  "name": "@ai-team/scripts",
+  "name": "@ai-team/root",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
-  "description": "CLI scripts for A(i)-Team board management",
+  "description": "A(i)-Team monorepo workspace root",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
+    "build": "bun run --filter './packages/*' build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:all": "bun run --filter './packages/*' test"
   },
-  "dependencies": {},
   "devDependencies": {
+    "typescript": "^5.3.0",
     "vitest": "^1.6.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Monorepo structure with shared types package** (PRD-004) - Migrated from two separate repositories into a unified bun workspaces monorepo
+  - Created `packages/shared/` - @ai-team/shared package with shared TypeScript types, constants, and validation functions
+  - Moved `mcp-server/` to `packages/mcp-server/` - now imports from @ai-team/shared
+  - Imported `packages/kanban-viewer/` via git subtree from separate repository - now imports from @ai-team/shared
+  - Added root `docker-compose.yml` for one-command kanban-viewer startup
+  - Converted root `package.json` to bun workspace root with `workspaces: ["packages/*"]`
+  - Updated `.mcp.json` to point to `packages/mcp-server/src/index.ts` with bun runtime
+
+- **Compile-time safety verification** (WI-174) - Documented proof of end-to-end TypeScript safety
+  - Created `docs/compile-time-safety-verification.md` with test scenarios and results
+  - Verified: Adding stage to ALL_STAGES without updating TRANSITION_MATRIX → TypeScript error
+  - Verified: Removing agent from VALID_AGENTS without updating AGENT_DISPLAY_NAMES → TypeScript error
+  - Verified: Item types are backwards-compatible with extensible design
+  - Architecture analysis explains const assertions, indexed access types, and Record exhaustiveness
+
 ### Changed
 
 - **MCP Server test suite cleanup** - Removed 170 dead tests and replaced with 62 behavioral tests
@@ -21,6 +38,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated agents/face.md with NO_TEST_NEEDED identification guidance
   - Net result: 407 tests → 304 tests (all behavioral)
 
+- **Unified CI pipeline** - Updated `.github/workflows/ci.yml` for bun workspaces with conditional build detection
+  - Added workspace-level dependency installation with `bun install`
+  - Added conditional builds: only build packages with changes
+  - Unified test execution across all packages
+  - Added build verification step before tests
+
+- **Documentation updates** - Updated CLAUDE.md with monorepo structure and workspace patterns
+  - Added workspace architecture diagram
+  - Added shared package usage examples
+  - Updated file organization section
+  - Added bun workspace commands
+
+- **Enhanced /ateam setup command** - Added Docker detection and kanban-viewer startup guidance
+  - Auto-detects Docker Compose installation
+  - Provides one-command startup instructions for kanban-viewer
+  - Updates `ateam.config.json` with dev server configuration
 ---
 
 ## [2.3.0] - 2026-02-07

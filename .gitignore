@@ -4,6 +4,9 @@ mission/
 # Dependencies
 node_modules/
 
+# Bun
+bun.lockb
+
 # Local settings
 .claude/settings.local.json
 

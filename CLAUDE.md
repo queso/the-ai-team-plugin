@@ -60,15 +60,15 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 ┌─────────────────────────────────────────────────────────────┐
 │                     Claude Code                              │
 │  ┌─────────────┐                                            │
-│  │   Hannibal  │──── TeammateTool(spawn) ────┐             │
+│  │   Hannibal  │──── Task(team_name) ────────┐             │
 │  │ (team lead) │                              │             │
 │  └──────┬──────┘                              ▼             │
 │         │                         ┌────────────────────────┐│
-│         │    ┌── mailbox ────────▶│ Murdock   (tester)    ││
+│         │    ┌── SendMessage ────▶│ Murdock   (tester)    ││
 │         │    │                    │ B.A.      (coder)     ││
 │         │◀───┤                    │ Lynch     (reviewer)  ││
 │         │    │                    │ Amy       (researcher)││
-│         │    └── mailbox ────────▶│ Tawnia    (documenter)││
+│         │    └── SendMessage ────▶│ Tawnia    (documenter)││
 │         │                         └──────────┬─────────────┘│
 │         │                                    │              │
 │         └────────────────┬───────────────────┘              │
@@ -85,6 +85,17 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 ```
 
 Native handles orchestration, MCP handles persistence.
+
+### Package Dependencies
+
+```
+@ai-team/shared
+    ↑
+    ├── @ai-team/mcp-server (MCP tools depend on shared types)
+    └── @ai-team/kanban-viewer (UI depends on shared types)
+```
+
+The `@ai-team/shared` package provides TypeScript types and constants used by both the MCP server and Kanban viewer, ensuring type consistency across the system.
 
 ### Pipeline Flow
 
@@ -129,7 +140,7 @@ Each feature flows through stages sequentially. Different features can be at dif
 
 Use the `deps_check` MCP tool to see which items are ready. Within a wave, items flow independently through stages.
 
-**True Individual Item Tracking:** Items advance immediately when their agent completes - no waiting for batch completion. Hannibal polls TaskOutput for each background agent individually and agents signal completion via the `agent_stop` MCP tool.
+**True Individual Item Tracking:** Items advance immediately when their agent completes - no waiting for batch completion. In legacy mode, Hannibal polls TaskOutput for each background agent individually. In native teams mode, agents send completion messages via SendMessage. In both modes, agents signal completion via the `agent_stop` MCP tool.
 
 When ALL features reach `done`, Lynch performs a **Final Mission Review** of the entire codebase, checking for cross-cutting issues (consistency, race conditions, security, code quality).
 
@@ -280,27 +291,14 @@ Use MCP tools for mission items. Use native tasks for orchestration checkpoints.
 
 ### Agent Dispatch (Dual Mode)
 
-The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`:
+The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. The `/ateam run` command detects the mode and loads the appropriate orchestration playbook:
 
-**Native Teams Mode** (when env var = "1"):
-- Hannibal uses `TeammateTool` to spawn teammates with native types
-- Direct mailbox communication between agents
-- Split pane visualization via tmux
-- Interactive user control (Shift+Up/Down)
+- **Legacy mode** (default): `playbooks/orchestration-legacy.md` - Uses `Task` with `run_in_background: true` and `TaskOutput` polling
+- **Native teams mode** (env var = "1"): `playbooks/orchestration-native.md` - Uses `TeamCreate`, `Task` with `team_name`, and `SendMessage`
 
-| A(i)-Team Agent | Native Type | Model |
-|-----------------|-------------|-------|
-| Murdock | tester | sonnet |
-| B.A. | coder | sonnet |
-| Lynch | reviewer | (default) |
-| Amy | researcher | sonnet |
-| Tawnia | documenter | sonnet |
+**Progressive disclosure:** Hannibal reads exactly ONE playbook at mission start. The playbook contains the complete orchestration loop, agent dispatch patterns, completion detection, and concrete examples. Claude never sees the irrelevant mode's instructions.
 
-**Legacy Mode** (default, no env var):
-
-Hannibal dispatches agents using Task tool with `run_in_background: true`:
-
-**Planning Phase:**
+**Planning Phase (both modes):**
 - Face: `subagent_type: "ai-team:face"`, `model: "opus"`
 - Sosa: `subagent_type: "ai-team:sosa"`, `model: "opus"`
 
@@ -317,7 +315,7 @@ Hannibal dispatches agents using Task tool with `run_in_background: true`:
 
 **IMPORTANT:** Background agents (`run_in_background: true`) cannot prompt for user approval. Operations that require approval will be auto-denied.
 
-**Native Teams Mode:** When using TeammateTool, agents are spawned as teammates with `allowed_tools` specified at spawn time. The same permissions in `.claude/settings.local.json` are still required for filesystem operations.
+**Native Teams Mode:** When using native teams, agents are spawned as teammates via `Task` with `team_name` parameter. The same permissions in `.claude/settings.local.json` are still required for filesystem operations.
 
 Run `/ateam setup` once per project to configure required permissions in `.claude/settings.local.json`:
 
@@ -357,24 +355,44 @@ Run `/ateam setup` once per project to configure required permissions in `.claud
 ai-team/
 ├── .claude-plugin/plugin.json  # Plugin configuration
 ├── .mcp.json                # MCP server configuration
-├── package.json             # Node.js dependencies (run `npm install`)
-├── mcp-server/              # MCP server for Claude Code integration
-│   ├── package.json         # MCP server dependencies
-│   ├── tsconfig.json
-│   ├── src/
-│   │   ├── index.ts         # Entry point (stdio transport)
-│   │   ├── server.ts        # McpServer instance
-│   │   ├── config.ts        # Environment configuration (projectId, apiUrl, etc.)
-│   │   ├── client/          # HTTP client with retry logic
-│   │   ├── lib/             # Error handling utilities
-│   │   └── tools/           # Tool implementations (20 tools)
-│   │       ├── board.ts     # Board operations (4 tools)
-│   │       ├── items.ts     # Item operations (6 tools)
-│   │       ├── agents.ts    # Agent lifecycle (2 tools)
-│   │       ├── missions.ts  # Mission lifecycle (5 tools)
-│   │       ├── utils.ts     # Utilities (3 tools)
-│   │       └── index.ts     # Tool registration
-│   └── dist/                # Compiled JavaScript
+├── package.json             # Bun workspaces root (run `bun install`)
+├── bun.lockb                # Bun lock file
+├── docker-compose.yml       # Docker setup for kanban-viewer
+├── packages/                # Monorepo packages
+│   ├── shared/              # @ai-team/shared - Shared types and constants
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   │       ├── index.ts     # Re-exports all types
+│   │       ├── stages.ts    # Stage definitions and validation
+│   │       ├── agents.ts    # Agent type definitions
+│   │       ├── items.ts     # Work item types
+│   │       ├── errors.ts    # Error types
+│   │       └── __tests__/   # Type tests
+│   ├── mcp-server/          # @ai-team/mcp-server - MCP server for Claude Code integration
+│   │   ├── package.json     # MCP server dependencies
+│   │   ├── tsconfig.json
+│   │   ├── src/
+│   │   │   ├── index.ts     # Entry point (stdio transport)
+│   │   │   ├── server.ts    # McpServer instance
+│   │   │   ├── config.ts    # Environment configuration (projectId, apiUrl, etc.)
+│   │   │   ├── client/      # HTTP client with retry logic
+│   │   │   ├── lib/         # Error handling utilities
+│   │   │   └── tools/       # Tool implementations (20 tools)
+│   │   │       ├── board.ts     # Board operations (4 tools)
+│   │   │       ├── items.ts     # Item operations (6 tools)
+│   │   │       ├── agents.ts    # Agent lifecycle (2 tools)
+│   │   │       ├── missions.ts  # Mission lifecycle (5 tools)
+│   │   │       ├── utils.ts     # Utilities (3 tools)
+│   │   │       └── index.ts     # Tool registration
+│   │   └── dist/            # Compiled JavaScript
+│   └── kanban-viewer/       # @ai-team/kanban-viewer - Web-based Kanban UI
+│       ├── package.json
+│       ├── Dockerfile
+│       └── src/             # React application
+├── playbooks/               # Dispatch-mode orchestration playbooks
+│   ├── orchestration-legacy.md   # Legacy Task/TaskOutput dispatch
+│   └── orchestration-native.md   # Native teams (TeamCreate/SendMessage) dispatch
 ├── agents/                  # Agent prompts and behavior (with frontmatter hooks)
 │   ├── hannibal.md          # Orchestrator (main context, has PreToolUse + Stop hooks)
 │   ├── face.md              # Decomposer
@@ -402,6 +420,17 @@ ai-team/
 └── docs/
     └── kanban-ui-prd.md     # PRD for web-based kanban board
 ```
+
+**Monorepo Structure:**
+The repository uses bun workspaces with three packages:
+- `@ai-team/shared` - Shared types and constants used by other packages
+- `@ai-team/mcp-server` - MCP server (depends on @ai-team/shared)
+- `@ai-team/kanban-viewer` - Web UI (depends on @ai-team/shared)
+
+Plugin-specific files (agents/, commands/, skills/, scripts/) remain at the repository root.
+
+**MCP Server Configuration:**
+The `.mcp.json` file at the repository root points to `packages/mcp-server/src/index.ts` as the MCP server entry point. The server uses bun to run TypeScript directly without a separate build step for development.
 
 ## MCP Tools
 
@@ -455,7 +484,7 @@ The MCP server reads the following environment variables:
 | `ATEAM_API_KEY` | No | - | Optional API key for authentication |
 | `ATEAM_TIMEOUT` | No | `10000` | Request timeout in milliseconds |
 | `ATEAM_RETRIES` | No | `3` | Number of retry attempts |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native TeammateTool dispatch |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | No | - | Set to `1` to enable native teams dispatch |
 | `ATEAM_TEAMMATE_MODE` | No | `auto` | Teammate display: `auto`, `tmux`, or `in-process` |
 
 *`ATEAM_API_URL` defaults to `http://localhost:3000`. If your API runs elsewhere, you MUST set this variable.
@@ -564,6 +593,8 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
    - `pnpm-lock.yaml` → pnpm
    - `bun.lockb` → bun
 
+**Note:** The A(i)-Team plugin itself uses bun workspaces for development, but it detects and works with any package manager in user projects.
+
 ### Config File Format
 
 ```json
@@ -658,3 +689,23 @@ This will:
 3. Create `ateam.config.json` with project settings
 4. Verify API server connectivity
 5. Check for optional Playwright plugin
+
+### Development Setup
+
+For plugin development, the repository uses bun workspaces:
+
+```bash
+# Install dependencies for all packages
+bun install
+
+# Build shared package (must be built first)
+cd packages/shared && bun run build
+
+# Build MCP server
+cd packages/mcp-server && bun run build
+
+# Start Kanban UI (optional, for viewing mission progress)
+docker compose up -d
+```
+
+The shared package must be built before other packages since they depend on it.

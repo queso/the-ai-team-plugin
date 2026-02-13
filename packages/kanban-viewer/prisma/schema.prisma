@@ -1,0 +1,144 @@
+// Prisma Schema for Kanban Viewer
+// Database: SQLite
+// This schema defines the data model for the A(i)-Team Kanban board
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Project {
+  id         String        @id           // 'PRJ-001'
+  name       String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // Relations
+  items      Item[]
+  missions   Mission[]
+  activities ActivityLog[]
+}
+
+model Stage {
+  id       String  @id                    // 'backlog', 'ready', etc.
+  name     String
+  order    Int
+  wipLimit Int?                           // null = unlimited
+  items    Item[]
+}
+
+model Item {
+  id             String    @id            // 'WI-001'
+  title          String
+  description    String
+  type           String                   // 'feature' | 'bug' | 'chore' | 'spike'
+  priority       String                   // 'critical' | 'high' | 'medium' | 'low'
+  stageId        String
+  stage          Stage     @relation(fields: [stageId], references: [id])
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id])
+  assignedAgent  String?
+  rejectionCount Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  completedAt    DateTime?
+  archivedAt     DateTime?                // For soft delete support
+
+  // Output file paths for work item breakdown
+  outputTest     String?                  // Path to test file output
+  outputImpl     String?                  // Path to implementation file output
+  outputTypes    String?                  // Path to types file output
+
+  // Relations
+  workLogs       WorkLog[]
+  agentClaim     AgentClaim?
+  missionItems   MissionItem[]
+
+  // Dependencies (self-referential many-to-many)
+  dependsOn      ItemDependency[] @relation("DependentItem")
+  dependedOnBy   ItemDependency[] @relation("DependencyItem")
+
+  // Indexes for common queries
+  @@index([stageId])
+  @@index([archivedAt])
+  @@index([assignedAgent])
+  @@index([projectId])
+}
+
+model ItemDependency {
+  id           Int    @id @default(autoincrement())
+  itemId       String
+  dependsOnId  String
+
+  item         Item   @relation("DependentItem", fields: [itemId], references: [id], onDelete: Cascade)
+  dependsOn    Item   @relation("DependencyItem", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, dependsOnId])
+}
+
+model WorkLog {
+  id        Int      @id @default(autoincrement())
+  itemId    String
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  agent     String
+  action    String                        // 'started' | 'completed' | 'rejected' | 'note'
+  summary   String
+  timestamp DateTime @default(now())
+}
+
+model AgentClaim {
+  id        Int      @id @default(autoincrement())
+  agentName String                        // 'Hannibal', 'Face', etc.
+  itemId    String   @unique              // Each item can only be claimed by one agent
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  claimedAt DateTime @default(now())
+
+  @@index([agentName])                    // Index for querying claims by agent
+}
+
+model Mission {
+  id          String        @id           // 'M-20260121-001'
+  name        String
+  state       String                      // MissionState
+  prdPath     String
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id])
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+  archivedAt  DateTime?
+
+  items       MissionItem[]
+  activities  ActivityLog[]
+
+  // Indexes for common queries
+  @@index([archivedAt])
+  @@index([projectId])
+}
+
+model MissionItem {
+  id        Int     @id @default(autoincrement())
+  missionId String
+  itemId    String
+
+  mission   Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([missionId, itemId])
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  missionId String?
+  mission   Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  agent     String?
+  message   String
+  level     String   @default("info")     // 'info' | 'warn' | 'error'
+  timestamp DateTime @default(now())
+
+  @@index([projectId])
+}

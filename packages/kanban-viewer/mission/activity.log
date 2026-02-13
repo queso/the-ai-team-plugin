@@ -1,0 +1,55 @@
+2026-01-22T19:06:16.462Z [Hannibal] Mission initialized: PRD 014: Bug Fixes and Refinements for SQLite API
+2026-01-22T19:07:50.069Z [Face] Created item 001: Update StageId type to use original stage names
+2026-01-22T19:07:57.567Z [Face] Created item 002: Update Prisma schema stage seed data
+2026-01-22T19:08:05.511Z [Face] Created item 003: Update validation transition matrix for new stage names
+2026-01-22T19:08:13.355Z [Face] Created item 004: Update all API routes for harmonized stage names
+2026-01-22T19:08:21.031Z [Face] Created item 005: Update page.tsx to use API types directly
+2026-01-22T19:08:27.734Z [Face] Created item 006: Delete api-transform.ts bandaid file
+2026-01-22T19:08:40.023Z [Face] Created item 007: Fix SSE activity log tracking race condition
+2026-01-22T19:08:47.710Z [Face] Created item 008: Remove SSE stage mapping after harmonization
+2026-01-22T19:08:55.820Z [Face] Created item 009: Fix E2E regression script async error handling
+2026-01-22T19:09:04.052Z [Face] Created item 010: Add E2E script API health check
+2026-01-22T19:09:11.717Z [Face] Created item 011: Add SSE memory management for long connections
+2026-01-22T19:09:19.431Z [Face] Created item 012: Add SSE circuit breaker for database errors
+2026-01-22T19:09:31.451Z [Face] Created item 013: Fix AgentName type to use B.A. with dot
+2026-01-22T19:09:39.606Z [Face] Created item 014: Harmonize ItemType between API and UI
+2026-01-22T19:09:55.280Z [Face] Created item 015: Fix race condition in item claim flow
+2026-01-22T19:10:02.825Z [Face] Created item 016: Fix missing transaction in item rejection
+2026-01-22T19:10:09.939Z [Face] Created item 017: Fix N+1 query in dependency validation
+2026-01-22T19:10:16.819Z [Face] Created item 018: Add database indexes for common queries
+2026-01-22T19:10:29.326Z [Face] Created item 019: Fix frontend error handling in data fetching
+2026-01-22T19:10:37.053Z [Face] Created item 020: Add validation helpers for type coercion
+2026-01-22T19:10:48.830Z [Face] Created item 021: Create tests for api-transform.ts functions
+2026-01-22T19:10:56.181Z [Face] Created item 022: Create tests for stage mapping correctness
+2026-01-22T19:52:59.113Z [Hannibal] Updated 001: context, objective, acceptance
+2026-01-22T19:53:03.919Z [Hannibal] Updated 002: context
+2026-01-22T19:53:17.555Z [Hannibal] Updated 004: context, objective, acceptance
+2026-01-22T19:53:23.035Z [Hannibal] Updated 006: context, acceptance
+2026-01-22T19:53:28.301Z [Hannibal] Updated 007: context
+2026-01-22T19:53:39.912Z [Hannibal] Updated 008: parallel_group, context
+2026-01-22T19:54:27.847Z [Hannibal] Updated 013: context
+2026-01-22T19:54:35.554Z [Hannibal] Updated 014: context, objective, acceptance
+2026-01-22T19:54:43.325Z [Hannibal] Updated 022: context, objective, acceptance
+2026-01-22T19:55:28.791Z [Hannibal] Feature 001 → ready
+2026-01-22T19:55:29.385Z [Hannibal] Feature 007 → ready
+2026-01-22T19:55:29.984Z [Hannibal] Feature 009 → ready
+2026-01-22T19:55:30.556Z [Hannibal] Feature 010 → ready
+2026-01-22T19:55:31.116Z [Hannibal] Feature 011 → ready
+2026-01-22T19:55:31.709Z [Hannibal] Feature 012 → ready
+2026-01-22T19:55:40.043Z [Hannibal] Feature 013 → ready
+2026-01-22T19:55:41.229Z [Hannibal] Feature 014 → ready
+2026-01-22T19:55:42.407Z [Hannibal] Feature 015 → ready
+2026-01-22T19:55:43.838Z [Hannibal] Feature 016 → ready
+2026-01-22T19:55:44.468Z [Hannibal] Feature 017 → ready
+2026-01-22T19:55:45.095Z [Hannibal] Feature 018 → ready
+2026-01-22T19:55:45.734Z [Hannibal] Feature 019 → ready
+2026-01-22T19:55:46.356Z [Hannibal] Feature 020 → ready
+[2026-01-23T22:39:01Z] [Murdock] Created circuit breaker tests for SSE endpoint - 24 test cases covering error tracking, circuit breaker threshold, counter reset, graceful shutdown, and interval cleanup. 13 tests fail as expected (awaiting implementation).
+2026-01-24T18:51:45.3NZ [Murdock] Starting work on item 022 - stage mapping consistency tests
+[2026-01-24T18:51:45.3NZ] [Murdock] Tests ready for item 019 - 13 test cases covering board API errors, activity API graceful degradation, network errors, JSON parse errors, and error state display. 5 pass (current behavior), 8 fail (bugs to fix).
+[2026-01-24T19:09:17Z] [Murdock] Starting work on item 018 - database indexes test
+2026-01-24T19:09:18.3NZ [Murdock] Created 46 test cases for stage mapping consistency - all passing
+2026-01-24T19:29:56.3NZ [Murdock] Tests ready - 46 tests covering happy path, edge cases, and cross-layer consistency
+[2026-01-24T19:29:56Z] [Murdock] Created 9 test cases for database indexes - all failing as expected (no indexes yet)
+{"agent": "B.A.", "message": "Starting work on frontend error handling fix"}
+[2026-01-24T20:03:58.000Z] [B.A.] Implemented frontend error handling - 12/13 tests passing
