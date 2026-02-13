@@ -56,6 +56,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: .
+      - run: bun run build
+        working-directory: packages/shared
       - run: bun run lint
       - run: bunx tsc --noEmit
       - run: bun run test
@@ -91,4 +93,5 @@ jobs:
           node-version: 20
       - run: bun install
         working-directory: .
+      - run: bunx prisma generate
       - run: bun run build
