@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Intent Layer
+
+**Before modifying code in a subdirectory, read its AGENTS.md first** to understand local patterns and invariants.
+
+- **MCP Server**: `packages/mcp-server/AGENTS.md` - Bridge between Claude Code and the A(i)-Team API (20 tools, HTTP client, Zod schemas)
+- **Agent Prompts**: `agents/AGENTS.md` - Agent behavior contracts, hooks, boundaries, and dispatch patterns
+- **Kanban Viewer**: `packages/kanban-viewer/CLAUDE.md` - Next.js web UI with Prisma/SQLite (already documented)
+
+### Global Invariants
+
+- All mission state lives in the API database, not the filesystem. Use MCP tools for state changes.
+- The `@ai-team/shared` package must be built before `@ai-team/mcp-server` (workspace dependency).
+- Both shared and mcp-server use `moduleResolution: "NodeNext"` — all relative imports need `.js` extensions.
+- Tests use **vitest** (not bun's native test runner). Run `bun run test`, never bare `bun test`.
+- Agent files use YAML frontmatter with hooks that enforce workflow boundaries at runtime.
+
 ## About This Repository
 
 **This is the source repository for the A(i)-Team Claude Code plugin.**
