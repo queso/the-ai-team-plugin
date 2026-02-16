@@ -29,7 +29,7 @@ Hannibal also has `tools:` listing available tools. Model selection (`opus`/`son
 | **Murdock** | Tests + types | Implementation code | `block-raw-echo-log`, `enforce-completion-log` |
 | **B.A.** | Implementation | Tests | Same as Murdock |
 | **Lynch** | Review verdicts | Any code | Same as Murdock |
-| **Amy** | Debug scripts only | Production code, tests | Same as Murdock |
+| **Amy** | Debug scripts only | Production code, tests | `block-raw-echo-log`, `block-amy-test-writes`, `enforce-completion-log` |
 | **Tawnia** | Docs (CHANGELOG, README) | `src/**`, tests | Same as Murdock |
 
 **Hooks enforce these boundaries at runtime.** Agents physically cannot violate them.
@@ -41,6 +41,9 @@ Scripts in `scripts/hooks/` run at lifecycle points. Exit code 0 = allow, non-ze
 **Working agents** (Murdock, B.A., Lynch, Amy, Tawnia) all share:
 - `PreToolUse(Bash)` → `block-raw-echo-log.js` — forces MCP `log` tool instead of raw echo
 - `Stop` → `enforce-completion-log.js` — blocks exit until `agent_stop` MCP tool is called
+
+**Amy** has an additional hook:
+- `PreToolUse(Write|Edit)` → `block-amy-test-writes.js` — blocks `*.test.*`, `*.spec.*`, and `*raptor*` file writes
 
 **Hannibal** has unique hooks:
 - `PreToolUse(Write|Edit)` → `block-hannibal-writes.js` — prevents writing to source/test files

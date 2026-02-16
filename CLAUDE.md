@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Before modifying code in a subdirectory, read its AGENTS.md first** to understand local patterns and invariants.
 
-- **MCP Server**: `packages/mcp-server/AGENTS.md` - Bridge between Claude Code and the A(i)-Team API (20 tools, HTTP client, Zod schemas)
+- **MCP Server**: `packages/mcp-server/AGENTS.md` - Bridge between Claude Code and the A(i)-Team API (21 tools, HTTP client, Zod schemas)
 - **Agent Prompts**: `agents/AGENTS.md` - Agent behavior contracts, hooks, boundaries, and dispatch patterns
 - **Kanban Viewer**: `packages/kanban-viewer/CLAUDE.md` - Next.js web UI with Prisma/SQLite (already documented)
 
@@ -53,7 +53,7 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 │                             │                               │
 │                    ┌────────▼────────┐                      │
 │                    │   MCP Server    │                      │
-│                    │  (20 tools)     │                      │
+│                    │  (21 tools)     │                      │
 │                    └────────┬────────┘                      │
 └─────────────────────────────┼───────────────────────────────┘
                               │ HTTP + X-Project-ID header
@@ -394,12 +394,12 @@ ai-team/
 │   │   │   ├── config.ts    # Environment configuration (projectId, apiUrl, etc.)
 │   │   │   ├── client/      # HTTP client with retry logic
 │   │   │   ├── lib/         # Error handling utilities
-│   │   │   └── tools/       # Tool implementations (20 tools)
+│   │   │   └── tools/       # Tool implementations (21 tools)
 │   │   │       ├── board.ts     # Board operations (4 tools)
 │   │   │       ├── items.ts     # Item operations (6 tools)
 │   │   │       ├── agents.ts    # Agent lifecycle (2 tools)
 │   │   │       ├── missions.ts  # Mission lifecycle (5 tools)
-│   │   │       ├── utils.ts     # Utilities (3 tools)
+│   │   │       ├── utils.ts     # Utilities (4 tools)
 │   │   │       └── index.ts     # Tool registration
 │   │   └── dist/            # Compiled JavaScript
 │   └── kanban-viewer/       # @ai-team/kanban-viewer - Web-based Kanban UI
@@ -430,6 +430,7 @@ ai-team/
 │       ├── block-raw-echo-log.js        # PreToolUse hook for working agents (Bash)
 │       ├── block-raw-mv.js              # PreToolUse hook for Hannibal (Bash)
 │       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal (Write|Edit)
+│       ├── block-amy-test-writes.js    # PreToolUse hook for Amy (Write|Edit)
 │       └── enforce-final-review.js      # Stop hook for Hannibal
 ├── lib/                     # Shared utilities (used by hooks)
 │   ├── board.js, lock.js, validate.js
@@ -450,7 +451,7 @@ The `.mcp.json` file at the repository root points to `packages/mcp-server/src/i
 
 ## MCP Tools
 
-Agents use MCP tools for all board and item operations. The MCP server exposes 20 tools across 5 modules:
+Agents use MCP tools for all board and item operations. The MCP server exposes 21 tools across 5 modules:
 
 | Module | Tools | Description |
 |--------|-------|-------------|
@@ -458,7 +459,7 @@ Agents use MCP tools for all board and item operations. The MCP server exposes 2
 | **Items** | `item_create`, `item_update`, `item_get`, `item_list`, `item_reject`, `item_render` | Work item CRUD operations |
 | **Agents** | `agent_start`, `agent_stop` | Agent lifecycle hooks |
 | **Missions** | `mission_init`, `mission_current`, `mission_precheck`, `mission_postcheck`, `mission_archive` | Mission lifecycle management |
-| **Utils** | `deps_check`, `activity_log`, `log` | Dependency validation and logging |
+| **Utils** | `plugin_root`, `deps_check`, `activity_log`, `log` | Plugin path resolution, dependency validation, and logging |
 
 ### Agent Lifecycle Tools
 
@@ -546,6 +547,22 @@ hooks:
 ```
 
 **Purpose:** Prevents agents from finishing without calling the `agent_stop` MCP tool to record their work.
+
+### Amy-Specific Hook
+
+In addition to the shared hooks above, Amy has an extra PreToolUse hook:
+
+**PreToolUse Hook** - Blocks test file writes:
+```yaml
+hooks:
+  PreToolUse:
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-amy-test-writes.js"
+```
+
+**Purpose:** Prevents Amy from creating `*.test.ts`, `*.spec.ts`, or `*-raptor*` files. Investigation findings belong in the `agent_stop` work_log summary, not as file artifacts that duplicate Murdock's tests.
 
 ### Hannibal Hooks
 

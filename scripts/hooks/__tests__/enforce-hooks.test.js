@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 
 const COMPLETION_HOOK = join(__dirname, '..', 'enforce-completion-log.js');
 const FINAL_REVIEW_HOOK = join(__dirname, '..', 'enforce-final-review.js');
+const AMY_TEST_WRITES_HOOK = join(__dirname, '..', 'block-amy-test-writes.js');
 
 /**
  * Helper: run a hook script as a child process with given env vars.
@@ -368,5 +369,48 @@ describe('enforce-final-review', () => {
 
       expect(result.exitCode).toBe(0);
     });
+  });
+});
+
+// =============================================================================
+// block-amy-test-writes.js
+// =============================================================================
+describe('block-amy-test-writes', () => {
+  it('should block writes to .test.ts files', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {
+      TOOL_INPUT: JSON.stringify({ file_path: 'src/__tests__/feature-raptor.test.ts' }),
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED/);
+  });
+
+  it('should block writes to .spec.tsx files', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {
+      TOOL_INPUT: JSON.stringify({ file_path: 'src/components/Button.spec.tsx' }),
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED/);
+  });
+
+  it('should block writes to raptor files', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {
+      TOOL_INPUT: JSON.stringify({ file_path: 'src/raptor-investigation.js' }),
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED.*raptor/i);
+  });
+
+  it('should allow non-test writes like /tmp/debug.js', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {
+      TOOL_INPUT: JSON.stringify({ file_path: '/tmp/debug.js' }),
+    });
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('should allow writes with no file path', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {
+      TOOL_INPUT: JSON.stringify({}),
+    });
+    expect(result.exitCode).toBe(0);
   });
 });

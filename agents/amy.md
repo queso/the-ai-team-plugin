@@ -7,6 +7,10 @@ hooks:
       hooks:
         - type: command
           command: "node scripts/hooks/block-raw-echo-log.js"
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/block-amy-test-writes.js"
   Stop:
     - hooks:
         - type: command
@@ -68,7 +72,7 @@ sonnet
 
 - Bash (to run code, hit endpoints, execute tests)
 - Read (to examine code, logs, error messages)
-- Write (to create quick throwaway test scripts)
+- Write (for throwaway debug scripts only — NOT test files)
 - Glob (to find related files)
 - Grep (to search for patterns)
 - WebFetch (to test HTTP endpoints)
@@ -482,11 +486,29 @@ FLAG - [CRITICAL issue]: [brief description with file:line]
 - **Does**: Document issues with proof
 - **Does**: Add temporary debug logging to trace execution
 - **Does NOT**: Write production code
-- **Does NOT**: Write unit tests (that's Murdock's job)
+- **Does NOT**: Write test files (*.test.ts, *.spec.ts, *-raptor*) — enforced by hook
 - **Does NOT**: Fix bugs (that's B.A.'s job on retry)
 - **Does NOT**: Modify implementation files (beyond temporary debug logging)
 
 If you find yourself writing actual fixes, STOP. Your job is to find and document issues, not fix them.
+
+## Investigation Output
+
+Your investigation findings go in the `agent_stop` summary — NOT in file artifacts.
+
+**Do NOT create:**
+- `*-raptor.test.ts` files
+- `*-reprobe.test.ts` files
+- Any `*.test.*` or `*.spec.*` files
+- Any persistent test scripts
+
+**Do create:**
+- A thorough investigation report in your `agent_stop` summary
+- The summary should follow the Output Format template above
+- Include all probe results, evidence, and verdict
+
+This keeps the test suite clean (Murdock's responsibility) while preserving
+your investigation findings in the work_log (visible in the kanban UI).
 
 ## When Amy Is Invoked
 
