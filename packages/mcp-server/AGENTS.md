@@ -1,12 +1,12 @@
 # MCP Server
 
-Bridge between Claude Code agents and the A(i)-Team API. Exposes 20 MCP tools that translate tool calls into HTTP requests against the kanban-viewer backend. Does NOT implement business logic — that lives in the API.
+Bridge between Claude Code agents and the A(i)-Team API. Exposes 21 MCP tools that translate tool calls into HTTP requests against the kanban-viewer backend (plus `plugin_root` for path resolution). Does NOT implement business logic — that lives in the API.
 
 ## Entry Points
 
 - `src/index.ts` - Stdio transport (Claude Code connects here)
 - `src/server.ts` - McpServer factory, calls `registerAllTools()`
-- `src/tools/index.ts` - Aggregates and registers all 20 tools
+- `src/tools/index.ts` - Aggregates and registers all 21 tools
 
 ## Architecture
 
@@ -24,7 +24,7 @@ index.ts → server.ts → tools/index.ts → 5 tool modules
 | `items.ts` | 6 | Work item CRUD (validates `WI-XXX` dependency format) |
 | `agents.ts` | 2 | Agent lifecycle (`agent_start`/`agent_stop`) |
 | `missions.ts` | 5 | Mission init, checks, archive |
-| `utils.ts` | 3 | Dependency graph, activity logging |
+| `utils.ts` | 4 | Plugin root path, dependency graph, activity logging |
 
 **Supporting layers:**
 

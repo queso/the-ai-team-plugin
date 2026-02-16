@@ -16,6 +16,8 @@ describe('Agent Tools', () => {
   beforeEach(() => {
     vi.resetModules();
     mockPost.mockReset();
+    // Default to resolved promise so activity log side-effects don't blow up
+    mockPost.mockResolvedValue({ data: { success: true }, status: 200, headers: {} });
   });
 
   afterEach(() => {

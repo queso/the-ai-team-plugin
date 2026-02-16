@@ -333,6 +333,8 @@ The tool automatically:
 
 If `escalate: true`, announce to the user that human intervention is needed.
 
+**Native teams mode:** On rejection, immediately re-dispatch from Phase 1 — don't defer to Phase 3. Use the `dispatch_to` liveness check (see `playbooks/orchestration-native.md` "Teammate Liveness Detection") to determine whether to SendMessage or spawn fresh. A teammate's session may have silently expired between their last work and the rejection.
+
 ## On Rejection: Optional Diagnosis
 
 Before moving a rejected item back to `ready` stage, you can optionally spawn Amy to diagnose the root cause. This provides B.A. with better guidance for the retry.
@@ -434,6 +436,10 @@ board_read()
 ```
 
 If `phases.done` contains all items AND `phases.testing`, `phases.implementing`, `phases.review` are empty → trigger final review.
+
+### Include PRD in Final Review
+
+Get the PRD path from `mission_current()` and pass it to Lynch so he can cross-reference requirements against the delivered code. The PRD path is available in the mission metadata returned by the MCP tool.
 
 ### Collect All Output Files
 

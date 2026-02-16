@@ -386,6 +386,13 @@ Final Mission Review happens when:
 - [ ] Shared utilities are used consistently
 - [ ] Error handling is consistent across modules
 
+### PRD Coverage
+- [ ] Every functional requirement in the PRD has corresponding implementation
+- [ ] Design reference / visual specs are reflected in the delivered code
+- [ ] Edge cases listed in the PRD are handled
+- [ ] Components are wired into routes/pages (not just built in isolation)
+- [ ] Non-functional requirements are addressed (performance, accessibility, etc.)
+
 ## Final Review Process
 
 1. **Read ALL implementation files** produced during the mission
@@ -393,8 +400,9 @@ Final Mission Review happens when:
 3. **Run full test suite** to ensure everything still passes
 4. **Check for existing solutions** - verify new code doesn't duplicate existing utilities
 5. **Cross-check** for consistency and integration issues
-6. **Security scan** across all code
-7. **Render final verdict**
+6. **Cross-reference the PRD** — Read the PRD (path provided in prompt) section by section. For each requirement, verify it's implemented. Note any gaps or partial deliveries.
+7. **Security scan** across all code
+8. **Render final verdict**
 
 ## Deep Investigation (Optional)
 
@@ -447,8 +455,21 @@ The mission code is ready for production.
 FINAL MISSION REVIEW
 
 Files reviewed: {count} implementation files, {count} test files
+PRD: {prd path}
 
 Tests: ALL PASSING ({count} tests)
+
+## Mission Summary
+
+### Delivered Well
+- [List requirements/sections that were fully implemented]
+- [Note quality, completeness, design fidelity]
+
+### Gaps or Partial Deliveries
+- [List PRD requirements with no corresponding implementation]
+- [List design specs not reflected in code]
+- [List components built but not wired into the application]
+- "None" if full coverage
 
 Security: No issues found
 Consistency: Good
@@ -468,6 +489,19 @@ Issues found that need to be addressed before completion.
 FINAL MISSION REVIEW
 
 Files reviewed: {count} implementation files, {count} test files
+PRD: {prd path}
+
+## Mission Summary
+
+### Delivered Well
+- [List requirements/sections that were fully implemented]
+- [Note quality, completeness, design fidelity]
+
+### Gaps or Partial Deliveries
+- [List PRD requirements with no corresponding implementation]
+- [List design specs not reflected in code]
+- [List components built but not wired into the application]
+- "None" if full coverage
 
 VERDICT: FINAL REJECTED
 

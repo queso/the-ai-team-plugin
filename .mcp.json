@@ -1,9 +1,9 @@
 {
   "mcpServers": {
     "ateam": {
-      "command": "bun",
+      "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/packages/mcp-server/src/index.ts"
+        "${CLAUDE_PLUGIN_ROOT}/packages/mcp-server/dist/bundle.mjs"
       ]
     }
   }

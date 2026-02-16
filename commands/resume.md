@@ -56,13 +56,19 @@ Resume an interrupted mission from where it left off.
 
 4. **Load dispatch playbook and re-dispatch agents**
 
-   Check the environment variable (same as `/ateam run`):
+   First, get the plugin root path:
+   ```
+   plugin_root()  # MCP tool - returns the absolute path to the plugin directory
+   ```
+
+   Then check the environment variable (same as `/ateam run`):
    ```
    Bash("echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS")
    ```
 
-   - If "1": `Read("playbooks/orchestration-native.md")`
-   - Otherwise: `Read("playbooks/orchestration-legacy.md")`
+   Using the plugin root path from above:
+   - If "1": `Read("{plugin_root}/playbooks/orchestration-native.md")`
+   - Otherwise: `Read("{plugin_root}/playbooks/orchestration-legacy.md")`
 
    Follow the playbook's resume/recovery section for dispatch mechanics.
 

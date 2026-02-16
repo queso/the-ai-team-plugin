@@ -306,6 +306,9 @@ Task(
 
   [Include Final Mission Review section from agents/lynch.md]
 
+  PRD file: {prd_path}
+  Read this PRD and cross-reference every requirement against the delivered code.
+
   Files to review:
   Implementation files:
   - {all outputs.impl files}
@@ -323,6 +326,7 @@ Task(
   4. Security vulnerabilities
   5. Code quality & DRY violations
   6. Integration issues between modules
+  7. PRD coverage - every requirement has corresponding implementation
 
   Respond with:
   VERDICT: FINAL APPROVED

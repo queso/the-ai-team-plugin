@@ -43,13 +43,19 @@ This creates the team container. Individual agents are spawned on-demand as item
 
 ## Teammate Tracking
 
-Maintain a map of active teammates:
+Maintain two data structures:
+
 ```
 active_teammates = {
   "001": "murdock",   // item_id → teammate name handling it
   "002": "ba"
 }
+
+spawned_teammates = {"murdock", "ba"}  // set of teammates we've spawned this session
 ```
+
+- `active_teammates` tracks which teammate is handling which item right now.
+- `spawned_teammates` tracks which teammates have been spawned. Add on `Task()`, remove on shutdown confirmation.
 
 Unlike legacy mode, you do NOT need task IDs for polling. Teammates send messages when they complete work - messages are automatically delivered to you.
 
@@ -75,7 +81,7 @@ Task(
 )
 ```
 
-**Teammates persist across items.** Once spawned, a teammate stays active and can receive new work via `SendMessage`. You do NOT need to re-spawn for each item - send a message with the new work item details instead. However, if a teammate has shut down or was never spawned, use `Task` with `team_name` to spawn them.
+**Teammates persist across items.** Once spawned, a teammate stays active and can receive new work via `SendMessage`. You do NOT need to re-spawn for each item — send a message with the new work item details instead. However, teammates can silently expire between dispatches. **Always check liveness** (see "Teammate Liveness Detection" below) before choosing SendMessage vs Task().
 
 ## The Orchestration Loop
 
@@ -84,7 +90,8 @@ Task(
 2. **Pipeline flow** - items advance immediately on completion (within waves)
 
 ```
-active_teammates = {}  # item_id → teammate_name
+active_teammates = {}    # item_id → teammate_name
+spawned_teammates = {}   # set of teammate names we've spawned
 
 LOOP CONTINUOUSLY:
 
@@ -104,28 +111,54 @@ LOOP CONTINUOUSLY:
 
         if item was in testing:
             board_move(itemId=item_id, to="implementing", agent="B.A.")
-            spawn or message B.A. with new work
+            dispatch_to("ba", ...)  # liveness check → SendMessage or Task()
             active_teammates[item_id] = "ba"
             # Don't wait for other testing items!
 
         elif item was in implementing:
             board_move(itemId=item_id, to="review", agent="Lynch")
-            spawn or message Lynch with new work
+            dispatch_to("lynch", ...)  # liveness check → SendMessage or Task()
             active_teammates[item_id] = "lynch"
 
         elif item was in review:
             if APPROVED:
                 # ═══ MANDATORY: Amy probes EVERY approved feature ═══
                 board_move(itemId=item_id, to="probing", agent="Amy")
-                spawn or message Amy with new work
+                dispatch_to("amy", ...)  # liveness check → SendMessage or Task()
                 active_teammates[item_id] = "amy"
                 # DO NOT skip probing! DO NOT move directly to done!
-            if REJECTED: item_reject(itemId=item_id, reason=..., agent="Lynch")
+            if REJECTED:
+                reject_result = item_reject(itemId=item_id, reason=..., agent="Lynch")
+                if reject_result.movedTo == "ready":
+                    # Immediately re-enter pipeline — don't defer to Phase 3
+                    board_move(itemId=item_id, to="testing", agent="Murdock")
+                    dispatch_to("murdock", "ai-team:murdock", "sonnet",
+                        description: "Murdock: Re-test {feature title} (rejected by Lynch)",
+                        prompt: "... REJECTION CONTEXT: Rejected by Lynch. Reason: {reason}
+                          Previous tests at: {outputs.test} — review and fix.
+                          Rejection count: {reject_result.rejectionCount} ...")
+                    active_teammates[item_id] = "murdock"
+                if reject_result.movedTo == "blocked":
+                    # Escalate — announce to user
+                    "[Hannibal] Item {item_id} blocked after {rejectionCount} rejections."
 
         elif item was in probing:
             # Amy has completed investigation
             if VERIFIED: board_move(itemId=item_id, to="done")
-            if FLAG: item_reject(itemId=item_id, reason=..., agent="Amy")
+            if FLAG:
+                reject_result = item_reject(itemId=item_id, reason=..., agent="Amy")
+                if reject_result.movedTo == "ready":
+                    # Immediately re-enter pipeline — don't defer to Phase 3
+                    board_move(itemId=item_id, to="testing", agent="Murdock")
+                    dispatch_to("murdock", "ai-team:murdock", "sonnet",
+                        description: "Murdock: Re-test {feature title} (flagged by Amy)",
+                        prompt: "... REJECTION CONTEXT: Flagged by Amy. Reason: {reason}
+                          Previous tests at: {outputs.test} — review and fix.
+                          Rejection count: {reject_result.rejectionCount} ...")
+                    active_teammates[item_id] = "murdock"
+                if reject_result.movedTo == "blocked":
+                    # Escalate — announce to user
+                    "[Hannibal] Item {item_id} blocked after {rejectionCount} rejections."
             # Moving to done may unlock Wave 2 items!
 
     # ═══════════════════════════════════════════════════════════
@@ -144,7 +177,7 @@ LOOP CONTINUOUSLY:
     while in_flight < WIP_LIMIT and ready stage not empty:
         pick ONE item from ready stage
         board_move(itemId=item_id, to="testing", agent="Murdock")
-        spawn or message Murdock with new work
+        dispatch_to("murdock", ...)  # liveness check → SendMessage or Task()
         active_teammates[item_id] = "murdock"
 
     # When finalReviewReady: true → dispatch Lynch for Final Review
@@ -191,8 +224,38 @@ Parse the message to determine:
 - Do NOT re-spawn a teammate just because they went idle
 
 **When to re-spawn vs. message:**
-- **Message** (preferred): Teammate is idle but still alive → `SendMessage(type: "message", recipient: "murdock", content: "New work: WI-005...", summary: "New test work for WI-005")`
+- **Message** (preferred): Teammate is alive → `SendMessage(...)`
 - **Re-spawn** (fallback): Teammate has shut down or was never spawned → `Task(team_name: ..., name: "murdock", ...)`
+
+To determine which, use the liveness check described below.
+
+## Teammate Liveness Detection
+
+Before dispatching work, verify the teammate is still alive. A teammate's session can expire silently — messaging a dead teammate hangs the pipeline.
+
+**Check the team config file** to see if the teammate is still a registered member:
+
+```
+def dispatch_to(name, subagent_type, model, description, prompt):
+    alive = false
+
+    if name in spawned_teammates:
+        config = Read("~/.claude/teams/mission-{missionId}/config.json")
+        alive = name in [m.name for m in config.members]
+        if not alive:
+            spawned_teammates.remove(name)  # Clean up stale entry
+
+    if alive:
+        SendMessage(type: "message", recipient: name,
+          content: prompt, summary: description)
+    else:
+        Task(team_name: "mission-{missionId}", name: name,
+          subagent_type: subagent_type, model: model,
+          description: description, prompt: prompt)
+        spawned_teammates.add(name)
+```
+
+**Use this pattern for ALL dispatch decisions** — forward-flow, rejection re-dispatch, and final review alike. Every "spawn or message" in this playbook means: check liveness first, then choose.
 
 ## Agent Dispatch Workflows
 
@@ -203,7 +266,7 @@ Parse the message to determine:
 board_move(itemId: "001", to: "testing", agent: "Murdock")
 ```
 
-Then spawn (first time) or message (if already active):
+Then use `dispatch_to` (checks liveness → SendMessage if alive, Task() if not):
 
 **First spawn:**
 ```
@@ -401,10 +464,15 @@ SendMessage(
 
   [Include Final Mission Review section from agents/lynch.md]
 
+  PRD file: {prd_path}
+  Read this PRD and cross-reference every requirement against the delivered code.
+
   Files to review:
   Implementation files: {list all outputs.impl}
   Test files: {list all outputs.test}
   Type files: {list all outputs.types}
+
+  Review for PRD coverage in addition to code quality. Every requirement must have corresponding implementation.
 
   Respond with VERDICT: FINAL APPROVED or VERDICT: FINAL REJECTED",
   summary: "Final mission review request"
@@ -416,7 +484,7 @@ Task(
   name: "lynch",
   subagent_type: "ai-team:lynch",
   description: "Lynch: Final Mission Review",
-  prompt: "... [same content as message above] ..."
+  prompt: "... [same content as message above, including PRD file path] ..."
 )
 ```
 
@@ -481,6 +549,17 @@ T=105s  MESSAGE from ba: "DONE: WI-002 - All tests passing"
         active_teammates = {002: "lynch", 003: "murdock"}
 
         ... and so on until all items reach done ...
+
+# ─── REJECTION RE-DISPATCH EXAMPLE ───────────────────────
+T=90s   MESSAGE from amy: "DONE: WI-001 - FLAG - Race condition in concurrent access"
+        reject_result = item_reject(itemId="001", reason="Race condition in concurrent access", agent="Amy")
+        → movedTo: "ready", rejectionCount: 1
+        # Immediately re-dispatch (don't wait for Phase 3)
+        board_move(itemId="001", to="testing", agent="Murdock")
+        dispatch_to("murdock", ...)
+        # dispatch_to checks team config → if Murdock alive: SendMessage
+        #                                → if Murdock expired: fresh Task()
+        active_teammates = {001: "murdock", ...}
 ```
 
 **KEY INSIGHTS:**

@@ -146,6 +146,21 @@ Check for:
 - Are there existing utilities that should be leveraged?
 - Are there security, performance, or scalability concerns?
 
+### 11. PRD Coverage
+Cross-reference the PRD against the work items to verify nothing was dropped. Read the PRD section by section and confirm each requirement, design spec, and edge case maps to at least one work item.
+
+- Does every functional requirement have a corresponding work item?
+- Are design reference / visual spec sections (layouts, color palettes, typography, prototypes) reflected in work items?
+- Are integration / wiring / route assembly needs covered? If components are created in isolation, are there items to wire them into the actual application?
+- Are edge cases and error states from the PRD captured in acceptance criteria?
+
+**Common gaps to flag as CRITICAL:**
+- Design Reference sections with no design work items (color palette specified but no theming item, layout specified but no page assembly item)
+- Components built but never wired into routes, pages, or layouts (a component without a route that renders it is unfinished)
+- Analytics/tracking integrations built but never registered in the application
+- SEO/meta tag utilities built but never called from route loaders
+- Stock/template content that the PRD expects to be replaced but no work item addresses
+
 ## Issue Classification
 
 **CRITICAL** - Blocks implementation entirely:
