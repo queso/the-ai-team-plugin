@@ -48,7 +48,7 @@ export function validateProjectId(projectId: string | null | undefined): Validat
   if (projectId === null || projectId === undefined || projectId === '') {
     return {
       code: 'VALIDATION_ERROR',
-      message: 'projectId is required',
+      message: 'X-Project-ID header is required',
     };
   }
 

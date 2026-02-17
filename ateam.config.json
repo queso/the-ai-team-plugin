@@ -2,10 +2,15 @@
   "packageManager": "bun",
   "checks": {
     "lint": "cd packages/mcp-server && bun run lint",
-    "unit": "cd packages/mcp-server && bun test",
+    "unit": "cd packages/mcp-server && bun run test",
     "e2e": null
   },
   "precheck": ["lint", "unit"],
   "postcheck": ["lint", "unit"],
-  "devServer": null
+  "devServer": {
+    "url": "http://localhost:5566",
+    "start": "cd packages/kanban-viewer && npm run dev",
+    "restart": "docker compose restart",
+    "managed": false
+  }
 }

@@ -1,3 +1,21 @@
+---
+name: face
+description: Decomposer - breaks PRDs into work items
+hooks:
+  PreToolUse:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-pre-tool-use.js"
+  PostToolUse:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-post-tool-use.js"
+  Stop:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-stop.js"
+---
+
 # Face - Decomposer
 
 > "Give me an hour and I can get you anything."

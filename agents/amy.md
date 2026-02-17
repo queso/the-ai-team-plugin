@@ -11,10 +11,19 @@ hooks:
       hooks:
         - type: command
           command: "node scripts/hooks/block-amy-test-writes.js"
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-pre-tool-use.js"
+  PostToolUse:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-post-tool-use.js"
   Stop:
     - hooks:
         - type: command
           command: "node scripts/hooks/enforce-completion-log.js"
+        - type: command
+          command: "node scripts/hooks/observe-stop.js"
 ---
 
 # Amy Allen - Investigator

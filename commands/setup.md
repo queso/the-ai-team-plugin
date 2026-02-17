@@ -438,7 +438,101 @@ Or configure a different URL:
   Set ATEAM_API_URL in .claude/settings.local.json
 ```
 
-### Step 11: Check Plugin Dependencies
+### Step 11: Configure Hook Event Reporting (Optional)
+
+The A(i)-Team can send hook event telemetry to the API server for real-time observability. This is implemented via observer hooks that report tool calls, lifecycle events, and agent state to the kanban-viewer.
+
+**Check if API is available:**
+
+Before offering to enable hook event reporting, verify the API is reachable:
+```
+Using mission_current MCP tool to verify API availability...
+```
+
+**If API is NOT available:**
+```
+⚠ API server is not reachable. Hook event reporting requires API connectivity.
+Skipping observer hook configuration.
+```
+
+**If API is available, ask the user:**
+```
+AskUserQuestion({
+  questions: [{
+    question: "Enable hook event reporting? This sends tool call and lifecycle telemetry to the API for real-time mission observability.",
+    header: "Hook Event Reporting",
+    options: [
+      { label: "Enable", description: "Send hook events to API (recommended for debugging)" },
+      { label: "Disable", description: "Keep hooks local only" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+**If user chooses "Enable":**
+
+Add observer hooks configuration to `.claude/settings.local.json`:
+
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/ai-team/scripts/hooks/observe-pre-tool-use.js"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/ai-team/scripts/hooks/observe-post-tool-use.js"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/ai-team/scripts/hooks/observe-stop.js"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**If user chooses "Disable":**
+
+Skip observer hook configuration. The agent-specific hooks (enforce-completion-log.js, block-hannibal-writes.js, etc.) are still active from the agent frontmatter, but global telemetry hooks are not added to settings.
+
+**Example output:**
+```
+Configuring hook event reporting...
+  ✓ Observer hooks enabled
+  ✓ Hook events will be sent to http://localhost:3000/api/hooks/events
+```
+
+Or if disabled:
+```
+Configuring hook event reporting...
+  ⊗ Observer hooks disabled (events stay local)
+```
+
+### Step 12: Check Plugin Dependencies
 
 Check for Playwright plugin availability (see Plugin Dependencies section below).
 

@@ -105,6 +105,35 @@ git submodule update --remote .claude/ai-team
 /ateam unblock 015 --guidance "Try using the existing AuthService"
 ```
 
+## Kanban Dashboard
+
+The A(i)-Team includes a web-based dashboard for real-time visibility into mission progress. Start it with Docker:
+
+```bash
+# From the ai-team plugin directory
+docker compose up -d
+
+# Visit http://localhost:3001
+```
+
+The dashboard provides two views:
+
+### Mission Board View
+- **Kanban board** with columns for each pipeline stage (briefings, ready, testing, implementing, review, probing, done)
+- **Work item cards** showing title, type, assigned agent, and status
+- **Live updates** via Server-Sent Events (SSE) as items move through stages
+- **Activity feed** with timestamped agent actions
+
+### Raw Agent View (NEW)
+- **Real-time observability** into agent tool calls via observer hooks
+- **Swim lanes** showing each agent's activity (Hannibal, Face, Sosa, Murdock, B.A., Lynch, Amy, Tawnia)
+- **Tool call timeline** with PreToolUse, PostToolUse, and Stop events
+- **Duration tracking** showing how long each tool call took (e.g., "Write took 1.2s")
+- **Filtering controls** to view specific agents, tools, or event types
+- **Live updates** via SSE as agents execute tools
+
+Switch between views using the navigation tabs at the top of the dashboard.
+
 ## Pipeline Flow
 
 ### Planning Phase (`/ateam plan`)

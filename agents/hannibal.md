@@ -12,10 +12,19 @@ hooks:
       hooks:
         - type: command
           command: "node scripts/hooks/block-raw-mv.js"
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-pre-tool-use.js"
+  PostToolUse:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-post-tool-use.js"
   Stop:
     - hooks:
         - type: command
           command: "node scripts/hooks/enforce-final-review.js"
+        - type: command
+          command: "node scripts/hooks/observe-stop.js"
 ---
 
 # Hannibal - Orchestrator

@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Raw Agent Observability Dashboard** (PRD-005) - Real-time visibility into agent tool calls via observer hooks and dedicated UI
+  - Created HookEvent Prisma model with correlationId-based deduplication
+  - Added POST /api/hooks/events endpoint with Zod validation, batching, and deduplication
+  - Integrated hook events into SSE stream for real-time updates
+  - Built observer hook scripts (PreToolUse, PostToolUse, Stop) that fire-and-forget event data to API
+  - Added observer hooks to all 8 agent frontmatter files (hannibal, face, sosa, murdock, ba, lynch, amy, tawnia)
+  - Created Raw Agent View UI component with swim lanes showing tool calls per agent
+  - Added filtering controls (by agent, tool, status) for hook events
+  - Implemented dashboard navigation to switch between Mission Board and Raw Agent View
+  - Added duration pairing for PreToolUse → PostToolUse events (e.g., "Write took 1.2s")
+  - Created hook event pruning endpoint with transactional batch deletion
+  - Updated /ateam setup command with observer hook configuration
+
 - **Monorepo structure with shared types package** (PRD-004) - Migrated from two separate repositories into a unified bun workspaces monorepo
   - Created `packages/shared/` - @ai-team/shared package with shared TypeScript types, constants, and validation functions
   - Moved `mcp-server/` to `packages/mcp-server/` - now imports from @ai-team/shared

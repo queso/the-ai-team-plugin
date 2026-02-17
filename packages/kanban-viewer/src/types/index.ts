@@ -5,6 +5,9 @@
 // ============ API Layer Types (PRD 013) ============
 // Re-export all types from the new API layer type modules
 
+// Hook event types
+export type { HookEventSummary } from './hook-event';
+
 // Board types
 export type {
   StageId,
@@ -239,6 +242,7 @@ export type BoardEventType =
   | 'item-deleted'
   | 'board-updated'
   | 'activity-entry-added'
+  | 'hook-event'
   | 'mission-completed'
   | 'final-review-started'
   | 'final-review-complete'
@@ -410,6 +414,12 @@ export interface DocumentationCompleteEvent {
   };
 }
 
+export interface HookEventNotification {
+  type: 'hook-event';
+  timestamp: string;
+  data: import('./hook-event').HookEventSummary | import('./hook-event').HookEventSummary[];
+}
+
 export type BoardEvent =
   | ItemAddedEvent
   | ItemMovedEvent
@@ -417,6 +427,7 @@ export type BoardEvent =
   | ItemDeletedEvent
   | BoardUpdatedEvent
   | ActivityEntryAddedEvent
+  | HookEventNotification
   | MissionCompletedEvent
   | FinalReviewStartedEvent
   | FinalReviewCompleteEvent

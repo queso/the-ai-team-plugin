@@ -1,3 +1,23 @@
+---
+name: sosa
+description: Requirements Critic - reviews decomposition before execution
+hooks:
+  PreToolUse:
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/observe-pre-tool-use.js"
+  PostToolUse:
+    - matcher: "*"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/observe-post-tool-use.js"
+  Stop:
+    - hooks:
+        - type: command
+          command: "node scripts/hooks/observe-stop.js"
+---
+
 # Sosa - Requirements Critic
 
 > "You think you've got it all figured out, Face? Let me show you what you missed."

@@ -17,6 +17,7 @@
 import { prisma } from '@/lib/db';
 import { validateAndGetProjectId, PROJECT_ID_HEADER } from '@/lib/project-utils';
 import type { BoardEvent, WorkItem, Stage } from '@/types';
+import type { HookEventSummary } from '@/types/hook-event';
 import { formatSSEEvent } from '@/lib/sse-utils';
 
 // Configuration
@@ -80,6 +81,21 @@ interface DbActivityLog {
   agent: string | null;
   message: string;
   level: string;
+  timestamp: Date;
+}
+
+/** Database hook event type from Prisma */
+interface DbHookEvent {
+  id: number;
+  projectId: string;
+  missionId: string | null;
+  eventType: string;
+  agentName: string;
+  toolName: string | null;
+  status: string;
+  durationMs: number | null;
+  summary: string;
+  correlationId: string | null;
   timestamp: Date;
 }
 
@@ -238,6 +254,36 @@ function createActivityEntryAddedEvent(log: DbActivityLog): BoardEvent {
   };
 }
 
+/** Convert database hook event to HookEventSummary (excludes payload) */
+function dbHookEventToSummary(event: DbHookEvent): HookEventSummary {
+  const summary: HookEventSummary = {
+    id: event.id,
+    eventType: event.eventType,
+    agentName: event.agentName,
+    status: event.status,
+    summary: event.summary,
+    timestamp: event.timestamp,
+  };
+
+  // Add optional fields if present
+  if (event.toolName !== null) summary.toolName = event.toolName;
+  if (event.durationMs !== null) summary.durationMs = event.durationMs;
+  if (event.correlationId !== null) summary.correlationId = event.correlationId;
+
+  return summary;
+}
+
+/** Create hook-event SSE event (single or batch) */
+function createHookEventSSEEvent(events: DbHookEvent[]): BoardEvent {
+  const summaries = events.map(dbHookEventToSummary);
+
+  return {
+    type: 'hook-event',
+    timestamp: new Date().toISOString(),
+    data: summaries.length === 1 ? summaries[0] : summaries,
+  } as BoardEvent;
+}
+
 export async function GET(request?: Request): Promise<Response> {
   // Get projectId from header (preferred) or query param (fallback for EventSource)
   // EventSource API doesn't support custom headers, so we accept both
@@ -279,6 +325,7 @@ function createSSEStream(projectId: string | null): Response {
   // State tracking for change detection
   const trackedItems = new Map<string, TrackedItemState>();
   let lastActivityLogId = 0; // Track by ID for reliable comparison
+  let lastHookEventTimestamp = new Date(0); // Track hook events by timestamp (Amy's fix: handles auto-increment resets after pruning)
   let previousMissionState: string | null = null;
   let isFirstPoll = true; // Track first poll to establish baseline without emitting
   let consecutiveErrors = 0; // Track consecutive database errors for circuit breaker
@@ -443,6 +490,34 @@ function createSSEStream(projectId: string | null): Response {
             if (newLogs.length > 0) {
               lastActivityLogId = newLogs[newLogs.length - 1].id;
             }
+          }
+
+          // Build hook event filter - filter by projectId
+          const hookEventWhere: { projectId?: string } = {};
+          if (projectId) {
+            hookEventWhere.projectId = projectId;
+          }
+
+          // Fetch hook events ordered by timestamp for reliable tracking
+          const hookEvents = await prisma.hookEvent.findMany({
+            where: hookEventWhere,
+            orderBy: { timestamp: 'asc' },
+          });
+
+          // Filter to only new events (timestamp greater than last seen)
+          // This handles auto-increment ID resets after pruning
+          const newHookEvents = hookEvents.filter((event) => event.timestamp > lastHookEventTimestamp);
+
+          // On first poll, just record the latest timestamp without emitting
+          if (isFirstPoll) {
+            if (hookEvents.length > 0) {
+              lastHookEventTimestamp = hookEvents[hookEvents.length - 1].timestamp;
+            }
+          } else if (newHookEvents.length > 0) {
+            // Batch all new hook events in a single SSE message
+            pendingEvents.push(createHookEventSSEEvent(newHookEvents as DbHookEvent[]));
+            // Update tracking position to latest timestamp
+            lastHookEventTimestamp = newHookEvents[newHookEvents.length - 1].timestamp;
           }
 
           // Flush all events from this poll cycle
