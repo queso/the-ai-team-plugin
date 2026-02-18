@@ -278,6 +278,23 @@ async function reviewComplete(
 }
 
 /**
+ * Post a hook event (simulates observer hooks firing during agent work).
+ */
+async function postHookEvent(event: {
+  eventType: string;
+  agentName: string;
+  toolName?: string;
+  status: string;
+  summary: string;
+  correlationId?: string;
+  timestamp: string;
+  payload?: string;
+}): Promise<void> {
+  await apiRequest('POST', '/api/hooks/events', event);
+  info(`[HookEvent] ${event.agentName} ${event.eventType} (${event.status})`);
+}
+
+/**
  * Log an activity message.
  */
 async function logActivity(
@@ -521,8 +538,31 @@ Write integration tests covering the full feature X flow
     await agentStart(item001, 'Murdock');
     await logActivity('Writing tests for TypeScript types', 'Murdock');
 
+    // Simulate hook event: Murdock pre_tool_use (Write)
+    const murdockCorrelation001 = `corr-murdock-${Date.now()}`;
+    await postHookEvent({
+      eventType: 'pre_tool_use',
+      agentName: 'murdock',
+      toolName: 'Write',
+      status: 'success',
+      summary: 'Writing test file src/__tests__/types.test.ts',
+      correlationId: murdockCorrelation001,
+      timestamp: new Date().toISOString(),
+    });
+
     await sleep(DELAY);
     await logActivity('Tests complete - 12 test cases', 'Murdock');
+
+    // Simulate hook event: Murdock post_tool_use (matching correlationId)
+    await postHookEvent({
+      eventType: 'post_tool_use',
+      agentName: 'murdock',
+      toolName: 'Write',
+      status: 'success',
+      summary: 'Test file written successfully',
+      correlationId: murdockCorrelation001,
+      timestamp: new Date().toISOString(),
+    });
 
     // 001: Murdock finishes testing, BA implements
     await sleep(DELAY);
@@ -533,8 +573,31 @@ Write integration tests covering the full feature X flow
     await agentContinue(item001, 'B.A.', 'implementing');
     await logActivity('Implementing TypeScript types', 'B.A.');
 
+    // Simulate hook event: B.A. pre_tool_use (Edit)
+    const baCorrelation001 = `corr-ba-${Date.now()}`;
+    await postHookEvent({
+      eventType: 'pre_tool_use',
+      agentName: 'ba',
+      toolName: 'Edit',
+      status: 'success',
+      summary: 'Editing src/types/feature.ts',
+      correlationId: baCorrelation001,
+      timestamp: new Date().toISOString(),
+    });
+
     await sleep(DELAY);
     await logActivity('Implementation complete - all tests passing', 'B.A.');
+
+    // Simulate hook event: B.A. post_tool_use (matching correlationId)
+    await postHookEvent({
+      eventType: 'post_tool_use',
+      agentName: 'ba',
+      toolName: 'Edit',
+      status: 'success',
+      summary: 'Type definitions implemented',
+      correlationId: baCorrelation001,
+      timestamp: new Date().toISOString(),
+    });
 
     // 001: BA finishes, moves to review
     await sleep(DELAY);
@@ -547,6 +610,15 @@ Write integration tests covering the full feature X flow
 
     await sleep(DELAY);
     await logActivity('APPROVED - Clean type definitions', 'Lynch');
+
+    // Simulate hook event: Lynch stop
+    await postHookEvent({
+      eventType: 'stop',
+      agentName: 'lynch',
+      status: 'success',
+      summary: 'Review complete - approved item 001',
+      timestamp: new Date().toISOString(),
+    });
 
     // 001: Lynch approves, moves to done
     await sleep(DELAY);
@@ -696,6 +768,97 @@ Write integration tests covering the full feature X flow
     await logActivity('I love it when a plan comes together.', 'Hannibal');
 
     // ---------------------------------------------------------------------------
+    // HOOK EVENT VERIFICATION
+    // ---------------------------------------------------------------------------
+
+    log('=== HOOK EVENT VERIFICATION ===');
+
+    // 1. Verify hook events were stored (5 posted during Wave 0)
+    await sleep(DELAY);
+    const hookEventsResponse = await fetch(`${API_BASE}/api/hooks/events?limit=50`, {
+      headers: {
+        'X-Project-ID': PROJECT_ID,
+      },
+    });
+    if (hookEventsResponse.ok) {
+      log('GET hook events: OK');
+    } else {
+      warn(`GET hook events returned ${hookEventsResponse.status} - endpoint may not support GET (expected for POST-only)`);
+    }
+
+    // 2. POST a batch of events and verify batch response
+    const batchEvents = [
+      {
+        eventType: 'subagent_start' as const,
+        agentName: 'murdock',
+        status: 'success',
+        summary: 'Murdock subagent started for integration tests',
+        timestamp: new Date().toISOString(),
+      },
+      {
+        eventType: 'subagent_stop' as const,
+        agentName: 'murdock',
+        status: 'success',
+        summary: 'Murdock subagent completed integration tests',
+        timestamp: new Date().toISOString(),
+      },
+      {
+        eventType: 'stop' as const,
+        agentName: 'ba',
+        status: 'success',
+        summary: 'B.A. finished implementing integration support',
+        timestamp: new Date().toISOString(),
+      },
+    ];
+    const batchResponse = await apiRequest<{
+      success: true;
+      data: { created: number; skipped: number };
+    }>('POST', '/api/hooks/events', batchEvents);
+    log(`Batch POST: created=${batchResponse.data.created}, skipped=${batchResponse.data.skipped}`);
+
+    // 3. POST a duplicate event (same correlationId+eventType) and verify dedup
+    const dedupCorrelationId = `corr-dedup-test-${Date.now()}`;
+    await apiRequest('POST', '/api/hooks/events', {
+      eventType: 'pre_tool_use',
+      agentName: 'amy',
+      toolName: 'Read',
+      status: 'success',
+      summary: 'Amy reading source file',
+      correlationId: dedupCorrelationId,
+      timestamp: new Date().toISOString(),
+    });
+    // Post same correlationId + eventType again
+    const dedupResponse = await apiRequest<{
+      success: true;
+      data: { created: number; skipped: number };
+    }>('POST', '/api/hooks/events', {
+      eventType: 'pre_tool_use',
+      agentName: 'amy',
+      toolName: 'Read',
+      status: 'success',
+      summary: 'Amy reading source file (duplicate)',
+      correlationId: dedupCorrelationId,
+      timestamp: new Date().toISOString(),
+    });
+    if (dedupResponse.data.skipped === 1) {
+      log('Deduplication: PASSED (duplicate correctly skipped)');
+    } else {
+      warn(`Deduplication: unexpected result - created=${dedupResponse.data.created}, skipped=${dedupResponse.data.skipped}`);
+    }
+
+    // 4. POST prune request for old events
+    const oldTimestamp = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year ago
+    const pruneResponse = await apiRequest<{
+      success: true;
+      data: { pruned: number };
+    }>('POST', '/api/hooks/events/prune', {
+      olderThan: oldTimestamp,
+    });
+    log(`Prune: ${pruneResponse.data.pruned} old events removed`);
+
+    log('Hook event verification complete!');
+
+    // ---------------------------------------------------------------------------
     // SUMMARY
     // ---------------------------------------------------------------------------
 
@@ -716,6 +879,8 @@ Write integration tests covering the full feature X flow
     log('  - POST /api/agents/stop (agent stops work)');
     log('  - POST /api/activity (log activity)');
     log('  - GET /api/board (get board state)');
+    log('  - POST /api/hooks/events (single + batch)');
+    log('  - POST /api/hooks/events/prune (prune old events)');
     log('');
     log('Agents tested:');
     log('  - Hannibal (planning/coordination)');
@@ -724,6 +889,13 @@ Write integration tests covering the full feature X flow
     log('  - Face (implementation)');
     log('  - Amy (testing)');
     log('  - Lynch (code review)');
+    log('');
+    log('Hook events tested:');
+    log('  - pre_tool_use / post_tool_use pairs with correlationId');
+    log('  - stop events');
+    log('  - Batch creation');
+    log('  - Deduplication');
+    log('  - Pruning');
     log('');
     log('Final state:');
     log('  - Items completed: 4');

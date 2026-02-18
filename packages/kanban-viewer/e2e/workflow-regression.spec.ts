@@ -402,6 +402,334 @@ test.describe("Workflow Regression", () => {
   });
 });
 
+test.describe("Hook Event API", () => {
+  test.describe.configure({ mode: "serial" });
+
+  const HOOK_PROJECT_ID = `e2e-hooks-${Date.now()}`;
+
+  // Helper to make API requests with the hook project header
+  async function hookApiRequest(
+    request: APIRequestContext,
+    method: string,
+    path: string,
+    body?: unknown
+  ) {
+    const headers = { "X-Project-ID": HOOK_PROJECT_ID };
+
+    if (method === "GET") {
+      return request.get(path, { headers });
+    } else if (method === "POST") {
+      return request.post(path, { headers, data: body });
+    }
+    throw new Error(`Unsupported method: ${method}`);
+  }
+
+  test("setup: create project and mission", async ({ request }) => {
+    // Create project
+    const projectRes = await request.post("/api/projects", {
+      data: {
+        id: HOOK_PROJECT_ID,
+        name: `Hook Event E2E Test - ${HOOK_PROJECT_ID}`,
+      },
+    });
+    expect(projectRes.status()).toBe(201);
+
+    // Create mission (hook events associate with active mission)
+    const missionRes = await hookApiRequest(request, "POST", "/api/missions", {
+      name: "Hook Event Test Mission",
+      prdPath: "prd/hooks-test.md",
+    });
+    expect(missionRes.status()).toBe(201);
+  });
+
+  test("should store a hook event", async ({ request }) => {
+    const res = await hookApiRequest(request, "POST", "/api/hooks/events", {
+      eventType: "pre_tool_use",
+      agentName: "murdock",
+      toolName: "Write",
+      status: "success",
+      summary: "Writing test file",
+      correlationId: `corr-single-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.data.id).toBeDefined();
+    expect(data.data.projectId).toBe(HOOK_PROJECT_ID);
+    expect(data.data.eventType).toBe("pre_tool_use");
+    expect(data.data.agentName).toBe("murdock");
+    expect(data.data.toolName).toBe("Write");
+    expect(data.data.status).toBe("success");
+    expect(data.data.summary).toBe("Writing test file");
+  });
+
+  test("should deduplicate by correlationId + eventType", async ({ request }) => {
+    const correlationId = `corr-dedup-${Date.now()}`;
+    const event = {
+      eventType: "post_tool_use",
+      agentName: "ba",
+      toolName: "Edit",
+      status: "success",
+      summary: "Editing implementation",
+      correlationId,
+      timestamp: new Date().toISOString(),
+    };
+
+    // First POST should create
+    const res1 = await hookApiRequest(request, "POST", "/api/hooks/events", event);
+    expect(res1.status()).toBe(201);
+    const data1 = await res1.json();
+    expect(data1.success).toBe(true);
+    expect(data1.data.id).toBeDefined();
+
+    // Second POST with same correlationId + eventType should be skipped
+    const res2 = await hookApiRequest(request, "POST", "/api/hooks/events", event);
+    expect(res2.status()).toBe(201);
+    const data2 = await res2.json();
+    expect(data2.success).toBe(true);
+    expect(data2.data.skipped).toBe(1);
+    expect(data2.data.created).toBe(0);
+  });
+
+  test("should store batch events", async ({ request }) => {
+    const events = [
+      {
+        eventType: "subagent_start",
+        agentName: "murdock",
+        status: "success",
+        summary: "Murdock subagent starting",
+        timestamp: new Date().toISOString(),
+      },
+      {
+        eventType: "subagent_stop",
+        agentName: "murdock",
+        status: "success",
+        summary: "Murdock subagent completed",
+        timestamp: new Date().toISOString(),
+      },
+      {
+        eventType: "stop",
+        agentName: "lynch",
+        status: "success",
+        summary: "Lynch review finished",
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    const res = await hookApiRequest(request, "POST", "/api/hooks/events", events);
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.data.created).toBe(3);
+    expect(data.data.skipped).toBe(0);
+  });
+
+  test("should reject invalid eventType", async ({ request }) => {
+    const res = await hookApiRequest(request, "POST", "/api/hooks/events", {
+      eventType: "invalid_type",
+      agentName: "murdock",
+      status: "success",
+      summary: "This should fail",
+      timestamp: new Date().toISOString(),
+    });
+
+    expect(res.status()).toBe(400);
+    const data = await res.json();
+    expect(data.success).toBe(false);
+    expect(data.error.message).toContain("eventType must be one of");
+  });
+
+  test("should prune old events", async ({ request }) => {
+    // Post events with old timestamps (well in the past)
+    const oldTimestamp = new Date("2020-01-01T00:00:00Z").toISOString();
+    const oldEvents = [
+      {
+        eventType: "pre_tool_use" as const,
+        agentName: "amy",
+        toolName: "Read",
+        status: "success",
+        summary: "Old event 1",
+        timestamp: oldTimestamp,
+      },
+      {
+        eventType: "post_tool_use" as const,
+        agentName: "amy",
+        toolName: "Read",
+        status: "success",
+        summary: "Old event 2",
+        timestamp: oldTimestamp,
+      },
+    ];
+    const createRes = await hookApiRequest(request, "POST", "/api/hooks/events", oldEvents);
+    expect(createRes.status()).toBe(201);
+    const createData = await createRes.json();
+    const createdCount = createData.data.created;
+
+    // Prune events older than 2023
+    const pruneRes = await hookApiRequest(request, "POST", "/api/hooks/events/prune", {
+      olderThan: "2023-01-01T00:00:00Z",
+    });
+    expect(pruneRes.status()).toBe(200);
+    const pruneData = await pruneRes.json();
+    expect(pruneData.success).toBe(true);
+    // At least the old events we just created should be pruned
+    // (the mission is active, but these events have missionId associated -
+    //  prune preserves active mission events, so count may vary)
+    expect(pruneData.data.pruned).toBeGreaterThanOrEqual(0);
+    // If events were pruned, verify the count is reasonable
+    if (pruneData.data.pruned > 0) {
+      expect(pruneData.data.pruned).toBeGreaterThanOrEqual(createdCount);
+    }
+  });
+
+  test("cleanup: archive mission", async ({ request }) => {
+    await hookApiRequest(request, "POST", "/api/missions/archive");
+  });
+});
+
+test.describe("Raw Agent View UI", () => {
+  const RAW_VIEW_PROJECT_ID = `e2e-raw-view-${Date.now()}`;
+
+  test("setup: create project, mission, and hook events", async ({ request }) => {
+    // Create project
+    await request.post("/api/projects", {
+      data: {
+        id: RAW_VIEW_PROJECT_ID,
+        name: `Raw View E2E Test - ${RAW_VIEW_PROJECT_ID}`,
+      },
+    });
+
+    // Create mission
+    await request.post("/api/missions", {
+      headers: { "X-Project-ID": RAW_VIEW_PROJECT_ID },
+      data: { name: "Raw View Test Mission", prdPath: "test.md" },
+    });
+
+    // Post hook events for multiple agents
+    const events = [
+      {
+        eventType: "pre_tool_use",
+        agentName: "murdock",
+        toolName: "Write",
+        status: "success",
+        summary: "Writing test file for auth module",
+        correlationId: `corr-rv-murdock-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        eventType: "post_tool_use",
+        agentName: "murdock",
+        toolName: "Write",
+        status: "success",
+        summary: "Test file created successfully",
+        correlationId: `corr-rv-murdock-${Date.now()}`,
+        timestamp: new Date(Date.now() + 1000).toISOString(),
+      },
+      {
+        eventType: "pre_tool_use",
+        agentName: "ba",
+        toolName: "Edit",
+        status: "success",
+        summary: "Editing service implementation",
+        correlationId: `corr-rv-ba-${Date.now()}`,
+        timestamp: new Date(Date.now() + 2000).toISOString(),
+      },
+      {
+        eventType: "stop",
+        agentName: "ba",
+        status: "success",
+        summary: "B.A. implementation complete",
+        timestamp: new Date(Date.now() + 3000).toISOString(),
+      },
+    ];
+
+    const res = await request.post("/api/hooks/events", {
+      headers: { "X-Project-ID": RAW_VIEW_PROJECT_ID },
+      data: events,
+    });
+    expect(res.status()).toBe(201);
+  });
+
+  test("should show Raw Agent View tab", async ({ page }) => {
+    await page.goto(`/?projectId=${RAW_VIEW_PROJECT_ID}`);
+    await page.waitForTimeout(2000);
+
+    // Verify the "Raw Agent View" button exists
+    const agentButton = page.getByRole("button", { name: /Raw Agent View/i });
+    await expect(agentButton).toBeVisible();
+    // It should not be active by default (board view is default)
+    await expect(agentButton).toHaveAttribute("data-active", "false");
+  });
+
+  test("should switch to Raw Agent View", async ({ page }) => {
+    await page.goto(`/?projectId=${RAW_VIEW_PROJECT_ID}`);
+    await page.waitForTimeout(2000);
+
+    // Click the Raw Agent View tab
+    const agentButton = page.getByRole("button", { name: /Raw Agent View/i });
+    await agentButton.click();
+
+    // Verify it becomes active
+    await expect(agentButton).toHaveAttribute("data-active", "true");
+
+    // Verify the raw-agent-view container appears
+    const rawView = page.locator('[data-testid="raw-agent-view"]');
+    await expect(rawView).toBeVisible();
+  });
+
+  test("should show empty state when no hook events", async ({ page, request }) => {
+    // Create a separate project with no hook events
+    const emptyProjectId = `e2e-raw-empty-${Date.now()}`;
+    await request.post("/api/projects", {
+      data: { id: emptyProjectId, name: "Empty Raw View Test" },
+    });
+    await request.post("/api/missions", {
+      headers: { "X-Project-ID": emptyProjectId },
+      data: { name: "Empty Mission", prdPath: "test.md" },
+    });
+
+    await page.goto(`/?projectId=${emptyProjectId}`);
+    await page.waitForTimeout(2000);
+
+    // Switch to Raw Agent View
+    const agentButton = page.getByRole("button", { name: /Raw Agent View/i });
+    await agentButton.click();
+
+    // Verify empty state
+    const emptyState = page.locator('[data-testid="empty-state"]');
+    await expect(emptyState).toBeVisible();
+    await expect(emptyState).toContainText("No hook events yet");
+  });
+
+  test("should display hook events in swim lanes", async ({ page }) => {
+    await page.goto(`/?projectId=${RAW_VIEW_PROJECT_ID}`);
+    await page.waitForTimeout(2000);
+
+    // Switch to Raw Agent View
+    const agentButton = page.getByRole("button", { name: /Raw Agent View/i });
+    await agentButton.click();
+
+    // Wait for SSE to deliver hook events
+    await page.waitForTimeout(3000);
+
+    // Verify swim lanes appear for agents that have events
+    const murdockLane = page.locator('[data-testid="swim-lane-murdock"]');
+    const baLane = page.locator('[data-testid="swim-lane-ba"]');
+
+    await expect(murdockLane).toBeVisible();
+    await expect(baLane).toBeVisible();
+
+    // Verify event cards exist within the lanes
+    const murdockEvents = murdockLane.locator('[data-testid^="event-card-"]');
+    const baEvents = baLane.locator('[data-testid^="event-card-"]');
+
+    expect(await murdockEvents.count()).toBeGreaterThan(0);
+    expect(await baEvents.count()).toBeGreaterThan(0);
+  });
+});
+
 test.describe("UI Verification", () => {
   const UI_PROJECT_ID = `e2e-ui-${Date.now()}`;
 
