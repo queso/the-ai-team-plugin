@@ -8,50 +8,8 @@
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
-/**
- * Valid agent names (lowercase for input validation).
- */
-const VALID_AGENTS_LOWER = [
-    'murdock',
-    'ba',
-    'lynch',
-    'amy',
-    'hannibal',
-    'face',
-    'sosa',
-    'tawnia',
-];
-/**
- * Map from lowercase agent names to API-expected format.
- */
-const AGENT_NAME_MAP = {
-    murdock: 'Murdock',
-    ba: 'B.A.',
-    lynch: 'Lynch',
-    amy: 'Amy',
-    hannibal: 'Hannibal',
-    face: 'Face',
-    sosa: 'Sosa',
-    tawnia: 'Tawnia',
-};
-/**
- * Normalize agent name to lowercase key format.
- * Handles special cases like "B.A." -> "ba"
- */
-function normalizeAgentName(val) {
-    return val.toLowerCase().replace(/\./g, '');
-}
-/**
- * Zod schema for agent name validation.
- * Accepts case-insensitive input, validates, and transforms to API format.
- */
-const AgentNameSchema = z
-    .string()
-    .transform((val) => normalizeAgentName(val))
-    .refine((val) => VALID_AGENTS_LOWER.includes(val), {
-    message: `Agent must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
-})
-    .transform((val) => AGENT_NAME_MAP[val]);
+import { VALID_AGENTS_LOWER, AgentNameSchema } from '../lib/agents.js';
+import { formatErrorMessage } from '../lib/tool-response.js';
 /**
  * Input schema for agent_start tool.
  */
@@ -72,31 +30,15 @@ export const AgentStopSchema = z.object({
     files_modified: z.array(z.string()).optional(),
 });
 /**
- * Formats an error message from an API error response.
- */
-function formatErrorMessage(error) {
-    if (error instanceof Error) {
-        const apiError = error;
-        if (apiError.code === 'ECONNREFUSED') {
-            return 'Connection refused - server may be unavailable';
-        }
-        return error.message;
-    }
-    const apiError = error;
-    if (apiError.message) {
-        return apiError.message;
-    }
-    return 'Unknown error occurred';
-}
-/**
  * Creates the HTTP client for API calls.
  */
 function getClient() {
     return createClient({
         baseUrl: config.apiUrl,
         projectId: config.projectId,
-        timeout: 30000,
-        retries: 0,
+        apiKey: config.apiKey,
+        timeout: config.timeout,
+        retries: config.retries,
     });
 }
 /**
@@ -117,6 +59,11 @@ export async function agentStart(input) {
         }
         const response = await client.post('/api/agents/start', body);
         const data = response.data;
+        // Auto-post to activity feed so the agent's work appears in the timeline
+        client.post('/api/activity', {
+            agent: input.agent,
+            message: `Started working on ${input.itemId}`,
+        }).catch(() => { }); // Best-effort, don't fail the start
         return {
             content: [
                 {
@@ -169,6 +116,12 @@ export async function agentStop(input) {
         }
         const response = await client.post('/api/agents/stop', body);
         const data = response.data;
+        // Auto-post to activity feed so the agent's completion appears in the timeline
+        const statusLabel = input.status === 'success' ? 'completed' : 'failed';
+        client.post('/api/activity', {
+            agent: input.agent,
+            message: `${statusLabel} ${input.itemId}: ${input.summary}`,
+        }).catch(() => { }); // Best-effort, don't fail the stop
         return {
             content: [
                 {

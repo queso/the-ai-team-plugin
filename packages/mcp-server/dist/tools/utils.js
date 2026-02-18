@@ -6,56 +6,14 @@
  * - activity_log: Append structured JSON to activity feed
  * - log: Simple shorthand for activity logging
  */
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
-// ============================================================================
-// Valid Agent Names
-// ============================================================================
-/**
- * Valid agent names (lowercase for input validation).
- */
-const VALID_AGENTS_LOWER = [
-    'murdock',
-    'ba',
-    'lynch',
-    'amy',
-    'hannibal',
-    'face',
-    'sosa',
-    'tawnia',
-];
-/**
- * Map from lowercase agent names to API-expected format.
- */
-const AGENT_NAME_MAP = {
-    murdock: 'Murdock',
-    ba: 'B.A.',
-    lynch: 'Lynch',
-    amy: 'Amy',
-    hannibal: 'Hannibal',
-    face: 'Face',
-    sosa: 'Sosa',
-    tawnia: 'Tawnia',
-};
-/**
- * Normalize agent name to lowercase key format.
- * Handles special cases like "B.A." -> "ba"
- */
-function normalizeAgentName(val) {
-    return val.toLowerCase().replace(/\./g, '');
-}
-/**
- * Zod schema for agent name validation.
- * Accepts case-insensitive input, validates, and transforms to API format.
- */
-const AgentNameSchema = z
-    .string()
-    .transform((val) => normalizeAgentName(val))
-    .refine((val) => VALID_AGENTS_LOWER.includes(val), {
-    message: `Agent must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
-})
-    .transform((val) => AGENT_NAME_MAP[val]);
+import { AgentNameSchema } from '../lib/agents.js';
+import { zodToJsonSchema } from '../lib/schema-utils.js';
+import { formatErrorMessage } from '../lib/tool-response.js';
 // ============================================================================
 // Zod Schemas for Input Validation
 // ============================================================================
@@ -79,35 +37,47 @@ export const LogSchema = z.object({
     agent: AgentNameSchema,
     message: z.string().min(1, 'message is required'),
 });
-/**
- * Formats an error message from an API error response.
- */
-function formatErrorMessage(error) {
-    if (error instanceof Error) {
-        const apiError = error;
-        if (apiError.code === 'ECONNREFUSED') {
-            return 'Connection refused - server may be unavailable';
-        }
-        return error.message;
-    }
-    const apiError = error;
-    if (apiError.message) {
-        return apiError.message;
-    }
-    return 'Unknown error occurred';
-}
 // ============================================================================
 // HTTP Client
 // ============================================================================
 const client = createClient({
     baseUrl: config.apiUrl,
     projectId: config.projectId,
-    timeout: 30000,
-    retries: 3,
+    apiKey: config.apiKey,
+    timeout: config.timeout,
+    retries: config.retries,
 });
+/**
+ * Schema for plugin_root tool input (no parameters needed).
+ */
+export const PluginRootSchema = z.object({});
 // ============================================================================
 // Tool Handlers
 // ============================================================================
+/**
+ * Returns the absolute path to the plugin root directory.
+ * Derives this from the MCP server's own file location.
+ */
+export async function pluginRoot(_input) {
+    // In the bundle: dist/bundle.mjs → plugin root is ../../..
+    // In dev (unbundled): src/tools/utils.ts → plugin root is ../../../..
+    // We detect by checking if import.meta.url contains 'dist/bundle'
+    const currentFile = fileURLToPath(import.meta.url);
+    const currentDir = dirname(currentFile);
+    let root;
+    if (currentFile.includes('dist/bundle')) {
+        // Bundled: packages/mcp-server/dist/bundle.mjs → go up 3 levels
+        root = resolve(currentDir, '..', '..', '..');
+    }
+    else {
+        // Dev: packages/mcp-server/src/tools/utils.ts → go up 4 levels
+        root = resolve(currentDir, '..', '..', '..', '..');
+    }
+    return {
+        content: [{ type: 'text', text: root }],
+        data: { path: root },
+    };
+}
 /**
  * Validates the dependency graph and detects cycles.
  */
@@ -177,85 +147,17 @@ export async function log(input) {
 // Tool Definitions for MCP Server Registration
 // ============================================================================
 /**
- * Converts a Zod schema to JSON Schema format for MCP tool registration.
- */
-function zodToJsonSchema(schema) {
-    if (schema instanceof z.ZodObject) {
-        const shape = schema.shape;
-        const properties = {};
-        const required = [];
-        for (const [key, value] of Object.entries(shape)) {
-            const zodValue = value;
-            properties[key] = getPropertySchema(zodValue);
-            if (!isOptional(zodValue)) {
-                required.push(key);
-            }
-        }
-        return {
-            type: 'object',
-            properties,
-            required: required.length > 0 ? required : undefined,
-        };
-    }
-    return { type: 'object', properties: {} };
-}
-/**
- * Checks if a Zod schema is optional.
- */
-function isOptional(schema) {
-    if (schema instanceof z.ZodOptional)
-        return true;
-    if (schema instanceof z.ZodDefault)
-        return true;
-    if (schema._def?.typeName === 'ZodOptional')
-        return true;
-    if (schema._def?.typeName === 'ZodDefault')
-        return true;
-    return false;
-}
-/**
- * Gets the JSON Schema representation of a Zod property.
- */
-function getPropertySchema(schema) {
-    let unwrapped = schema;
-    if (unwrapped instanceof z.ZodOptional) {
-        unwrapped = unwrapped.unwrap();
-    }
-    if (unwrapped instanceof z.ZodDefault) {
-        unwrapped = unwrapped._def.innerType;
-    }
-    if (unwrapped instanceof z.ZodString) {
-        return { type: 'string' };
-    }
-    if (unwrapped instanceof z.ZodNumber) {
-        return { type: 'number' };
-    }
-    if (unwrapped instanceof z.ZodBoolean) {
-        return { type: 'boolean' };
-    }
-    if (unwrapped instanceof z.ZodEnum) {
-        return { type: 'string', enum: unwrapped.options };
-    }
-    if (unwrapped instanceof z.ZodArray) {
-        return {
-            type: 'array',
-            items: getPropertySchema(unwrapped.element),
-        };
-    }
-    if (unwrapped instanceof z.ZodObject) {
-        return zodToJsonSchema(unwrapped);
-    }
-    // For refined types (like AgentNameSchema), check the inner type
-    if (unwrapped instanceof z.ZodEffects) {
-        return getPropertySchema(unwrapped.innerType());
-    }
-    return { type: 'string' };
-}
-/**
  * Tool definitions for MCP server registration.
  * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export const utilsTools = [
+    {
+        name: 'plugin_root',
+        description: 'Returns the absolute path to the A(i)-Team plugin root directory. Use this to build paths to plugin files like playbooks, agents, etc.',
+        inputSchema: zodToJsonSchema(PluginRootSchema),
+        zodSchema: PluginRootSchema,
+        handler: pluginRoot,
+    },
     {
         name: 'deps_check',
         description: 'Validates the dependency graph and detects cycles. Returns analysis including ready items, depths, and any validation errors.',

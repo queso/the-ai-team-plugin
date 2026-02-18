@@ -17,7 +17,7 @@ export const TRANSITION_MATRIX: Record<StageId, readonly StageId[]> = {
   testing: ['review', 'blocked'],
   implementing: ['review', 'blocked'],
   probing: ['ready', 'done', 'blocked'],
-  review: ['done', 'testing', 'implementing', 'probing', 'blocked'],
+  review: ['testing', 'implementing', 'probing', 'blocked'],
   done: [],
   blocked: ['ready'],
 };
@@ -29,3 +29,49 @@ export function isValidTransition(from: StageId, to: StageId): boolean {
 export function getValidNextStages(from: StageId): readonly StageId[] {
   return TRANSITION_MATRIX[from];
 }
+
+/**
+ * Maps each pipeline stage to the agent responsible for it and the
+ * expected next stage in the happy-path pipeline flow.
+ *
+ * Used by the MCP server to build actionable error messages that tell
+ * the orchestrator exactly which agent to dispatch when a transition
+ * is rejected.
+ */
+export interface PipelineStageInfo {
+  /** Agent responsible for work in this stage */
+  readonly agent: string;
+  /** Display name shown in error messages */
+  readonly agentDisplay: string;
+  /** The expected next stage in the happy-path pipeline */
+  readonly nextStage: StageId | null;
+  /** Human-readable description of what happens in this stage */
+  readonly description: string;
+}
+
+export const PIPELINE_STAGES: Partial<Record<StageId, PipelineStageInfo>> = {
+  testing: {
+    agent: 'murdock',
+    agentDisplay: 'Murdock',
+    nextStage: 'review',
+    description: 'writes tests defining acceptance criteria',
+  },
+  implementing: {
+    agent: 'ba',
+    agentDisplay: 'B.A.',
+    nextStage: 'review',
+    description: 'implements code to pass tests',
+  },
+  review: {
+    agent: 'lynch',
+    agentDisplay: 'Lynch',
+    nextStage: 'probing',
+    description: 'reviews tests and implementation together',
+  },
+  probing: {
+    agent: 'amy',
+    agentDisplay: 'Amy',
+    nextStage: 'done',
+    description: 'investigates for bugs beyond test coverage',
+  },
+};

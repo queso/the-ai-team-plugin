@@ -3,66 +3,15 @@
  * Provides MCP tools for managing the kanban board state.
  */
 import { z } from 'zod';
+import { TRANSITION_MATRIX, PIPELINE_STAGES } from '@ai-team/shared';
 import { createClient, ApiRequestError } from '../client/index.js';
 import { config } from '../config.js';
-/**
- * Valid agent names (lowercase for input validation).
- */
-const VALID_AGENTS_LOWER = [
-    'murdock',
-    'ba',
-    'lynch',
-    'amy',
-    'hannibal',
-    'face',
-    'sosa',
-    'tawnia',
-];
-/**
- * Map from lowercase agent names to API-expected format.
- */
-const AGENT_NAME_MAP = {
-    murdock: 'Murdock',
-    ba: 'B.A.',
-    lynch: 'Lynch',
-    amy: 'Amy',
-    hannibal: 'Hannibal',
-    face: 'Face',
-    sosa: 'Sosa',
-    tawnia: 'Tawnia',
-};
-/**
- * Normalize agent name to lowercase key format.
- * Handles special cases like "B.A." -> "ba"
- */
-function normalizeAgentName(val) {
-    return val.toLowerCase().replace(/\./g, '');
-}
-/**
- * Zod schema for agent name validation.
- * Accepts case-insensitive input, validates, and transforms to API format.
- */
-const AgentNameSchema = z
-    .string()
-    .transform((val) => normalizeAgentName(val))
-    .refine((val) => VALID_AGENTS_LOWER.includes(val), {
-    message: `Invalid agent name. Must be one of: ${VALID_AGENTS_LOWER.join(', ')}`,
-})
-    .transform((val) => AGENT_NAME_MAP[val]);
+import { AgentNameSchema } from '../lib/agents.js';
 /**
  * Valid stage transitions for the kanban board.
  * Used to provide actionable guidance when an invalid transition is attempted.
  */
-const VALID_TRANSITIONS = {
-    briefings: ['ready', 'blocked'],
-    ready: ['testing', 'implementing', 'probing', 'blocked', 'briefings'],
-    testing: ['review', 'blocked'],
-    implementing: ['review', 'blocked'],
-    probing: ['ready', 'done', 'blocked'],
-    review: ['done', 'testing', 'implementing', 'probing', 'blocked'],
-    done: [],
-    blocked: ['ready'],
-};
+const VALID_TRANSITIONS = TRANSITION_MATRIX;
 /**
  * Zod schema for board_read input (empty object).
  */
@@ -149,12 +98,22 @@ export async function boardMove(input, client = getDefaultClient()) {
             const toStage = details?.to ?? input.to;
             let message = error.message;
             // Build actionable guidance for invalid transitions
-            if (error.code === 'INVALID_TRANSITION' && fromStage && VALID_TRANSITIONS[fromStage]) {
+            if (error.code === 'INVALID_TRANSITION' && fromStage && fromStage in VALID_TRANSITIONS) {
                 const validNext = VALID_TRANSITIONS[fromStage];
-                const suggestedStage = validNext[0]; // First valid option (usually the main path)
+                const pipelineInfo = PIPELINE_STAGES[fromStage];
                 message = `Cannot move directly from '${fromStage}' to '${toStage}'. `;
-                message += `Move to '${suggestedStage}' first and verify the work is complete before proceeding. `;
-                message += `Valid next stages: ${validNext.join(', ')}.`;
+                if (pipelineInfo?.nextStage) {
+                    const nextInfo = PIPELINE_STAGES[pipelineInfo.nextStage];
+                    message += `The pipeline requires moving to '${pipelineInfo.nextStage}' next. `;
+                    if (nextInfo) {
+                        message += `Dispatch ${nextInfo.agentDisplay} to claim this item — ${nextInfo.agentDisplay} ${nextInfo.description}. `;
+                    }
+                }
+                else {
+                    message += `Valid next stages: ${validNext.join(', ')}. `;
+                }
+                message += `No stage in the pipeline may be skipped. `;
+                message += `Allowed transitions from '${fromStage}': ${validNext.join(', ')}.`;
             }
             return {
                 isError: true,

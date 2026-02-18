@@ -124,7 +124,9 @@ describe('Board Tools', () => {
       if ('isError' in result && result.isError) {
         expect(result.code).toBe('INVALID_TRANSITION');
         expect(result.message).toContain("Cannot move directly from 'testing' to 'done'");
-        expect(result.message).toContain("Move to 'review' first");
+        expect(result.message).toContain("pipeline requires moving to 'review' next");
+        expect(result.message).toContain("Dispatch Lynch");
+        expect(result.message).toContain("No stage in the pipeline may be skipped");
       }
     });
 

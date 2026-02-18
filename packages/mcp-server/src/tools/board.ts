@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { TRANSITION_MATRIX } from '@ai-team/shared';
+import { TRANSITION_MATRIX, PIPELINE_STAGES } from '@ai-team/shared';
 import { createClient, BoardState, KanbanApiClient, ApiRequestError } from '../client/index.js';
 import { config } from '../config.js';
 import { AgentNameSchema } from '../lib/agents.js';
@@ -154,11 +154,22 @@ export async function boardMove(
       // Build actionable guidance for invalid transitions
       if (error.code === 'INVALID_TRANSITION' && fromStage && fromStage in VALID_TRANSITIONS) {
         const validNext = VALID_TRANSITIONS[fromStage as keyof typeof VALID_TRANSITIONS];
-        const suggestedStage = validNext[0]; // First valid option (usually the main path)
+        const pipelineInfo = PIPELINE_STAGES[fromStage as keyof typeof PIPELINE_STAGES];
 
         message = `Cannot move directly from '${fromStage}' to '${toStage}'. `;
-        message += `Move to '${suggestedStage}' first and verify the work is complete before proceeding. `;
-        message += `Valid next stages: ${validNext.join(', ')}.`;
+
+        if (pipelineInfo?.nextStage) {
+          const nextInfo = PIPELINE_STAGES[pipelineInfo.nextStage as keyof typeof PIPELINE_STAGES];
+          message += `The pipeline requires moving to '${pipelineInfo.nextStage}' next. `;
+          if (nextInfo) {
+            message += `Dispatch ${nextInfo.agentDisplay} to claim this item — ${nextInfo.agentDisplay} ${nextInfo.description}. `;
+          }
+        } else {
+          message += `Valid next stages: ${validNext.join(', ')}. `;
+        }
+
+        message += `No stage in the pipeline may be skipped. `;
+        message += `Allowed transitions from '${fromStage}': ${validNext.join(', ')}.`;
       }
 
       return {

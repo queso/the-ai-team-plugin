@@ -15,7 +15,7 @@ describe('Shared Package Integration', () => {
       expect(TRANSITION_MATRIX.testing).toEqual(['review', 'blocked']);
       expect(TRANSITION_MATRIX.implementing).toEqual(['review', 'blocked']);
       expect(TRANSITION_MATRIX.probing).toEqual(['ready', 'done', 'blocked']);
-      expect(TRANSITION_MATRIX.review).toEqual(['done', 'testing', 'implementing', 'probing', 'blocked']);
+      expect(TRANSITION_MATRIX.review).toEqual(['testing', 'implementing', 'probing', 'blocked']);
       expect(TRANSITION_MATRIX.done).toEqual([]);
       expect(TRANSITION_MATRIX.blocked).toEqual(['ready']);
     });

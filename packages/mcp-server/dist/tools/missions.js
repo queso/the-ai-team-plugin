@@ -12,12 +12,14 @@ import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
 import { withErrorBoundary } from '../lib/errors.js';
+import { zodToJsonSchema } from '../lib/schema-utils.js';
 // Initialize HTTP client
 const client = createClient({
     baseUrl: config.apiUrl,
     projectId: config.projectId,
-    timeout: 30000,
-    retries: 3,
+    apiKey: config.apiKey,
+    timeout: config.timeout,
+    retries: config.retries,
 });
 // ============================================================================
 // Zod Schemas for Input Validation
@@ -150,74 +152,6 @@ export async function missionArchive(input) {
 // ============================================================================
 // Tool Definitions for MCP Server Registration
 // ============================================================================
-/**
- * Converts a Zod schema to JSON Schema format for MCP tool registration.
- */
-function zodToJsonSchema(schema) {
-    if (schema instanceof z.ZodObject) {
-        const shape = schema.shape;
-        const properties = {};
-        const required = [];
-        for (const [key, value] of Object.entries(shape)) {
-            const zodValue = value;
-            properties[key] = getPropertySchema(zodValue);
-            if (!isOptional(zodValue)) {
-                required.push(key);
-            }
-        }
-        return {
-            type: 'object',
-            properties,
-            required: required.length > 0 ? required : undefined,
-        };
-    }
-    return { type: 'object', properties: {} };
-}
-/**
- * Checks if a Zod schema is optional.
- */
-function isOptional(schema) {
-    if (schema instanceof z.ZodOptional)
-        return true;
-    if (schema instanceof z.ZodDefault)
-        return true;
-    if (schema._def?.typeName === 'ZodOptional')
-        return true;
-    if (schema._def?.typeName === 'ZodDefault')
-        return true;
-    return false;
-}
-/**
- * Gets the JSON Schema representation of a Zod property.
- */
-function getPropertySchema(schema) {
-    let unwrapped = schema;
-    if (unwrapped instanceof z.ZodOptional) {
-        unwrapped = unwrapped.unwrap();
-    }
-    if (unwrapped instanceof z.ZodDefault) {
-        unwrapped = unwrapped._def.innerType;
-    }
-    if (unwrapped instanceof z.ZodString) {
-        return { type: 'string' };
-    }
-    if (unwrapped instanceof z.ZodBoolean) {
-        return { type: 'boolean' };
-    }
-    if (unwrapped instanceof z.ZodNumber) {
-        return { type: 'number' };
-    }
-    if (unwrapped instanceof z.ZodArray) {
-        return {
-            type: 'array',
-            items: getPropertySchema(unwrapped.element),
-        };
-    }
-    if (unwrapped instanceof z.ZodObject) {
-        return zodToJsonSchema(unwrapped);
-    }
-    return { type: 'string' };
-}
 /**
  * Tool definitions for MCP server registration.
  * Each tool includes the original Zod schema for use with McpServer.tool() API.

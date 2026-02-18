@@ -7,6 +7,7 @@
  * - log: Simple shorthand for activity logging
  */
 import { z } from 'zod';
+import type { ToolResponse } from '../lib/tool-response.js';
 /**
  * Schema for deps_check tool input.
  */
@@ -72,14 +73,18 @@ interface ActivityLogResponse {
         message: string;
     };
 }
-interface ToolResponse<T = unknown> {
-    content: Array<{
-        type: 'text';
-        text: string;
-    }>;
-    data?: T;
-    isError?: boolean;
-}
+/**
+ * Schema for plugin_root tool input (no parameters needed).
+ */
+export declare const PluginRootSchema: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
+type PluginRootInput = z.infer<typeof PluginRootSchema>;
+/**
+ * Returns the absolute path to the plugin root directory.
+ * Derives this from the MCP server's own file location.
+ */
+export declare function pluginRoot(_input: PluginRootInput): Promise<ToolResponse<{
+    path: string;
+}>>;
 /**
  * Validates the dependency graph and detects cycles.
  */
@@ -97,6 +102,12 @@ export declare function log(input: LogInput): Promise<ToolResponse<ActivityLogRe
  * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export declare const utilsTools: ({
+    name: string;
+    description: string;
+    inputSchema: object;
+    zodSchema: z.ZodObject<{}, "strip", z.ZodTypeAny, {}, {}>;
+    handler: typeof pluginRoot;
+} | {
     name: string;
     description: string;
     inputSchema: object;

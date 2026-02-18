@@ -889,8 +889,7 @@ describe('POST /api/board/move', () => {
       { from: 'probing', to: 'ready' },
       { from: 'probing', to: 'done' },
       { from: 'probing', to: 'blocked' },
-      // review transitions
-      { from: 'review', to: 'done' },
+      // review transitions (review -> done removed: must go through probing)
       { from: 'review', to: 'testing' },
       { from: 'review', to: 'implementing' },
       { from: 'review', to: 'probing' },
@@ -959,7 +958,8 @@ describe('POST /api/board/move', () => {
       { from: 'probing', to: 'testing' },
       { from: 'probing', to: 'implementing' },
       { from: 'probing', to: 'review' },
-      // review invalid
+      // review invalid (review -> done is invalid: must go through probing first)
+      { from: 'review', to: 'done' },
       { from: 'review', to: 'briefings' },
       { from: 'review', to: 'ready' },
       // done invalid (terminal)
