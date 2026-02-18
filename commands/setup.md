@@ -18,7 +18,7 @@ Configure Claude Code permissions and project settings for A(i)-Team.
 6. **Injects** A(i)-Team instructions into CLAUDE.md (so Claude uses the workflow)
 7. **Detects** Docker and offers to start kanban-viewer if not running
 8. **Verifies** API server connectivity
-9. **Checks** for Playwright plugin (optional, for browser testing)
+9. **Checks** for browser testing tools (agent-browser, Playwright)
 
 ## Behavior
 
@@ -617,8 +617,9 @@ Verifying API connectivity...
   ✓ Connected to A(i)-Team API at http://localhost:3000
   ✓ Project ID registered
 
-Checking plugin dependencies...
-  ✓ Playwright plugin detected
+Checking browser testing tools...
+  ✓ agent-browser installed (preferred)
+  ✓ Playwright plugin detected (fallback)
 
 Background agents can now:
   - Write test files
@@ -659,29 +660,87 @@ If your project uses a different structure or API server, edit `.claude/settings
 
 **Note:** If you're using a non-default API URL (e.g., a local hostname like `http://kanban-viewer.orb.local:3000`), you MUST set `ATEAM_API_URL` in the `env` section. The default of `http://localhost:3000` only works if that's where your API actually runs.
 
-## Plugin Dependencies
+## Browser Testing Dependencies
 
-The A(i)-Team recommends the **Playwright plugin** for Amy's browser-based bug hunting.
+Amy (Investigator) uses browser testing tools during the probing stage to verify UI features from a user's perspective. At least one browser tool is strongly recommended.
 
-### Check for Playwright Plugin
+### Check for agent-browser (Preferred)
 
-After configuring permissions, check if Playwright is available:
-
+**Detection:**
 ```
-Do you have the Playwright plugin installed? Amy (Investigator) uses it for browser-based testing.
+Run: which agent-browser
 ```
 
-If the user doesn't have it:
-
+**If found:**
 ```
-Amy can use the Playwright plugin for browser-based bug hunting.
+✓ agent-browser installed (preferred)
+```
 
-To install it:
+Add these permissions to `.claude/settings.local.json`:
+- `Bash(agent-browser:*)`
+- `Skill(agent-browser)`
+
+**If NOT found, offer to install:**
+```
+AskUserQuestion({
+  questions: [{
+    question: "agent-browser is the preferred browser testing tool for Amy's probing stage. Install it now?",
+    header: "agent-browser",
+    options: [
+      { label: "Install now (Recommended)", description: "Run 'npm install -g agent-browser' to install globally" },
+      { label: "Skip", description: "Continue without agent-browser" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+If user chooses "Install now":
+```
+Run: npm install -g agent-browser
+```
+
+After successful install, add the permissions above.
+
+### Check for Playwright Plugin (Fallback)
+
+**Detection:** Look for MCP tools matching `mcp__*playwright*`:
+- `mcp__plugin_playwright_playwright__browser_navigate`
+- `mcp__plugin_playwright_playwright__browser_snapshot`
+- `mcp__plugin_playwright_playwright__browser_click`
+- `mcp__plugin_playwright_playwright__browser_take_screenshot`
+
+**If found:**
+```
+✓ Playwright plugin detected (fallback)
+```
+
+Add these permissions to `.claude/settings.local.json`:
+- `mcp__plugin_playwright_playwright__browser_navigate`
+- `mcp__plugin_playwright_playwright__browser_snapshot`
+- `mcp__plugin_playwright_playwright__browser_click`
+- `mcp__plugin_playwright_playwright__browser_take_screenshot`
+
+**If not found:**
+```
+Playwright plugin not detected. To install it:
 1. Go to the Claude Code plugins repository
 2. Install the official Playwright plugin
 3. Run: /ateam setup again to verify
+```
 
-Without Playwright, Amy can still:
+### If Neither Tool Available
+
+```
+⚠ No browser testing tools detected.
+
+Amy's browser verification hook will block her from completing the probing stage
+on UI features. Install at least one:
+
+  agent-browser (preferred):  npm install -g agent-browser
+  Playwright plugin:          Install from Claude Code plugins repository
+
+Without browser tools, Amy can still:
 - Run curl commands for API testing
 - Execute Node.js test scripts
 - Analyze code and logs
@@ -692,22 +751,13 @@ But she won't be able to:
 - Test interactive flows
 ```
 
-### Verify Plugin Installation
-
-To check if Playwright tools are available, look for MCP tools matching `mcp__*playwright*`:
-- `mcp__plugin_playwright_playwright__browser_navigate`
-- `mcp__plugin_playwright_playwright__browser_snapshot`
-- `mcp__plugin_playwright_playwright__browser_click`
-
-If these tools exist, Playwright is properly installed.
-
 ## Notes
 
 - **Restart required after first setup** - The MCP server reads environment variables at startup, so you must restart Claude Code after initial setup for `ATEAM_PROJECT_ID` and `ATEAM_API_URL` to take effect
 - Uses `settings.local.json` by default (gitignored) to avoid committing permissions
 - Run this once per project before using `/ateam plan`
 - Safe to run multiple times - won't duplicate permissions, CLAUDE.md sections, or teammate config
-- Playwright plugin is recommended but not strictly required
+- At least one browser testing tool (agent-browser or Playwright) is strongly recommended for Amy's probing stage
 - Project ID enables running multiple A(i)-Team projects simultaneously
 - CLAUDE.md injection ensures Claude uses `/ateam plan` for PRD work instead of ad-hoc development
 - Native Agent Teams is optional - the plugin works with standard background task dispatch if not enabled
