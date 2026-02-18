@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, unlinkSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 
 const COMPLETION_HOOK = join(__dirname, '..', 'enforce-completion-log.js');
 const FINAL_REVIEW_HOOK = join(__dirname, '..', 'enforce-final-review.js');
 const AMY_TEST_WRITES_HOOK = join(__dirname, '..', 'block-amy-test-writes.js');
+const TRACK_BROWSER_HOOK = join(__dirname, '..', 'track-browser-usage.js');
+const BROWSER_VERIFICATION_HOOK = join(__dirname, '..', 'enforce-browser-verification.js');
 
 /**
  * Helper: run a hook script as a child process with given env vars.
@@ -412,5 +415,273 @@ describe('block-amy-test-writes', () => {
       TOOL_INPUT: JSON.stringify({}),
     });
     expect(result.exitCode).toBe(0);
+  });
+});
+
+// =============================================================================
+// track-browser-usage.js
+// =============================================================================
+describe('track-browser-usage', () => {
+  const markerPath = join(tmpdir(), '.ateam-browser-verified-test-project');
+
+  afterEach(() => {
+    // Clean up marker file after each test
+    try { unlinkSync(markerPath); } catch { /* ignore */ }
+  });
+
+  it('should create marker file when Playwright MCP tool is called', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      TOOL_NAME: 'mcp__plugin_playwright_playwright__browser_navigate',
+      TOOL_INPUT: JSON.stringify({ url: 'http://localhost:3000' }),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(true);
+  });
+
+  it('should create marker file when agent-browser skill is called', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      TOOL_NAME: 'Skill',
+      TOOL_INPUT: JSON.stringify({ skill: 'agent-browser' }),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(true);
+  });
+
+  it('should NOT create marker file for non-browser tools', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      TOOL_NAME: 'Read',
+      TOOL_INPUT: JSON.stringify({ file_path: 'src/index.ts' }),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(false);
+  });
+
+  it('should NOT create marker file for non-agent-browser skills', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      TOOL_NAME: 'Skill',
+      TOOL_INPUT: JSON.stringify({ skill: 'commit' }),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(false);
+  });
+
+  it('should exit 0 (non-blocking) regardless of tool', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      TOOL_NAME: 'mcp__plugin_playwright_playwright__browser_snapshot',
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('should handle missing project ID gracefully', () => {
+    const defaultMarker = join(tmpdir(), '.ateam-browser-verified-default');
+    try { unlinkSync(defaultMarker); } catch { /* ignore */ }
+
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      TOOL_NAME: 'mcp__plugin_playwright_playwright__browser_click',
+      ATEAM_PROJECT_ID: '',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(defaultMarker)).toBe(true);
+    try { unlinkSync(defaultMarker); } catch { /* ignore */ }
+  });
+});
+
+// =============================================================================
+// enforce-browser-verification.js
+// =============================================================================
+describe('enforce-browser-verification', () => {
+  const markerPath = join(tmpdir(), '.ateam-browser-verified-test-project');
+
+  afterEach(() => {
+    // Clean up marker file after each test
+    try { unlinkSync(markerPath); } catch { /* ignore */ }
+  });
+
+  describe('allowing when browser testing done', () => {
+    it('should allow stop when marker file exists (browser testing done)', () => {
+      // Create the marker file to simulate browser usage
+      writeFileSync(markerPath, new Date().toISOString());
+
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED - All probes pass',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+
+    it('should clean up marker file after allowing stop', () => {
+      writeFileSync(markerPath, new Date().toISOString());
+
+      runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      });
+
+      expect(existsSync(markerPath)).toBe(false);
+    });
+  });
+
+  describe('blocking when no browser testing', () => {
+    it('should block when no marker file and no NO_UI in summary', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED - Code looks good from static analysis',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - All tests pass' }],
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBe('block');
+      expect(output.additionalContext).toBeDefined();
+    });
+
+    it('should reference Playwright tools in block message', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      });
+
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBe('block');
+      expect(output.additionalContext).toMatch(/mcp__plugin_playwright/);
+      expect(output.additionalContext).toMatch(/agent-browser/);
+    });
+
+    it('should mention NO_UI_COMPONENT escape hatch in block message', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      });
+
+      const output = JSON.parse(result.stdout);
+      expect(output.additionalContext).toMatch(/NO_UI_COMPONENT/);
+    });
+  });
+
+  describe('NO_UI escape hatch', () => {
+    it('should allow when summary contains NO_UI_COMPONENT', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED - NO_UI_COMPONENT - This is a backend service',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - NO_UI_COMPONENT' }],
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+
+    it('should allow when summary contains API-only', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED - API-only feature, no browser needed',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - API-only service' }],
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+
+    it('should allow when summary contains backend-only', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        AGENT_OUTPUT: 'VERIFIED - backend-only change',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - backend-only' }],
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+  });
+
+  describe('non-Amy agents', () => {
+    it('should allow when agent is not amy (skip enforcement)', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'murdock',
+        ITEM_ID: 'WI-001',
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [],
+        }),
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should allow when API is unreachable (fail-open)', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        ATEAM_API_URL: 'http://localhost:99999',
+        AGENT_OUTPUT: 'VERIFIED',
+      });
+
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('should allow when no mock and no API config', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        AGENT_NAME: 'amy',
+        ITEM_ID: 'WI-001',
+        ATEAM_API_URL: '',
+        ATEAM_PROJECT_ID: '',
+        AGENT_OUTPUT: 'VERIFIED',
+      });
+
+      // With no API and no mock, summary check gets empty string
+      // and no NO_UI pattern matches - but the hook should still
+      // handle this gracefully
+      expect(result.exitCode).toBe(0);
+    });
   });
 });

@@ -398,10 +398,19 @@ Task(
   Feature Item:
   [Full content of the work item]
 
+  Dev Server: {devServer.url from ateam.config.json}
+  (Read ateam.config.json if not provided above)
+
   Files to probe:
   - Test: {outputs.test}
   - Implementation: {outputs.impl}
   - Types (if exists): {outputs.types}
+
+  IMPORTANT: Browser verification is REQUIRED for UI features.
+  Use the agent-browser skill or Playwright MCP tools to:
+  1. Navigate to {devServer.url}
+  2. Verify the feature works from a user's perspective
+  3. Take a screenshot as evidence
 
   Execute the Raptor Protocol. Respond with VERIFIED or FLAG.
 
