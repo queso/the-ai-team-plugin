@@ -11,19 +11,29 @@ hooks:
       hooks:
         - type: command
           command: "node scripts/hooks/block-amy-test-writes.js"
+    - matcher: "mcp__plugin_playwright"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/track-browser-usage.js"
+    - matcher: "Skill"
+      hooks:
+        - type: command
+          command: "node scripts/hooks/track-browser-usage.js"
     - hooks:
         - type: command
-          command: "node scripts/hooks/observe-pre-tool-use.js"
+          command: "AGENT_NAME=amy node scripts/hooks/observe-pre-tool-use.js"
   PostToolUse:
     - hooks:
         - type: command
-          command: "node scripts/hooks/observe-post-tool-use.js"
+          command: "AGENT_NAME=amy node scripts/hooks/observe-post-tool-use.js"
   Stop:
     - hooks:
         - type: command
+          command: "node scripts/hooks/enforce-browser-verification.js"
+        - type: command
           command: "node scripts/hooks/enforce-completion-log.js"
         - type: command
-          command: "node scripts/hooks/observe-stop.js"
+          command: "AGENT_NAME=amy node scripts/hooks/observe-stop.js"
 ---
 
 # Amy Allen - Investigator
@@ -96,6 +106,16 @@ sonnet
 | Unit test runner | Run existing tests, check for flaky behavior |
 | **Playwright** | Browser automation for UI testing (preferred) |
 
+### Browser Testing (Preferred: agent-browser skill)
+
+Use the `agent-browser` skill for browser-based verification:
+
+```
+Skill(agent-browser)  # Navigates, clicks, takes screenshots - all in one
+```
+
+This is the preferred approach. If agent-browser is unavailable, use the Playwright MCP tools below as a fallback.
+
 ### Playwright MCP Tools
 
 Use these tools for browser-based bug hunting:
@@ -119,7 +139,7 @@ Use these tools for browser-based bug hunting:
 5. Check console for errors
 6. Take screenshot as evidence
 
-If Playwright tools are not available, fall back to curl/scripts for API-only testing.
+If browser tools are not available, FLAG the item explaining browser verification could not be performed. DO NOT report VERIFIED without browser testing for UI features.
 
 ### Perspective Test Examples
 
@@ -176,6 +196,8 @@ Feature: Login form submits credentials
 ```
 
 ### Dev Server Configuration
+
+**The dev server URL is provided in your dispatch prompt.** If not provided, read ateam.config.json.
 
 **IMPORTANT:** Don't start a dev server yourself. Read the project config to find the running server:
 

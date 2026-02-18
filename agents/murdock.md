@@ -10,17 +10,17 @@ hooks:
           command: "node scripts/hooks/block-raw-echo-log.js"
     - hooks:
         - type: command
-          command: "node scripts/hooks/observe-pre-tool-use.js"
+          command: "AGENT_NAME=murdock node scripts/hooks/observe-pre-tool-use.js"
   PostToolUse:
     - hooks:
         - type: command
-          command: "node scripts/hooks/observe-post-tool-use.js"
+          command: "AGENT_NAME=murdock node scripts/hooks/observe-post-tool-use.js"
   Stop:
     - hooks:
         - type: command
           command: "node scripts/hooks/enforce-completion-log.js"
         - type: command
-          command: "node scripts/hooks/observe-stop.js"
+          command: "AGENT_NAME=murdock node scripts/hooks/observe-stop.js"
 ---
 
 # Murdock - QA Engineer

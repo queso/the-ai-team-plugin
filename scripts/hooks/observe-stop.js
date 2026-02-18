@@ -18,11 +18,10 @@ const env = {
   ATEAM_PROJECT_ID: process.env.ATEAM_PROJECT_ID,
 };
 
-// Build and send payload
+// Build and send payload, awaiting the fetch before exiting
 const payload = buildObserverPayload(env);
 if (payload) {
-  sendObserverEvent(payload, env).catch(() => {});
+  await sendObserverEvent(payload, env).catch(() => {});
 }
 
-// Always exit with success - must not block agents
 process.exit(0);
