@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Kanban UI End-to-End Verification Suite** (PRD-006) - FlowSpec-based verification specs and seed data infrastructure for the Kanban viewer UI
+  - Created `packages/kanban-viewer/scripts/seed-demo-data.ts` — TypeScript seed script populating the Kanban board with realistic demo data (agents, stages, hook events)
+  - Created `packages/kanban-viewer/flowspec.config.yaml` — FlowSpec test runner configuration for all Kanban UI specs
+  - Created `packages/kanban-viewer/specs/kanban-board.flow.yaml` — Board stage columns and WI card verification spec
+  - Created `packages/kanban-viewer/specs/activity-feed.flow.yaml` — Activity feed panel and event ordering verification spec
+  - Created `packages/kanban-viewer/specs/raw-agent-view.flow.yaml` — Agent swim lanes and tool call card verification spec
+  - Created `packages/kanban-viewer/specs/agent-event-details.flow.yaml` — Hook event card detail expansion verification spec
+  - Created `packages/kanban-viewer/specs/view-switching.flow.yaml` — Tab navigation round-trip verification spec
+
+### Fixed
+
+- **MCP server board.ts lint** — Replaced template literal with plain string literal in `board_move` tool description to satisfy Biome lint rules
+
 - **Raw Agent Observability Dashboard** (PRD-005) - Real-time visibility into agent tool calls via observer hooks and dedicated UI
   - Created HookEvent Prisma model with correlationId-based deduplication
   - Added POST /api/hooks/events endpoint with Zod validation, batching, and deduplication

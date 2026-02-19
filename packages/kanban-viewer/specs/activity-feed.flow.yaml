@@ -1,0 +1,30 @@
+name: Activity Feed
+description: Verifies the Live Feed panel shows activity entries with agent attribution labels after seeding with seed-demo data.
+
+steps:
+  - action: navigate
+    url: /?projectId=seed-demo
+
+  - action: assertText
+    text: "[Hannibal]"
+
+  - action: assertText
+    text: "[Murdock]"
+
+  - action: assertText
+    text: "[B.A.]"
+
+  - action: assertText
+    text: "[Lynch]"
+
+  - action: assertText
+    text: "[Amy]"
+
+  - action: assertText
+    text: Mission initialized
+
+  - action: assertText
+    text: Pre-mission checks complete
+
+  - action: assertText
+    text: APPROVED
