@@ -22,13 +22,13 @@ import { randomUUID } from 'crypto';
  */
 function buildObserverPayload(env) {
   const toolName = env.TOOL_NAME || '';
-  const agentName = env.AGENT_NAME || '';
+  const agentName = env.AGENT_NAME || 'unknown';
   const eventType = env.HOOK_EVENT_TYPE || '';
   const apiUrl = env.ATEAM_API_URL || 'http://localhost:3000';
   const projectId = env.ATEAM_PROJECT_ID || 'default';
 
-  // If no event type or agent, nothing to log
-  if (!eventType || !agentName) {
+  // If no event type, nothing to log
+  if (!eventType) {
     return null;
   }
 
@@ -101,9 +101,10 @@ async function sendObserverEvent(payload, env) {
 
   // Strip trailing slash from API URL to avoid double slashes
   const cleanUrl = apiUrl.replace(/\/+$/, '');
+  const url = `${cleanUrl}/api/hooks/events`;
 
   try {
-    const response = await fetch(`${cleanUrl}/api/hooks/events`, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -112,9 +113,16 @@ async function sendObserverEvent(payload, env) {
       body: JSON.stringify(payload),
     });
 
+    if (!response.ok) {
+      // Log non-200 responses to stderr for debugging (visible in hook output)
+      const text = await response.text().catch(() => '');
+      process.stderr.write(`[observer] POST ${url} → ${response.status}: ${text}\n`);
+    }
+
     return response.ok;
-  } catch {
-    // Silently fail - observer hooks must not block agents
+  } catch (err) {
+    // Log connection errors to stderr for debugging
+    process.stderr.write(`[observer] POST ${url} failed: ${err.message}\n`);
     return false;
   }
 }

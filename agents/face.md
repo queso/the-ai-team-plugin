@@ -5,15 +5,15 @@ hooks:
   PreToolUse:
     - hooks:
         - type: command
-          command: "AGENT_NAME=face node scripts/hooks/observe-pre-tool-use.js"
+          command: "AGENT_NAME=face node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js"
   PostToolUse:
     - hooks:
         - type: command
-          command: "AGENT_NAME=face node scripts/hooks/observe-post-tool-use.js"
+          command: "AGENT_NAME=face node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js"
   Stop:
     - hooks:
         - type: command
-          command: "AGENT_NAME=face node scripts/hooks/observe-stop.js"
+          command: "AGENT_NAME=face node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js"
 ---
 
 # Face - Decomposer

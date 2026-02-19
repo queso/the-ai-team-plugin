@@ -532,7 +532,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node scripts/hooks/block-raw-echo-log.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-raw-echo-log.js"
 ```
 
 **Purpose:** Prevents agents from using raw `echo >> activity.log` commands. Agents must use the `log` or `activity_log` MCP tool instead for proper formatting and API integration.
@@ -543,7 +543,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: "node scripts/hooks/enforce-completion-log.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-completion-log.js"
 ```
 
 **Purpose:** Prevents agents from finishing without calling the `agent_stop` MCP tool to record their work.
@@ -559,7 +559,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node scripts/hooks/block-amy-test-writes.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-amy-test-writes.js"
 ```
 
 **Purpose:** Prevents Amy from creating `*.test.ts`, `*.spec.ts`, or `*-raptor*` files. Investigation findings belong in the `agent_stop` work_log summary, not as file artifacts that duplicate Murdock's tests.
@@ -575,7 +575,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node scripts/hooks/block-hannibal-writes.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-hannibal-writes.js"
 ```
 
 **Purpose:** Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
@@ -585,7 +585,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node scripts/hooks/block-raw-mv.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-raw-mv.js"
 ```
 
 **Purpose:** Prevents Hannibal from using raw `mv` commands to move work item files. Stage transitions must go through the `board_move` MCP tool.
@@ -596,7 +596,7 @@ hooks:
   Stop:
     - hooks:
         - type: command
-          command: "node scripts/hooks/enforce-final-review.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-final-review.js"
 ```
 
 **Purpose:** Prevents mission from ending without:

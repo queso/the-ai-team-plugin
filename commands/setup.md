@@ -486,7 +486,7 @@ Add observer hooks configuration to `.claude/settings.local.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/ai-team/scripts/hooks/observe-pre-tool-use.js"
+            "command": "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js"
           }
         ]
       }
@@ -496,7 +496,7 @@ Add observer hooks configuration to `.claude/settings.local.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/ai-team/scripts/hooks/observe-post-tool-use.js"
+            "command": "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js"
           }
         ]
       }
@@ -506,7 +506,7 @@ Add observer hooks configuration to `.claude/settings.local.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/ai-team/scripts/hooks/observe-stop.js"
+            "command": "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js"
           }
         ]
       }
