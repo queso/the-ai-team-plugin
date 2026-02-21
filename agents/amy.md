@@ -21,11 +21,11 @@ hooks:
           command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/track-browser-usage.js"
     - hooks:
         - type: command
-          command: "AGENT_NAME=amy node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js amy"
   PostToolUse:
     - hooks:
         - type: command
-          command: "AGENT_NAME=amy node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js amy"
   Stop:
     - hooks:
         - type: command
@@ -33,7 +33,7 @@ hooks:
         - type: command
           command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-completion-log.js"
         - type: command
-          command: "AGENT_NAME=amy node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js amy"
 ---
 
 # Amy Allen - Investigator

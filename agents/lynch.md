@@ -9,17 +9,17 @@ hooks:
           command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-raw-echo-log.js"
     - hooks:
         - type: command
-          command: "AGENT_NAME=lynch node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js lynch"
   PostToolUse:
     - hooks:
         - type: command
-          command: "AGENT_NAME=lynch node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js lynch"
   Stop:
     - hooks:
         - type: command
           command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-completion-log.js"
         - type: command
-          command: "AGENT_NAME=lynch node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js lynch"
 ---
 
 # Colonel Lynch - Reviewer

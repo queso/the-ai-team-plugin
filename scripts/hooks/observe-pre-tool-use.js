@@ -12,7 +12,7 @@ import { buildObserverPayload, sendObserverEvent } from './lib/observer.js';
 const env = {
   TOOL_INPUT: process.env.TOOL_INPUT,
   TOOL_NAME: process.env.TOOL_NAME,
-  AGENT_NAME: process.env.AGENT_NAME,
+  AGENT_NAME: process.argv[2] || process.env.AGENT_NAME,
   HOOK_EVENT_TYPE: process.env.HOOK_EVENT_TYPE || 'pre_tool_use',
   ATEAM_API_URL: process.env.ATEAM_API_URL,
   ATEAM_PROJECT_ID: process.env.ATEAM_PROJECT_ID,

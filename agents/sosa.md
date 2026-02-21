@@ -6,16 +6,16 @@ hooks:
     - matcher: "*"
       hooks:
         - type: command
-          command: "AGENT_NAME=sosa node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js sosa"
   PostToolUse:
     - matcher: "*"
       hooks:
         - type: command
-          command: "AGENT_NAME=sosa node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js sosa"
   Stop:
     - hooks:
         - type: command
-          command: "AGENT_NAME=sosa node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js"
+          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js sosa"
 ---
 
 # Sosa - Requirements Critic
