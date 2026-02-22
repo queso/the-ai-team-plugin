@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
- * enforce-completion-log.js - SubagentStop hook for working agents
+ * enforce-completion-log.js - Stop/SubagentStop hook for working agents
  *
  * Ensures agents call the agent_stop MCP tool before finishing.
  * If the agent hasn't logged completion, this hook blocks the stop
  * and injects a message telling the agent to call agent_stop.
  *
- * Used by: Murdock, B.A., Lynch, Amy
+ * Used by: Murdock, B.A., Lynch, Amy, Tawnia
  *
- * Environment variables (set by Claude Code):
- *   AGENT_OUTPUT - The agent's final output text
- *   ITEM_ID - The work item ID (passed via agent prompt/context)
- *   AGENT_NAME - The agent name
+ * Claude Code sends hook context via stdin JSON:
+ *   Stop: { session_id, hook_event_name, last_assistant_message, ... }
+ *   SubagentStop: { session_id, hook_event_name, agent_type, last_assistant_message, ... }
+ *
+ * Environment variables (from settings.local.json):
  *   ATEAM_API_URL - Base URL for the A(i)-Team API
  *   ATEAM_PROJECT_ID - Project identifier
  *
@@ -23,27 +24,41 @@
  *   {} - Allow stop
  */
 
+import { readFileSync } from 'fs';
+
+// Read hook input from stdin
+let hookInput = {};
+try {
+  const raw = readFileSync(0, 'utf8');
+  hookInput = JSON.parse(raw);
+} catch {
+  // Can't read stdin, allow stop
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
 const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';
-const itemId = process.env.ITEM_ID || '';
-const agentName = process.env.AGENT_NAME || '';
-const agentOutput = process.env.AGENT_OUTPUT || '';
 const mockResponse = process.env.__TEST_MOCK_RESPONSE__;
 
-// If no item ID can be determined, allow stop
-let detectedItemId = itemId;
+// Extract agent info from stdin JSON
+const agentName = hookInput.agent_type || '';
+const agentOutput = hookInput.last_assistant_message || '';
+
+// Try to detect item ID from agent output
+let detectedItemId = '';
+
+// Look for WI-XXX patterns in agent output
+const wiMatch = agentOutput.match(/WI-(\d+)/);
+if (wiMatch) {
+  detectedItemId = `WI-${wiMatch[1]}`;
+}
+
+// Look for "Feature XXX" or "item XXX" patterns
 if (!detectedItemId) {
-  // Look for WI-XXX patterns in agent output
-  const wiMatch = agentOutput.match(/WI-(\d+)/);
-  if (wiMatch) {
-    detectedItemId = `WI-${wiMatch[1]}`;
-  }
-  // Look for "Feature XXX" or "item XXX" patterns
-  if (!detectedItemId) {
-    const featureMatch = agentOutput.match(/(?:Feature|item|Item)\s+(\d{3})/i);
-    if (featureMatch) {
-      detectedItemId = featureMatch[1];
-    }
+  const featureMatch = agentOutput.match(/(?:Feature|item|Item)\s+(\d{3})/i);
+  if (featureMatch) {
+    detectedItemId = featureMatch[1];
   }
 }
 
@@ -102,7 +117,7 @@ Before finishing, you MUST call the agent_stop MCP tool to record your work:
 
 Parameters:
 - itemId: "${detectedItemId}"
-- agent: your agent name (murdock, ba, lynch, or amy)
+- agent: your agent name (murdock, ba, lynch, amy, or tawnia)
 - status: "success" or "failed"
 - summary: A brief human-readable overview of your work
 - files_created: list of files you created

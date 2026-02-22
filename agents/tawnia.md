@@ -7,20 +7,20 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-raw-echo-log.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-raw-echo-log.js"
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js tawnia"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js tawnia"
   PostToolUse:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js tawnia"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-post-tool-use.js tawnia"
   Stop:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-completion-log.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-completion-log.js"
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js tawnia"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-stop.js tawnia"
 ---
 
 # Tawnia Baker - Documentation Writer

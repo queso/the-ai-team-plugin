@@ -5,10 +5,23 @@
  * Blocks Write/Edit operations to test files.
  * Amy investigates and reports - she does NOT write test suites.
  * Her findings go in the agent_stop summary, not file artifacts.
+ *
+ * Claude Code sends hook context via stdin JSON (tool_name, tool_input).
  */
 
-const input = JSON.parse(process.env.TOOL_INPUT || '{}');
-const filePath = input.file_path || '';
+import { readFileSync } from 'fs';
+
+let hookInput = {};
+try {
+  const raw = readFileSync(0, 'utf8');
+  hookInput = JSON.parse(raw);
+} catch {
+  // Can't read stdin, allow through
+  process.exit(0);
+}
+
+const toolInput = hookInput.tool_input || {};
+const filePath = toolInput.file_path || '';
 
 // Block writes to test/spec files
 if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {

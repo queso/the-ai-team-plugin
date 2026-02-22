@@ -18,6 +18,8 @@ const VALID_EVENT_TYPES = [
   'subagent_start',
   'subagent_stop',
   'stop',
+  'teammate_idle',
+  'task_completed',
 ] as const;
 
 type HookEventType = (typeof VALID_EVENT_TYPES)[number];

@@ -9,10 +9,10 @@
  *
  * Used by: Amy
  *
- * Environment variables (set by Claude Code):
- *   AGENT_NAME - The agent name
- *   ITEM_ID - The work item ID
- *   AGENT_OUTPUT - The agent's final output text
+ * Claude Code sends hook context via stdin JSON:
+ *   SubagentStop: { agent_type, last_assistant_message, ... }
+ *
+ * Environment variables (from settings.local.json):
  *   ATEAM_API_URL - Base URL for the A(i)-Team API
  *   ATEAM_PROJECT_ID - Project identifier
  *
@@ -23,13 +23,23 @@
  *   { "decision": "block", "additionalContext": "..." } - Force agent to continue
  *   {} - Allow stop
  */
-import { existsSync, unlinkSync } from 'fs';
+import { existsSync, unlinkSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-const agentName = (process.env.AGENT_NAME || '').toLowerCase();
-const itemId = process.env.ITEM_ID || '';
-const agentOutput = process.env.AGENT_OUTPUT || '';
+// Read hook input from stdin
+let hookInput = {};
+try {
+  const raw = readFileSync(0, 'utf8');
+  hookInput = JSON.parse(raw);
+} catch {
+  // Can't read stdin, allow stop
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
+const agentName = (hookInput.agent_type || '').toLowerCase();
+const agentOutput = hookInput.last_assistant_message || '';
 const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';
 const mockResponse = process.env.__TEST_MOCK_RESPONSE__;
@@ -40,18 +50,16 @@ if (agentName !== 'amy') {
   process.exit(0);
 }
 
-// Detect item ID from output if not provided
-let detectedItemId = itemId;
+// Detect item ID from output
+let detectedItemId = '';
+const wiMatch = agentOutput.match(/WI-(\d+)/);
+if (wiMatch) {
+  detectedItemId = `WI-${wiMatch[1]}`;
+}
 if (!detectedItemId) {
-  const wiMatch = agentOutput.match(/WI-(\d+)/);
-  if (wiMatch) {
-    detectedItemId = `WI-${wiMatch[1]}`;
-  }
-  if (!detectedItemId) {
-    const featureMatch = agentOutput.match(/(?:Feature|item|Item)\s+(\d{3})/i);
-    if (featureMatch) {
-      detectedItemId = featureMatch[1];
-    }
+  const featureMatch = agentOutput.match(/(?:Feature|item|Item)\s+(\d{3})/i);
+  if (featureMatch) {
+    detectedItemId = featureMatch[1];
   }
 }
 

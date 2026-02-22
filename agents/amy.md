@@ -6,34 +6,34 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-raw-echo-log.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-raw-echo-log.js"
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-amy-test-writes.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-amy-test-writes.js"
     - matcher: "mcp__plugin_playwright"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/track-browser-usage.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/track-browser-usage.js"
     - matcher: "Skill"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/track-browser-usage.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/track-browser-usage.js"
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js amy"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js amy"
   PostToolUse:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js amy"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-post-tool-use.js amy"
   Stop:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-browser-verification.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-browser-verification.js"
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-completion-log.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-completion-log.js"
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js amy"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-stop.js amy"
 ---
 
 # Amy Allen - Investigator

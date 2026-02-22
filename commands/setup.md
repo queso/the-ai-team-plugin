@@ -438,86 +438,25 @@ Or configure a different URL:
   Set ATEAM_API_URL in .claude/settings.local.json
 ```
 
-### Step 11: Configure Hook Event Reporting (Optional)
+### Step 11: Verify Hook Event Reporting
 
-The A(i)-Team can send hook event telemetry to the API server for real-time observability. This is implemented via observer hooks that report tool calls, lifecycle events, and agent state to the kanban-viewer.
+Hook event reporting (for the Raw Agent View in the kanban UI) is automatically configured via the plugin's `hooks/hooks.json`. No manual configuration is needed.
 
-**Check if API is available:**
+**Verify hooks are active:**
 
-Before offering to enable hook event reporting, verify the API is reachable:
+The plugin defines observer hooks in `hooks/hooks.json` that automatically fire for all sessions where the plugin is enabled. These hooks send tool call and lifecycle telemetry to the API.
+
 ```
-Using mission_current MCP tool to verify API availability...
-```
-
-**If API is NOT available:**
-```
-⚠ API server is not reachable. Hook event reporting requires API connectivity.
-Skipping observer hook configuration.
+✓ Hook event reporting is built into the plugin
+✓ Observer hooks fire automatically via hooks/hooks.json
+✓ No manual settings.local.json configuration required
 ```
 
-**If API is available, ask the user:**
-```
-AskUserQuestion({
-  questions: [{
-    question: "Enable hook event reporting? This sends tool call and lifecycle telemetry to the API for real-time mission observability.",
-    header: "Hook Event Reporting",
-    options: [
-      { label: "Enable", description: "Send hook events to API (recommended for debugging)" },
-      { label: "Disable", description: "Keep hooks local only" }
-    ],
-    multiSelect: false
-  }]
-})
-```
+**If the Raw Agent View shows no events:**
 
-**If user chooses "Enable":**
-
-Add observer hooks configuration to `.claude/settings.local.json`:
-
-```json
-{
-  "env": {
-    "ATEAM_PROJECT_ID": "my-project-name",
-    "ATEAM_API_URL": "http://localhost:3000"
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-**If user chooses "Disable":**
-
-Skip observer hook configuration. The agent-specific hooks (enforce-completion-log.js, block-hannibal-writes.js, etc.) are still active from the agent frontmatter, but global telemetry hooks are not added to settings.
+1. Verify the API is reachable (Step 10)
+2. Verify `ATEAM_API_URL` and `ATEAM_PROJECT_ID` are set in the `env` section of `.claude/settings.local.json`
+3. Restart Claude Code (hooks are loaded at session start)
 
 **Example output:**
 ```

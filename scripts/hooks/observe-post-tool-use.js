@@ -2,26 +2,21 @@
 /**
  * observe-post-tool-use.js - PostToolUse hook for observing tool completions
  *
- * Logs successful tool completions to the API for observability.
+ * Logs tool completion events to the API for observability.
  * This is a fire-and-forget observer - it must never block agents.
+ *
+ * Claude Code sends hook context via stdin JSON, not env vars.
+ * Agent name is passed as CLI arg (process.argv[2]) from frontmatter hooks.
  */
 
-import { buildObserverPayload, sendObserverEvent } from './lib/observer.js';
+import { readHookInput, buildObserverPayload, sendObserverEvent } from './lib/observer.js';
 
-// Build environment object from process.env
-const env = {
-  TOOL_INPUT: process.env.TOOL_INPUT,
-  TOOL_NAME: process.env.TOOL_NAME,
-  AGENT_NAME: process.argv[2] || process.env.AGENT_NAME,
-  HOOK_EVENT_TYPE: process.env.HOOK_EVENT_TYPE || 'post_tool_use',
-  ATEAM_API_URL: process.env.ATEAM_API_URL,
-  ATEAM_PROJECT_ID: process.env.ATEAM_PROJECT_ID,
-};
+const hookInput = readHookInput();
+const agentName = process.argv[2] || undefined;
 
-// Build and send payload, awaiting the fetch before exiting
-const payload = buildObserverPayload(env);
+const payload = buildObserverPayload(hookInput, agentName);
 if (payload) {
-  await sendObserverEvent(payload, env).catch(() => {});
+  await sendObserverEvent(payload).catch(() => {});
 }
 
 process.exit(0);

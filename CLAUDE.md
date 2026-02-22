@@ -406,6 +406,8 @@ ai-team/
 │       ├── package.json
 │       ├── Dockerfile
 │       └── src/             # React application
+├── hooks/                   # Plugin-level hooks (auto-loaded by Claude Code)
+│   └── hooks.json           # Observer hooks for Raw Agent View telemetry
 ├── playbooks/               # Dispatch-mode orchestration playbooks
 │   ├── orchestration-legacy.md   # Legacy Task/TaskOutput dispatch
 │   └── orchestration-native.md   # Native teams (TeamCreate/SendMessage) dispatch
@@ -519,7 +521,11 @@ Configure these in `.claude/settings.local.json`:
 
 ## Agent Lifecycle Hooks
 
-The plugin uses Claude Code's hook system to enforce workflow discipline:
+The plugin uses Claude Code's hook system to enforce workflow discipline.
+
+**IMPORTANT: Hook Data Source.** Claude Code sends hook context via **stdin as JSON**, NOT as environment variables. All hook scripts must read from stdin using `readFileSync(0, 'utf8')` and parse the JSON. The stdin JSON contains fields like `tool_name`, `tool_input`, `hook_event_name`, `session_id`, `cwd`, etc. The only env vars available are those from `settings.local.json` (e.g., `ATEAM_API_URL`, `ATEAM_PROJECT_ID`) and `CLAUDE_PROJECT_DIR`.
+
+**IMPORTANT: Plugin-Level Hooks.** Observer hooks for telemetry (Raw Agent View) are defined in `hooks/hooks.json` at the plugin root and referenced from `plugin.json`. These fire automatically for all sessions where the plugin is enabled — no per-project configuration needed. Agent frontmatter hooks (in `agents/*.md`) provide enforcement (blocking bad behavior) scoped to individual agent lifetimes. Use `${CLAUDE_PLUGIN_ROOT}` for paths in both locations.
 
 ### Working Agent Hooks (Murdock, B.A., Lynch, Amy, Tawnia)
 

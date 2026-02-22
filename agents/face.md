@@ -5,15 +5,15 @@ hooks:
   PreToolUse:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js face"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js face"
   PostToolUse:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js face"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-post-tool-use.js face"
   Stop:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js face"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-stop.js face"
 ---
 
 # Face - Decomposer

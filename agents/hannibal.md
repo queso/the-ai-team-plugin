@@ -7,24 +7,24 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-hannibal-writes.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-hannibal-writes.js"
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/block-raw-mv.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-raw-mv.js"
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-pre-tool-use.js hannibal"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js hannibal"
   PostToolUse:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-post-tool-use.js hannibal"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-post-tool-use.js hannibal"
   Stop:
     - hooks:
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/enforce-final-review.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-final-review.js"
         - type: command
-          command: "node $CLAUDE_PLUGIN_ROOT/scripts/hooks/observe-stop.js hannibal"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-stop.js hannibal"
 ---
 
 # Hannibal - Orchestrator

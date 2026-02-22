@@ -4,43 +4,110 @@
  *
  * This module provides functions to build and send hook event payloads
  * to the A(i)-Team API for observability.
+ *
+ * Claude Code sends hook context via STDIN as JSON, not as env vars.
+ * The only env vars available are: ATEAM_API_URL, ATEAM_PROJECT_ID,
+ * CLAUDE_PLUGIN_ROOT, CLAUDE_PROJECT_DIR.
  */
 
+import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
+import { tmpdir } from 'os';
+import { join } from 'path';
+
+const AGENT_MAP_DIR = join(tmpdir(), 'ateam-agent-map');
 
 /**
- * Builds a hook event payload from environment variables.
+ * Registers an active agent for a session. Called by observe-subagent.js
+ * on SubagentStart. Tracks which agent is currently running so
+ * PreToolUse/PostToolUse hooks can attribute tool calls.
  *
- * @param {Object} env - Environment variables
- * @param {string} [env.TOOL_INPUT] - JSON string of tool input
- * @param {string} [env.TOOL_NAME] - Name of the tool being called
- * @param {string} [env.AGENT_NAME] - Name of the agent
- * @param {string} [env.HOOK_EVENT_TYPE] - Type of hook event
- * @param {string} [env.ATEAM_API_URL] - API base URL
- * @param {string} [env.ATEAM_PROJECT_ID] - Project ID
+ * Uses session_id as key (all hooks in a session share the same ID).
+ * For parallel agents, the last-started agent wins (imperfect but
+ * better than "unknown" for most sequential pipeline flows).
+ */
+function registerAgent(sessionId, agentName) {
+  try {
+    mkdirSync(AGENT_MAP_DIR, { recursive: true });
+    writeFileSync(join(AGENT_MAP_DIR, sessionId), agentName);
+  } catch {}
+}
+
+/**
+ * Unregisters an agent for a session. Called on SubagentStop.
+ */
+function unregisterAgent(sessionId) {
+  try {
+    unlinkSync(join(AGENT_MAP_DIR, sessionId));
+  } catch {}
+}
+
+/**
+ * Looks up the active agent name for a session.
+ * Returns the agent name or null if no active agent.
+ */
+function lookupAgent(sessionId) {
+  if (!sessionId) return null;
+  try {
+    return readFileSync(join(AGENT_MAP_DIR, sessionId), 'utf8').trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reads and parses the hook input JSON from stdin.
+ * Claude Code pipes JSON to hook commands on stdin.
+ *
+ * @returns {Object} Parsed JSON or empty object on failure
+ */
+function readHookInput() {
+  try {
+    const raw = readFileSync(0, 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Builds a hook event payload from hook input and CLI args.
+ *
+ * @param {Object} hookInput - Parsed stdin JSON from Claude Code
+ * @param {string} agentNameArg - Agent name passed as CLI arg (process.argv[2])
  * @returns {Object|null} Payload object or null if invalid
  */
-function buildObserverPayload(env) {
-  const toolName = env.TOOL_NAME || '';
-  const agentName = env.AGENT_NAME || 'unknown';
-  const eventType = env.HOOK_EVENT_TYPE || '';
-  const apiUrl = env.ATEAM_API_URL || 'http://localhost:3000';
-  const projectId = env.ATEAM_PROJECT_ID || 'default';
+function buildObserverPayload(hookInput, agentNameArg) {
+  const toolName = hookInput.tool_name || '';
+  const sessionId = hookInput.session_id || '';
+  // Try: CLI arg → stdin agent_type → session agent map → fallback to hannibal
+  // All plugin hooks fire in the main session, which is Hannibal (orchestrator)
+  const agentName = agentNameArg || hookInput.agent_type || lookupAgent(sessionId) || 'hannibal';
+  const hookEventName = hookInput.hook_event_name || '';
+
+  // Map Claude Code hook event names to our event types
+  let eventType = '';
+  if (hookEventName === 'PreToolUse') {
+    eventType = 'pre_tool_use';
+  } else if (hookEventName === 'PostToolUse') {
+    eventType = 'post_tool_use';
+  } else if (hookEventName === 'Stop') {
+    eventType = 'stop';
+  } else if (hookEventName === 'SubagentStop') {
+    eventType = 'subagent_stop';
+  } else if (hookEventName === 'SubagentStart') {
+    eventType = 'subagent_start';
+  } else if (hookEventName) {
+    eventType = hookEventName.toLowerCase();
+  }
 
   // If no event type, nothing to log
   if (!eventType) {
     return null;
   }
 
-  // Parse tool input for summary generation
-  let toolInput = {};
-  if (env.TOOL_INPUT) {
-    try {
-      toolInput = JSON.parse(env.TOOL_INPUT);
-    } catch {
-      // Ignore parse errors
-    }
-  }
+  // Tool input comes as an object from stdin, not a JSON string
+  const toolInput = hookInput.tool_input || {};
 
   // Generate summary based on event type
   let summary = '';
@@ -48,16 +115,16 @@ function buildObserverPayload(env) {
 
   if (eventType === 'pre_tool_use') {
     status = 'pending';
-    const command = toolInput.command || toolInput.file_path || '';
-    summary = `${toolName}: ${command}`.trim();
+    const command = toolInput.command || toolInput.file_path || toolInput.pattern || toolInput.query || '';
+    summary = `${toolName}: ${command}`.substring(0, 200).trim();
   } else if (eventType === 'post_tool_use') {
     status = 'success';
-    const command = toolInput.command || toolInput.file_path || '';
-    summary = `${toolName}: ${command} (completed)`.trim();
+    const command = toolInput.command || toolInput.file_path || toolInput.pattern || toolInput.query || '';
+    summary = `${toolName}: ${command} (completed)`.substring(0, 200).trim();
   } else if (eventType === 'post_tool_use_failure') {
     status = 'failed';
     const command = toolInput.command || toolInput.file_path || '';
-    summary = `${toolName}: ${command} (failed)`.trim();
+    summary = `${toolName}: ${command} (failed)`.substring(0, 200).trim();
   } else if (eventType === 'subagent_start') {
     status = 'started';
     summary = `${agentName} started`;
@@ -74,12 +141,16 @@ function buildObserverPayload(env) {
   // Generate a correlation ID (UUID v4)
   const correlationId = randomUUID();
 
+  // Include session_id in payload for grouping events by agent session
+  const payload = sessionId ? JSON.stringify({ session_id: sessionId }) : '{}';
+
   return {
     eventType,
     agentName,
     toolName: toolName || undefined,
     status,
     summary,
+    payload,
     correlationId,
     timestamp: new Date().toISOString(),
   };
@@ -90,14 +161,11 @@ function buildObserverPayload(env) {
  * Fire-and-forget: catches all errors and returns false on failure.
  *
  * @param {Object} payload - The event payload to send
- * @param {Object} env - Environment variables
- * @param {string} [env.ATEAM_API_URL] - API base URL
- * @param {string} [env.ATEAM_PROJECT_ID] - Project ID
  * @returns {Promise<boolean>} True if successful, false otherwise
  */
-async function sendObserverEvent(payload, env) {
-  const apiUrl = env.ATEAM_API_URL || 'http://localhost:3000';
-  const projectId = env.ATEAM_PROJECT_ID || 'default';
+async function sendObserverEvent(payload) {
+  const apiUrl = process.env.ATEAM_API_URL || 'http://localhost:3000';
+  const projectId = process.env.ATEAM_PROJECT_ID || 'default';
 
   // Strip trailing slash from API URL to avoid double slashes
   const cleanUrl = apiUrl.replace(/\/+$/, '');
@@ -114,17 +182,15 @@ async function sendObserverEvent(payload, env) {
     });
 
     if (!response.ok) {
-      // Log non-200 responses to stderr for debugging (visible in hook output)
       const text = await response.text().catch(() => '');
       process.stderr.write(`[observer] POST ${url} → ${response.status}: ${text}\n`);
     }
 
     return response.ok;
   } catch (err) {
-    // Log connection errors to stderr for debugging
     process.stderr.write(`[observer] POST ${url} failed: ${err.message}\n`);
     return false;
   }
 }
 
-export { buildObserverPayload, sendObserverEvent };
+export { readHookInput, buildObserverPayload, sendObserverEvent, registerAgent, unregisterAgent, lookupAgent };
