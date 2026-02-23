@@ -58,7 +58,7 @@ Verify each link:
 
 Use Grep/Read to verify each connection exists.
 
-### 4. Browser Verification (Playwright)
+### 4. Browser Verification (agent-browser)
 
 **Check dev server:**
 ```bash
@@ -68,12 +68,13 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
 If not running, prompt user to start it.
 
 **Test the feature:**
-```
-browser_navigate → target URL
-browser_snapshot → understand page structure
-browser_click/type → interact if needed
-browser_console_messages → check for JS errors
-browser_take_screenshot → capture evidence
+```bash
+agent-browser open <target-url>
+agent-browser snapshot -i            # understand interactive elements
+agent-browser click @e3              # interact by ref
+agent-browser fill @e4 "input"       # fill form fields
+agent-browser errors                 # check for JS errors
+agent-browser screenshot             # capture evidence
 ```
 
 ### 5. Compare and Report
@@ -129,7 +130,7 @@ model: sonnet
 
 The agent has access to:
 - Read/Grep/Glob for static analysis
-- Playwright MCP tools for browser verification
+- `agent-browser` CLI for browser verification (via Bash)
 - Bash for running commands
 
 ## Common Findings
@@ -149,11 +150,11 @@ Data fetched but never rendered.
 ## Requirements
 
 - Dev server running (checks automatically)
-- Playwright MCP plugin (for browser verification)
+- `agent-browser` CLI installed (for browser verification)
 
-Without Playwright, falls back to static analysis only with a warning.
+Without agent-browser, falls back to static analysis only with a warning.
 
 ## Related
 
 - `/ateam run` - Full A(i)-Team mission with Amy's probing phase
-- `skills/perspective-test.md` - Detailed methodology reference
+- `skills/perspective-test/SKILL.md` - Detailed methodology reference

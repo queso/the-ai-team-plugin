@@ -448,8 +448,14 @@ ai-team/                     # Add as .claude/ai-team submodule
 │   ├── unblock.md           # Unblock failed items
 │   └── perspective-test.md  # Standalone user perspective testing
 ├── skills/
-│   ├── tdd-workflow.md      # TDD guidance
-│   └── perspective-test.md  # User perspective testing methodology
+│   ├── test-writing/
+│   │   ├── SKILL.md                          # Test quality rules (5 banned categories)
+│   │   └── references/
+│   │       └── testing-anti-patterns.md      # Detailed anti-pattern catalog
+│   ├── tdd-workflow/
+│   │   └── SKILL.md                          # TDD cycle and test granularity
+│   └── perspective-test/
+│       └── SKILL.md                          # User perspective testing methodology
 ├── scripts/                 # Hook enforcement scripts
 │   └── hooks/               # Agent lifecycle hooks
 │       ├── enforce-completion-log.js    # Stop hook for working agents
