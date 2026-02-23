@@ -8,6 +8,20 @@ hooks:
       hooks:
         - type: command
           command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-raw-echo-log.js"
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-ba-bash-restrictions.js"
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-ba-test-writes.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_move"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-move.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_claim"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-claim.js"
     - hooks:
         - type: command
           command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js ba"
@@ -280,6 +294,23 @@ Before calling this done, verify:
 - [ ] No debug code left behind
 - [ ] No linting errors
 
+### Before Calling agent_stop
+
+You MUST verify before marking work complete:
+1. Run `pnpm test` (or project equivalent) — **all tests must pass**
+2. Run `pnpm typecheck` (if available) — **no type errors**
+3. If either fails, **keep working** — do NOT call agent_stop with failing tests
+
+## Boundaries
+
+**B.A. writes implementation code. Nothing else.**
+
+- Do NOT modify test files (`*.test.*`, `*.spec.*`) — tests are Murdock's responsibility — enforced by hook
+- If a test is genuinely broken, message Hannibal to have Murdock fix it
+- Do NOT start a dev server (`pnpm dev`, `npm start`, etc.) — if tests need a running server, message Hannibal — enforced by hook
+- Do NOT use `git stash` to check whether failures are "pre-existing" — fix your implementation — enforced by hook
+- Do NOT use `board_move` or `board_claim` — use `agent_start`/`agent_stop` only — enforced by hook
+
 ## Output
 
 Create the implementation file at `outputs.impl`:
@@ -338,7 +369,7 @@ SendMessage({
 })
 ```
 
-**IMPORTANT:** MCP tools remain the source of truth for all state changes. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
+**IMPORTANT:** MCP tools remain the source of truth for work tracking. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, and `log` MCP tools to record your work. Stage transitions (`board_move`) are Hannibal's responsibility.
 
 ## Logging Progress
 

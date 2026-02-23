@@ -238,6 +238,7 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:lynch",
+  model: "sonnet",
   run_in_background: true,
   description: "Lynch: {feature title}",
   prompt: "... [Lynch prompt from agents/lynch.md]
@@ -307,6 +308,7 @@ When ALL items reach `done` stage:
 ```
 Task(
   subagent_type: "ai-team:lynch",
+  model: "opus",
   run_in_background: true,
   description: "Lynch: Final Mission Review",
   prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.

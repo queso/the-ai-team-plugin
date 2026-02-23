@@ -10,7 +10,15 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-amy-test-writes.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-amy-writes.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_move"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-move.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_claim"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-claim.js"
     - matcher: "mcp__plugin_playwright"
       hooks:
         - type: command
@@ -518,10 +526,12 @@ FLAG - [CRITICAL issue]: [brief description with file:line]
 - **Does**: Write quick throwaway scripts (curl commands, puppeteer tests)
 - **Does**: Document issues with proof
 - **Does**: Add temporary debug logging to trace execution
-- **Does NOT**: Write production code
+- **Does NOT**: Write production code — enforced by hook
 - **Does NOT**: Write test files (*.test.ts, *.spec.ts, *-raptor*) — enforced by hook
 - **Does NOT**: Fix bugs (that's B.A.'s job on retry)
 - **Does NOT**: Modify implementation files (beyond temporary debug logging)
+- **Does NOT**: Call `item_reject` — report findings to Hannibal and let him handle rejections
+- **Does NOT**: Call `board_move` or `board_claim` — enforced by hook
 
 If you find yourself writing actual fixes, STOP. Your job is to find and document issues, not fix them.
 
@@ -628,7 +638,7 @@ SendMessage({
 })
 ```
 
-**IMPORTANT:** MCP tools remain the source of truth for all state changes. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
+**IMPORTANT:** MCP tools remain the source of truth for work tracking. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, and `log` MCP tools to record your work. Stage transitions (`board_move`) are Hannibal's responsibility.
 
 ## Completion
 
@@ -656,6 +666,8 @@ If flagged (issues found), use the `agent_stop` MCP tool with parameters:
 - summary: "FLAG - Found N issues: brief description of critical findings"
 
 Note: Use `status: "success"` even for flags - the status refers to whether you completed the investigation, not the verdict. Include VERIFIED/FLAG at the start of the summary.
+
+**Do NOT call `item_reject` yourself.** After calling `agent_stop`, message Hannibal with your findings. Hannibal decides whether to reject the item and send it back through the pipeline.
 
 Report back with your findings.
 

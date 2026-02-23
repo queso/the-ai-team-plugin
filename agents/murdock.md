@@ -8,6 +8,18 @@ hooks:
       hooks:
         - type: command
           command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-raw-echo-log.js"
+    - matcher: "Write|Edit"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-murdock-impl-writes.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_move"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-move.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_claim"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-claim.js"
     - hooks:
         - type: command
           command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js murdock"
@@ -282,11 +294,13 @@ describe('Checkout Flow', () => {
 
 **Murdock writes tests and types. Nothing else.**
 
-- Do NOT write implementation code (services, utilities, business logic)
-- Do NOT create files at `outputs.impl` path - that's B.A.'s job
-- Do NOT modify existing implementation files
+- Do NOT write implementation files -- **enforced by hook** (`block-murdock-impl-writes`)
+- Do NOT modify existing implementation files -- **enforced by hook**
+- Do NOT create files at `outputs.impl` path -- that is B.A.'s job
+- If you need a type or schema that is not a `.d.ts` or in a `/types/` directory, create it as a `.d.ts` file
+- Do NOT call `board_move` or `board_claim` -- **enforced by hook** (stage transitions are Hannibal's responsibility)
 
-If you find yourself writing actual functionality, STOP. You're overstepping.
+If you find yourself writing actual functionality, STOP. You are overstepping.
 
 ## Output
 
@@ -404,7 +418,7 @@ SendMessage({
 })
 ```
 
-**IMPORTANT:** MCP tools remain the source of truth for all state changes. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
+**IMPORTANT:** MCP tools remain the source of truth for work tracking. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, and `log` MCP tools to record your work. Stage transitions (`board_move`) are Hannibal's responsibility.
 
 ## Completion
 

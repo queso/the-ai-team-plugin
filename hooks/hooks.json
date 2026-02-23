@@ -8,6 +8,14 @@
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-orchestrator-boundary.js"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -26,6 +34,14 @@
           {
             "type": "command",
             "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-stop.js"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-orchestrator-stop.js"
           }
         ]
       }

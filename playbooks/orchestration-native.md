@@ -352,6 +352,7 @@ Task(
   team_name: "mission-{missionId}",
   name: "lynch",
   subagent_type: "ai-team:lynch",
+  model: "sonnet",
   description: "Lynch: {feature title}",
   prompt: "... [Lynch prompt from agents/lynch.md]
 
@@ -492,6 +493,7 @@ Task(
   team_name: "mission-{missionId}",
   name: "lynch",
   subagent_type: "ai-team:lynch",
+  model: "opus",
   description: "Lynch: Final Mission Review",
   prompt: "... [same content as message above, including PRD file path] ..."
 )
