@@ -89,57 +89,59 @@ sonnet
 
 ## Tools
 
+- **`agent-browser`** (via Bash — primary tool for browser testing, run `agent-browser --help` for full docs)
 - Bash (to run code, hit endpoints, execute tests)
 - Read (to examine code, logs, error messages)
-- Write (for throwaway debug scripts only — NOT test files)
+- Write (for throwaway debug scripts in /tmp/ only — NOT project files)
 - Glob (to find related files)
 - Grep (to search for patterns)
 - WebFetch (to test HTTP endpoints)
-- **Playwright MCP tools** (for browser-based testing - see below)
+- Playwright MCP tools (fallback if agent-browser unavailable)
 
 ## Testing Arsenal
 
 | Tool | Use Case |
 |------|----------|
+| **`agent-browser`** | Browser automation for UI testing (preferred — run via Bash) |
 | `curl` | Hit API endpoints directly - test responses, error codes, edge cases |
 | `Bash` | Run the code, trigger edge cases, test CLI interfaces |
 | Unit test runner | Run existing tests, check for flaky behavior |
-| **Playwright** | Browser automation for UI testing (preferred) |
 
-### Browser Testing (Preferred: agent-browser skill)
+### Browser Testing (agent-browser CLI)
 
-Use the `agent-browser` skill for browser-based verification:
+Use `agent-browser` via Bash for all browser-based verification. It's a fast CLI for browser automation — one command per action, no MCP overhead.
 
+**Quick reference:**
+```bash
+agent-browser open <url>              # Navigate to URL
+agent-browser snapshot                # Accessibility tree with @refs (use this to understand the page)
+agent-browser snapshot -i             # Interactive elements only
+agent-browser click @e2               # Click element by ref from snapshot
+agent-browser fill @e3 "text"         # Clear and fill input
+agent-browser type @e3 "text"         # Type into element
+agent-browser screenshot              # Capture screenshot
+agent-browser screenshot --full       # Full-page screenshot
+agent-browser get text @e1            # Get text content of element
+agent-browser is visible "selector"   # Check if element exists
+agent-browser wait "selector"         # Wait for element to appear
+agent-browser console                 # View console logs/errors
+agent-browser errors                  # View JS errors
+agent-browser eval "document.title"   # Run arbitrary JS
 ```
-Skill(agent-browser)  # Navigates, clicks, takes screenshots - all in one
-```
 
-This is the preferred approach. If agent-browser is unavailable, use the Playwright MCP tools below as a fallback.
-
-### Playwright MCP Tools
-
-Use these tools for browser-based bug hunting:
-
-| Tool | Use Case |
-|------|----------|
-| `mcp__plugin_playwright_playwright__browser_navigate` | Open a URL in the browser |
-| `mcp__plugin_playwright_playwright__browser_snapshot` | Get accessibility tree (better than screenshot for understanding page) |
-| `mcp__plugin_playwright_playwright__browser_take_screenshot` | Capture visual evidence |
-| `mcp__plugin_playwright_playwright__browser_click` | Click buttons, links, elements |
-| `mcp__plugin_playwright_playwright__browser_type` | Type into input fields |
-| `mcp__plugin_playwright_playwright__browser_fill_form` | Fill multiple form fields at once |
-| `mcp__plugin_playwright_playwright__browser_console_messages` | Check for JS errors |
-| `mcp__plugin_playwright_playwright__browser_network_requests` | Monitor API calls |
+**Run `agent-browser --help` for the full command list** — it covers tabs, network interception, cookies, storage, device emulation, and more.
 
 **Workflow for UI testing:**
-1. Check dev server is running (see below)
-2. Navigate to the page
-3. Take a snapshot to understand the structure
-4. Interact with elements (click, type, fill)
-5. Check console for errors
-6. Take screenshot as evidence
+1. Check dev server is running: `curl -s -o /dev/null -w "%{http_code}" <url>`
+2. `agent-browser open <url>` — navigate to the page
+3. `agent-browser snapshot -i` — understand the interactive elements (returns @refs you can click/fill)
+4. Interact: `agent-browser click @ref`, `agent-browser fill @ref "value"`
+5. `agent-browser console` — check for JS errors
+6. `agent-browser screenshot` — capture evidence
 
-If browser tools are not available, FLAG the item explaining browser verification could not be performed. DO NOT report VERIFIED without browser testing for UI features.
+**Fallback:** If `agent-browser` is not installed, use the Playwright MCP tools (`mcp__plugin_playwright_playwright__browser_*`) directly. But prefer `agent-browser` — it's faster and simpler.
+
+If browser tools are not available at all, FLAG the item explaining browser verification could not be performed. DO NOT report VERIFIED without browser testing for UI features.
 
 ### Perspective Test Examples
 
@@ -166,11 +168,11 @@ Feature: "Start Mission" button triggers mission start
    grep -r "startMission(" src/           # Is function ever called?
 
 2. Browser verification:
-   - Navigate to http://localhost:3000
-   - Take snapshot, find "Start Mission" button
-   - Click the button
-   - Verify mission state changes (loading spinner, status update, etc.)
-   - Take screenshot showing the result
+   agent-browser open http://localhost:3000
+   agent-browser snapshot -i              # Find the button's @ref
+   agent-browser click @e5                # Click "Start Mission"
+   agent-browser snapshot                 # Check what changed
+   agent-browser screenshot               # Capture evidence
 
    FINDING: Button exists but clicking does nothing - onClick was defined but
    the function body was empty.
@@ -182,15 +184,15 @@ Feature: "Start Mission" button triggers mission start
 Feature: Login form submits credentials
 
 1. Browser verification:
-   - Navigate to /login
-   - Fill email field with "test@example.com"
-   - Fill password field with "password123"
-   - Click submit button
-   - Check network requests for POST to /api/auth
-   - Verify redirect to dashboard (or error message for invalid creds)
-   - Take screenshot of result
+   agent-browser open http://localhost:3000/login
+   agent-browser snapshot -i              # Find form field @refs
+   agent-browser fill @e2 "test@example.com"
+   agent-browser fill @e3 "password123"
+   agent-browser click @e4                # Submit button
+   agent-browser console                  # Check for errors
+   agent-browser screenshot               # Capture result
 
-   FINDING: Form submits but network tab shows no request - form action was
+   FINDING: Form submits but console shows no network request - form action was
    missing and onSubmit prevented default but never called API.
    VERDICT: CRITICAL BUG - form not connected to backend
 ```
@@ -319,13 +321,13 @@ grep -r "functionName(" src/ --include="*.ts" --include="*.tsx" | grep -v "expor
 
 **For any feature that has a UI component, you MUST open the browser and verify:**
 
-```
-1. Navigate to the page where the feature should appear
-2. Take a snapshot to see the accessibility tree
-3. Look for the expected element/component
-4. Interact with it as a user would
-5. Verify the expected behavior occurs
-6. Take a screenshot as evidence
+```bash
+agent-browser open http://localhost:3000/relevant-page
+agent-browser snapshot -i          # See interactive elements with @refs
+agent-browser click @e3            # Interact as a user would
+agent-browser snapshot             # Verify expected behavior
+agent-browser screenshot           # Capture evidence
+agent-browser console              # Check for JS errors
 ```
 
 **If the feature should be visible but isn't in the browser, it's a CRITICAL bug** - regardless of how many tests pass.
