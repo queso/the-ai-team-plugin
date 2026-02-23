@@ -181,8 +181,12 @@ export function RawAgentView({ events }: RawAgentViewProps) {
       );
     });
 
-    // Get agents in canonical order
+    // Get agents in canonical order, then append any unmatched agents
     const sorted = AGENT_ORDER.filter((agent) => grouped[agent]);
+    const unmatched = Object.keys(grouped).filter(
+      (agent) => !AGENT_ORDER.includes(agent)
+    );
+    sorted.push(...unmatched);
 
     return { eventsByAgent: grouped, sortedAgents: sorted };
   }, [events]);

@@ -10,7 +10,7 @@ hooks:
     - matcher: "Write|Edit"
       hooks:
         - type: command
-          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-amy-writes.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-amy-test-writes.js"
     - matcher: "mcp__plugin_ai-team_ateam__board_move"
       hooks:
         - type: command
