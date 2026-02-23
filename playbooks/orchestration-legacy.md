@@ -238,7 +238,6 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:lynch",
-  model: "sonnet",
   run_in_background: true,
   description: "Lynch: {feature title}",
   prompt: "... [Lynch prompt from agents/lynch.md]
@@ -272,23 +271,16 @@ Task(
   Feature Item:
   [Full content of the work item]
 
-  Dev Server: {devServer.url from ateam.config.json}
-  (Read ateam.config.json if not provided above)
-
   Files to probe:
   - Test: {outputs.test}
   - Implementation: {outputs.impl}
   - Types (if exists): {outputs.types}
 
-  IMPORTANT: Browser verification is REQUIRED for UI features.
-  Use the agent-browser skill or Playwright MCP tools to:
-  1. Navigate to {devServer.url}
-  2. Verify the feature works from a user's perspective
-  3. Take a screenshot as evidence
-
   Execute the Raptor Protocol. Respond with VERIFIED or FLAG."
 )
 ```
+
+**Hook enforcement:** Amy's `enforce-browser-verification` Stop hook will block her from completing without performing browser verification on UI features. The `track-browser-usage` PreToolUse hook tracks whether Amy has used agent-browser or Playwright tools during her session.
 
 ## Tracking Active Agents
 
@@ -308,7 +300,6 @@ When ALL items reach `done` stage:
 ```
 Task(
   subagent_type: "ai-team:lynch",
-  model: "opus",
   run_in_background: true,
   description: "Lynch: Final Mission Review",
   prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.
@@ -316,9 +307,6 @@ Task(
   This is NOT a per-feature review. Review ALL code produced in this mission together.
 
   [Include Final Mission Review section from agents/lynch.md]
-
-  PRD file: {prd_path}
-  Read this PRD and cross-reference every requirement against the delivered code.
 
   Files to review:
   Implementation files:
@@ -337,7 +325,6 @@ Task(
   4. Security vulnerabilities
   5. Code quality & DRY violations
   6. Integration issues between modules
-  7. PRD coverage - every requirement has corresponding implementation
 
   Respond with:
   VERDICT: FINAL APPROVED
