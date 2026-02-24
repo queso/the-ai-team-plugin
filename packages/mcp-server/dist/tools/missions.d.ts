@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 import { type McpErrorResponse } from '../lib/errors.js';
+import type { ToolResponse } from '../lib/tool-response.js';
 /**
  * Schema for mission_init tool input.
  */
@@ -151,13 +152,6 @@ interface MissionArchiveResult {
     message?: string;
     dryRun?: boolean;
     activityLogArchived?: boolean;
-}
-interface ToolResponse<T = unknown> {
-    content: Array<{
-        type: 'text';
-        text: string;
-    }>;
-    data?: T;
 }
 /**
  * Creates a new mission directory structure.

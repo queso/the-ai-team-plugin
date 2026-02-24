@@ -5,7 +5,7 @@ import path from 'node:path';
  * Reads DATABASE_URL env var (stripping `file:` prefix), falling back to `./prisma/data/ateam.db`.
  */
 export function getAbsoluteDatabasePath(): string {
-  const dbPath = process.env.DATABASE_URL?.replace('file:', '') ?? './prisma/data/ateam.db';
+  const dbPath = process.env.DATABASE_URL?.replace('file:', '') ?? './prisma/data/dev.db';
   return path.resolve(dbPath);
 }
 

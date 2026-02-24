@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/bundle.mjs",
+    "start": "node dist/bundle.mjs",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/node": "^20.10.0",
+    "esbuild": "^0.27.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",
     "vitest": "^1.6.0"

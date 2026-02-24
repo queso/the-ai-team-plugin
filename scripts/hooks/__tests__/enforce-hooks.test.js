@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, unlinkSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 
 const COMPLETION_HOOK = join(__dirname, '..', 'enforce-completion-log.js');
 const FINAL_REVIEW_HOOK = join(__dirname, '..', 'enforce-final-review.js');
+const AMY_TEST_WRITES_HOOK = join(__dirname, '..', 'block-amy-test-writes.js');
+const TRACK_BROWSER_HOOK = join(__dirname, '..', 'track-browser-usage.js');
+const BROWSER_VERIFICATION_HOOK = join(__dirname, '..', 'enforce-browser-verification.js');
 
 /**
  * Helper: run a hook script as a child process with given env vars.
  * Returns { stdout, stderr, exitCode }.
  *
- * The hooks should be refactored to:
- *   1. Query the A(i)-Team API (via fetch) instead of reading board.json
- *   2. Support __TEST_MOCK_RESPONSE__ env var for testability (JSON string
- *      that the hook uses instead of a real fetch when present)
- *   3. Reference MCP tools in error messages, not legacy scripts
+ * Hooks read context from stdin as JSON (not env vars). Pass the `stdin`
+ * parameter for hooks that use `readFileSync(0, 'utf8')`. Environment
+ * variables are still used for ATEAM_API_URL, ATEAM_PROJECT_ID, and
+ * test mock overrides (__TEST_MOCK_RESPONSE__, etc.).
  */
-function runHook(hookPath, env = {}) {
+function runHook(hookPath, env = {}, stdin = undefined) {
   const fullEnv = {
     ...process.env,
     ATEAM_API_URL: 'http://localhost:3000',
@@ -29,6 +32,7 @@ function runHook(hookPath, env = {}) {
       env: fullEnv,
       encoding: 'utf8',
       timeout: 10000,
+      ...(stdin !== undefined ? { input: typeof stdin === 'string' ? stdin : JSON.stringify(stdin) } : {}),
     });
     return { stdout: stdout.trim(), stderr: '', exitCode: 0 };
   } catch (err) {
@@ -84,15 +88,16 @@ describe('enforce-completion-log', () => {
     it('should block with decision:block when API reports empty work_log', () => {
       // __TEST_MOCK_RESPONSE__ env var lets us provide a fake API response
       // for the item endpoint. The hook checks work_log for agent entries.
+      // Hook reads agent_type and last_assistant_message from stdin JSON.
       const result = runHook(COMPLETION_HOOK, {
-        ITEM_ID: 'WI-007',
-        AGENT_NAME: 'murdock',
-        AGENT_OUTPUT: 'I am done with my work on item WI-007',
         __TEST_MOCK_RESPONSE__: JSON.stringify({
           id: 'WI-007',
           work_log: [],
           assigned_agent: 'Murdock',
         }),
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'I am done with my work on item WI-007',
       });
 
       expect(result.exitCode).toBe(0);
@@ -103,14 +108,14 @@ describe('enforce-completion-log', () => {
 
     it('should include agent_stop MCP tool reference in block message', () => {
       const result = runHook(COMPLETION_HOOK, {
-        ITEM_ID: 'WI-007',
-        AGENT_NAME: 'murdock',
-        AGENT_OUTPUT: 'Done with work on WI-007',
         __TEST_MOCK_RESPONSE__: JSON.stringify({
           id: 'WI-007',
           work_log: [],
           assigned_agent: 'Murdock',
         }),
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'Done with work on WI-007',
       });
 
       const output = JSON.parse(result.stdout);
@@ -121,14 +126,14 @@ describe('enforce-completion-log', () => {
 
     it('should NOT reference legacy item-agent-stop.js in block message', () => {
       const result = runHook(COMPLETION_HOOK, {
-        ITEM_ID: 'WI-007',
-        AGENT_NAME: 'murdock',
-        AGENT_OUTPUT: 'Done with work on WI-007',
         __TEST_MOCK_RESPONSE__: JSON.stringify({
           id: 'WI-007',
           work_log: [],
           assigned_agent: 'Murdock',
         }),
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'Done with work on WI-007',
       });
 
       const output = JSON.parse(result.stdout);
@@ -142,9 +147,6 @@ describe('enforce-completion-log', () => {
   describe('allowing when agent_stop was called', () => {
     it('should allow stop (empty JSON) when work_log has matching agent entry', () => {
       const result = runHook(COMPLETION_HOOK, {
-        ITEM_ID: 'WI-007',
-        AGENT_NAME: 'murdock',
-        AGENT_OUTPUT: 'Called agent_stop, work complete.',
         __TEST_MOCK_RESPONSE__: JSON.stringify({
           id: 'WI-007',
           work_log: [
@@ -152,6 +154,9 @@ describe('enforce-completion-log', () => {
           ],
           assigned_agent: null,
         }),
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'Called agent_stop, work complete on WI-007.',
       });
 
       expect(result.exitCode).toBe(0);
@@ -163,10 +168,9 @@ describe('enforce-completion-log', () => {
 
   describe('edge cases', () => {
     it('should allow stop when no ITEM_ID can be determined', () => {
-      const result = runHook(COMPLETION_HOOK, {
-        AGENT_OUTPUT: 'Generic output with no item reference',
-        ITEM_ID: '',
-        AGENT_NAME: '',
+      const result = runHook(COMPLETION_HOOK, {}, {
+        agent_type: '',
+        last_assistant_message: 'Generic output with no item reference',
       });
 
       expect(result.exitCode).toBe(0);
@@ -179,9 +183,10 @@ describe('enforce-completion-log', () => {
     it('should handle API connection errors gracefully (allow stop)', () => {
       // When API is unreachable and no mock, should not crash
       const result = runHook(COMPLETION_HOOK, {
-        ITEM_ID: 'WI-007',
-        AGENT_NAME: 'murdock',
         ATEAM_API_URL: 'http://localhost:99999',
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'Done with WI-007',
       });
 
       // Should not crash - exit 0 and allow
@@ -190,10 +195,11 @@ describe('enforce-completion-log', () => {
 
     it('should handle missing ATEAM_API_URL gracefully', () => {
       const result = runHook(COMPLETION_HOOK, {
-        ITEM_ID: 'WI-007',
-        AGENT_NAME: 'murdock',
         ATEAM_API_URL: '',
         ATEAM_PROJECT_ID: '',
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'Done with WI-007',
       });
 
       expect(result.exitCode).toBe(0);
@@ -366,6 +372,320 @@ describe('enforce-final-review', () => {
         ATEAM_PROJECT_ID: '',
       });
 
+      expect(result.exitCode).toBe(0);
+    });
+  });
+});
+
+// =============================================================================
+// block-amy-test-writes.js
+// =============================================================================
+describe('block-amy-test-writes', () => {
+  it('should block writes to .test.ts files', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      tool_input: { file_path: 'src/__tests__/feature-raptor.test.ts' },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED/);
+  });
+
+  it('should block writes to .spec.tsx files', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      tool_input: { file_path: 'src/components/Button.spec.tsx' },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED/);
+  });
+
+  it('should block writes to raptor files', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      tool_input: { file_path: 'src/raptor-investigation.js' },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED.*raptor/i);
+  });
+
+  it('should allow non-test writes like /tmp/debug.js', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      tool_input: { file_path: '/tmp/debug.js' },
+    });
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('should allow writes with no file path', () => {
+    const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      tool_input: {},
+    });
+    expect(result.exitCode).toBe(0);
+  });
+});
+
+// =============================================================================
+// track-browser-usage.js
+// =============================================================================
+describe('track-browser-usage', () => {
+  const markerPath = join(tmpdir(), '.ateam-browser-verified-test-project');
+
+  afterEach(() => {
+    // Clean up marker file after each test
+    try { unlinkSync(markerPath); } catch { /* ignore */ }
+  });
+
+  it('should create marker file when Playwright MCP tool is called', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {}, {
+      tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
+      tool_input: { url: 'http://localhost:3000' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(true);
+  });
+
+  it('should create marker file when agent-browser skill is called', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {}, {
+      tool_name: 'Skill',
+      tool_input: { skill: 'agent-browser' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(true);
+  });
+
+  it('should NOT create marker file for non-browser tools', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {}, {
+      tool_name: 'Read',
+      tool_input: { file_path: 'src/index.ts' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(false);
+  });
+
+  it('should NOT create marker file for non-agent-browser skills', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {}, {
+      tool_name: 'Skill',
+      tool_input: { skill: 'commit' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(markerPath)).toBe(false);
+  });
+
+  it('should exit 0 (non-blocking) regardless of tool', () => {
+    const result = runHook(TRACK_BROWSER_HOOK, {}, {
+      tool_name: 'mcp__plugin_playwright_playwright__browser_snapshot',
+    });
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('should handle missing project ID gracefully', () => {
+    const defaultMarker = join(tmpdir(), '.ateam-browser-verified-default');
+    try { unlinkSync(defaultMarker); } catch { /* ignore */ }
+
+    const result = runHook(TRACK_BROWSER_HOOK, {
+      ATEAM_PROJECT_ID: '',
+    }, {
+      tool_name: 'mcp__plugin_playwright_playwright__browser_click',
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(existsSync(defaultMarker)).toBe(true);
+    try { unlinkSync(defaultMarker); } catch { /* ignore */ }
+  });
+});
+
+// =============================================================================
+// enforce-browser-verification.js
+// =============================================================================
+describe('enforce-browser-verification', () => {
+  const markerPath = join(tmpdir(), '.ateam-browser-verified-test-project');
+
+  afterEach(() => {
+    // Clean up marker file after each test
+    try { unlinkSync(markerPath); } catch { /* ignore */ }
+  });
+
+  describe('allowing when browser testing done', () => {
+    it('should allow stop when marker file exists (browser testing done)', () => {
+      // Create the marker file to simulate browser usage
+      writeFileSync(markerPath, new Date().toISOString());
+
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED - All probes pass on WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+
+    it('should clean up marker file after allowing stop', () => {
+      writeFileSync(markerPath, new Date().toISOString());
+
+      runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'Done with WI-001',
+      });
+
+      expect(existsSync(markerPath)).toBe(false);
+    });
+  });
+
+  describe('blocking when no browser testing', () => {
+    it('should block when no marker file and no NO_UI in summary', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - All tests pass' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED - Code looks good from static analysis on WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBe('block');
+      expect(output.additionalContext).toBeDefined();
+    });
+
+    it('should reference Playwright tools in block message', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED on WI-001',
+      });
+
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBe('block');
+      expect(output.additionalContext).toMatch(/mcp__plugin_playwright/);
+      expect(output.additionalContext).toMatch(/agent-browser/);
+    });
+
+    it('should mention NO_UI_COMPONENT escape hatch in block message', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED on WI-001',
+      });
+
+      const output = JSON.parse(result.stdout);
+      expect(output.additionalContext).toMatch(/NO_UI_COMPONENT/);
+    });
+  });
+
+  describe('NO_UI escape hatch', () => {
+    it('should allow when summary contains NO_UI_COMPONENT', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - NO_UI_COMPONENT' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED - NO_UI_COMPONENT - This is a backend service WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+
+    it('should allow when summary contains API-only', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - API-only service' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED - API-only feature, no browser needed WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+
+    it('should allow when summary contains backend-only', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [{ agent: 'amy', summary: 'VERIFIED - backend-only' }],
+        }),
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED - backend-only change WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+  });
+
+  describe('non-Amy agents', () => {
+    it('should allow when agent is not amy (skip enforcement)', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        __TEST_MOCK_RESPONSE__: JSON.stringify({
+          id: 'WI-001',
+          work_log: [],
+        }),
+      }, {
+        agent_type: 'murdock',
+        last_assistant_message: 'Done with WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+      const output = JSON.parse(result.stdout);
+      expect(output.decision).toBeUndefined();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should allow when API is unreachable (fail-open)', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        ATEAM_API_URL: 'http://localhost:99999',
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED on WI-001',
+      });
+
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('should allow when no mock and no API config', () => {
+      const result = runHook(BROWSER_VERIFICATION_HOOK, {
+        ATEAM_API_URL: '',
+        ATEAM_PROJECT_ID: '',
+      }, {
+        agent_type: 'amy',
+        last_assistant_message: 'VERIFIED on WI-001',
+      });
+
+      // With no API and no mock, summary check gets empty string
+      // and no NO_UI pattern matches - but the hook should still
+      // handle this gracefully
       expect(result.exitCode).toBe(0);
     });
   });

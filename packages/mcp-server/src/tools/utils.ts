@@ -7,6 +7,8 @@
  * - log: Simple shorthand for activity logging
  */
 
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import { z } from 'zod';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
@@ -90,9 +92,44 @@ const client = createClient({
   retries: config.retries,
 });
 
+/**
+ * Schema for plugin_root tool input (no parameters needed).
+ */
+export const PluginRootSchema = z.object({});
+
+type PluginRootInput = z.infer<typeof PluginRootSchema>;
+
 // ============================================================================
 // Tool Handlers
 // ============================================================================
+
+/**
+ * Returns the absolute path to the plugin root directory.
+ * Derives this from the MCP server's own file location.
+ */
+export async function pluginRoot(
+  _input: PluginRootInput
+): Promise<ToolResponse<{ path: string }>> {
+  // In the bundle: dist/bundle.mjs → plugin root is ../../..
+  // In dev (unbundled): src/tools/utils.ts → plugin root is ../../../..
+  // We detect by checking if import.meta.url contains 'dist/bundle'
+  const currentFile = fileURLToPath(import.meta.url);
+  const currentDir = dirname(currentFile);
+
+  let root: string;
+  if (currentFile.includes('dist/bundle')) {
+    // Bundled: packages/mcp-server/dist/bundle.mjs → go up 3 levels
+    root = resolve(currentDir, '..', '..', '..');
+  } else {
+    // Dev: packages/mcp-server/src/tools/utils.ts → go up 4 levels
+    root = resolve(currentDir, '..', '..', '..', '..');
+  }
+
+  return {
+    content: [{ type: 'text' as const, text: root }],
+    data: { path: root },
+  };
+}
 
 /**
  * Validates the dependency graph and detects cycles.
@@ -175,6 +212,13 @@ export async function log(
  * Each tool includes the original Zod schema for use with McpServer.tool() API.
  */
 export const utilsTools = [
+  {
+    name: 'plugin_root',
+    description: 'Returns the absolute path to the A(i)-Team plugin root directory. Use this to build paths to plugin files like playbooks, agents, etc.',
+    inputSchema: zodToJsonSchema(PluginRootSchema),
+    zodSchema: PluginRootSchema,
+    handler: pluginRoot,
+  },
   {
     name: 'deps_check',
     description: 'Validates the dependency graph and detects cycles. Returns analysis including ready items, depths, and any validation errors.',

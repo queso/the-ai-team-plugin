@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { BoardState, KanbanApiClient } from '../client/index.js';
+import type { ToolResponse, ToolErrorResponse } from '../lib/tool-response.js';
 /**
  * Zod schema for board_read input (empty object).
  */
@@ -76,24 +77,7 @@ export interface ReleaseResult {
     success: boolean;
     itemId: string;
 }
-/**
- * Successful tool response structure.
- */
-export interface ToolResponse<T = unknown> {
-    content: Array<{
-        type: 'text';
-        text: string;
-    }>;
-    data?: T;
-}
-/**
- * Error response structure for validation failures.
- */
-export interface ToolErrorResponse {
-    isError: true;
-    code: string;
-    message: string;
-}
+export type { ToolResponse, ToolErrorResponse };
 /**
  * Read the full board state.
  *

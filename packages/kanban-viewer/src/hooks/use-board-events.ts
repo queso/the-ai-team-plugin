@@ -14,6 +14,7 @@ import type {
   PostChecksCompleteEvent,
   DocumentationStartedEvent,
   DocumentationCompleteEvent,
+  HookEventSummary,
 } from "@/types";
 
 /**
@@ -34,6 +35,8 @@ export interface UseBoardEventsOptions {
   onBoardUpdated?: (board: BoardMetadata) => void;
   /** Callback when an activity entry is added */
   onActivityEntry?: (entry: LogEntry) => void;
+  /** Callback when hook events are emitted (single or batch) */
+  onHookEvent?: (event: HookEventSummary | HookEventSummary[]) => void;
   /** Callback when mission is completed */
   onMissionCompleted?: (data: {
     completed_at?: string;
@@ -115,6 +118,7 @@ export function useBoardEvents(
     onItemDeleted,
     onBoardUpdated,
     onActivityEntry,
+    onHookEvent,
     onMissionCompleted,
     onFinalReviewStarted,
     onFinalReviewComplete,
@@ -146,6 +150,7 @@ export function useBoardEvents(
     onItemDeleted,
     onBoardUpdated,
     onActivityEntry,
+    onHookEvent,
     onMissionCompleted,
     onFinalReviewStarted,
     onFinalReviewComplete,
@@ -165,6 +170,7 @@ export function useBoardEvents(
       onItemDeleted,
       onBoardUpdated,
       onActivityEntry,
+      onHookEvent,
       onMissionCompleted,
       onFinalReviewStarted,
       onFinalReviewComplete,
@@ -174,7 +180,7 @@ export function useBoardEvents(
       onDocumentationStarted,
       onDocumentationComplete,
     };
-  }, [onItemAdded, onItemMoved, onItemUpdated, onItemDeleted, onBoardUpdated, onActivityEntry, onMissionCompleted, onFinalReviewStarted, onFinalReviewComplete, onPostChecksStarted, onPostCheckUpdate, onPostChecksComplete, onDocumentationStarted, onDocumentationComplete]);
+  }, [onItemAdded, onItemMoved, onItemUpdated, onItemDeleted, onBoardUpdated, onActivityEntry, onHookEvent, onMissionCompleted, onFinalReviewStarted, onFinalReviewComplete, onPostChecksStarted, onPostCheckUpdate, onPostChecksComplete, onDocumentationStarted, onDocumentationComplete]);
 
   // Ref to track EventSource and reconnection state
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -284,6 +290,21 @@ export function useBoardEvents(
         case "documentation-complete":
           if (callbacksRef.current.onDocumentationComplete) {
             callbacksRef.current.onDocumentationComplete(boardEvent.data);
+          }
+          break;
+
+        case "hook-event":
+          if (callbacksRef.current.onHookEvent) {
+            // Revive timestamp strings to Date objects from JSON.parse
+            const reviveTimestamp = (evt: Record<string, unknown>) => ({
+              ...evt,
+              timestamp: new Date(evt.timestamp as string),
+            });
+            const hookData = boardEvent.data;
+            const revivedData = Array.isArray(hookData)
+              ? hookData.map(reviveTimestamp)
+              : reviveTimestamp(hookData);
+            callbacksRef.current.onHookEvent(revivedData as HookEventSummary | HookEventSummary[]);
           }
           break;
       }

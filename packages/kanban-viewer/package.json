@@ -6,7 +6,7 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 5566",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -280,6 +280,8 @@ Task(
 )
 ```
 
+**Hook enforcement:** Amy's `enforce-browser-verification` Stop hook will block her from completing without performing browser verification on UI features. The `track-browser-usage` PreToolUse hook tracks whether Amy has used agent-browser or Playwright tools during her session.
+
 ## Tracking Active Agents
 
 Use `run_in_background: true` for pipeline parallelism. The Task tool returns a task_id.

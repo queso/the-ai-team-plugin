@@ -61,16 +61,40 @@ grep -r "getProjectName(" src/
 
 ### Layer 3: Browser Verification
 
-Actually load the app and verify from a user's perspective:
+Actually load the app and verify from a user's perspective using `agent-browser`:
 
-```
-1. Navigate to the page
-2. Take accessibility snapshot (understand structure)
-3. Look for the expected element/behavior
-4. Interact if needed (click, type, submit)
-5. Verify the outcome matches expectations
-6. Check console for errors
-7. Capture evidence (screenshot)
+```bash
+# 1. Navigate to the page
+agent-browser open http://localhost:3000/path
+
+# 2. Take accessibility snapshot (understand structure)
+agent-browser snapshot              # full tree with @refs
+agent-browser snapshot -i           # interactive elements only
+agent-browser snapshot -c           # compact (no empty structural nodes)
+
+# 3. Look for the expected element/behavior
+agent-browser get text @e5          # read text content of a ref
+agent-browser find role heading     # find elements by role
+agent-browser find text "Submit"    # find by visible text
+agent-browser is visible @e5        # check if element is visible
+
+# 4. Interact if needed
+agent-browser click @e3             # click by ref from snapshot
+agent-browser fill @e4 "test input" # clear + type into input
+agent-browser press Enter           # press a key
+agent-browser select @e6 "Option"   # select dropdown value
+
+# 5. Verify the outcome
+agent-browser snapshot              # re-snapshot to see changes
+agent-browser get text @e7          # check updated content
+
+# 6. Check console for errors
+agent-browser console               # view console logs
+agent-browser errors                # view page errors only
+
+# 7. Capture evidence
+agent-browser screenshot            # viewport screenshot
+agent-browser screenshot --full     # full page screenshot
 ```
 
 ## Process
@@ -105,12 +129,13 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000
 ```
 
 **Browser verification:**
-```
-browser_navigate → target URL
-browser_snapshot → understand page structure
-browser_click/type → interact if needed
-browser_console_messages → check for JS errors
-browser_take_screenshot → capture evidence
+```bash
+agent-browser open <target-url>
+agent-browser snapshot -i            # understand interactive elements
+agent-browser click @e3              # interact by ref
+agent-browser fill @e4 "input"       # fill form fields
+agent-browser errors                 # check for JS errors
+agent-browser screenshot             # capture evidence
 ```
 
 ### 4. Compare and Report
@@ -186,19 +211,34 @@ const data = await fetchData();
 // ... but data is never used or rendered
 ```
 
-## Playwright Quick Reference
+## agent-browser Quick Reference
 
-| Action | Tool |
-|--------|------|
-| Open page | `browser_navigate` |
-| Understand structure | `browser_snapshot` |
-| Click element | `browser_click` with ref from snapshot |
-| Type text | `browser_type` with ref from snapshot |
-| Check for errors | `browser_console_messages` |
-| Visual evidence | `browser_take_screenshot` |
-| Wait for content | `browser_wait_for` |
+| Action | Command |
+|--------|---------|
+| Open page | `agent-browser open <url>` |
+| Understand structure | `agent-browser snapshot` (full) / `-i` (interactive) / `-c` (compact) |
+| Find by role/text | `agent-browser find role button` / `find text "Submit"` |
+| Click element | `agent-browser click @e3` |
+| Fill input | `agent-browser fill @e3 "text"` |
+| Type into element | `agent-browser type @e3 "text"` |
+| Press key | `agent-browser press Enter` |
+| Select dropdown | `agent-browser select @e3 "Option"` |
+| Read text content | `agent-browser get text @e3` |
+| Read attribute | `agent-browser get attr href @e3` |
+| Check visibility | `agent-browser is visible @e3` |
+| Check enabled | `agent-browser is enabled @e3` |
+| Check for JS errors | `agent-browser errors` |
+| View console logs | `agent-browser console` |
+| Screenshot (viewport) | `agent-browser screenshot` |
+| Screenshot (full page) | `agent-browser screenshot --full` |
+| Wait for element | `agent-browser wait @e3` or `wait "selector"` |
+| Wait for time | `agent-browser wait 2000` |
+| Scroll | `agent-browser scroll down 500` |
+| Set viewport | `agent-browser set viewport 1280 720` |
+| Go back | `agent-browser back` |
+| Close browser | `agent-browser close` |
 
-**Snapshot is better than screenshot** for understanding what's on the page - it gives you the accessibility tree with refs you can interact with.
+**Snapshot is better than screenshot** for understanding what's on the page - it gives you the accessibility tree with `@ref` identifiers you can use directly in subsequent commands (`click @e3`, `fill @e4 "text"`, etc.).
 
 ## Key Insight
 

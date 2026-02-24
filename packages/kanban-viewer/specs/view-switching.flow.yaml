@@ -1,0 +1,27 @@
+name: View Switching
+description: Verifies switching between Mission Board and Raw Agent View preserves board content on return.
+
+steps:
+  - action: navigate
+    url: /?projectId=seed-demo
+
+  - action: assertText
+    text: BRIEFINGS
+
+  - action: click
+    text: Raw Agent View
+
+  - action: assertText
+    text: Hannibal
+
+  - action: assertNotPresent
+    text: BRIEFINGS
+
+  - action: click
+    text: Mission Board
+
+  - action: assertText
+    text: BRIEFINGS
+
+  - action: assertText
+    text: User authentication via OAuth2

@@ -3,24 +3,28 @@
  * block-raw-echo-log.js - PreToolUse hook for all agents
  *
  * Blocks attempts to use raw `echo >> mission/activity.log` commands.
- * Redirects agents to use `node scripts/log.js` instead.
+ * Redirects agents to use the `log` MCP tool instead.
  *
  * This hook runs on Bash tool calls and checks if the command
  * is trying to write directly to the activity log.
+ *
+ * Claude Code sends hook context via stdin JSON (tool_name, tool_input).
  */
 
-// Read tool input from environment
-const toolInput = process.env.TOOL_INPUT || '{}';
+import { readFileSync } from 'fs';
 
-let input;
+// Read hook input from stdin (Claude Code sends JSON)
+let hookInput = {};
 try {
-  input = JSON.parse(toolInput);
+  const raw = readFileSync(0, 'utf8');
+  hookInput = JSON.parse(raw);
 } catch {
-  // Can't parse, allow through
+  // Can't read stdin, allow through
   process.exit(0);
 }
 
-const command = input.command || '';
+const toolInput = hookInput.tool_input || {};
+const command = toolInput.command || '';
 
 // Check for echo commands targeting mission/activity.log
 const isEchoToActivityLog =
@@ -37,15 +41,15 @@ if (isEchoToActivityLog) {
     reason: `
 BLOCKED: Do not use raw echo commands to write to activity.log.
 
-Instead, use the log script:
-  node scripts/log.js YourAgent "Your message here"
+Instead, use the log MCP tool:
+  log(agent="YourAgent", message="Your message here")
 
 Examples:
-  node scripts/log.js Murdock "Created 5 test cases"
-  node scripts/log.js B.A. "All tests passing"
-  node scripts/log.js Lynch "APPROVED - all checks pass"
+  log(agent="Murdock", message="Created 5 test cases")
+  log(agent="B.A.", message="All tests passing")
+  log(agent="Lynch", message="APPROVED - all checks pass")
 
-This ensures proper formatting and permissions.
+This ensures proper formatting and API integration.
 `.trim()
   };
 

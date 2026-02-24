@@ -1,0 +1,30 @@
+name: Agent Event Details
+description: Verifies event cards in Raw Agent View show tool names, DENIED badges, and duration values after seeding with seed-demo data.
+
+steps:
+  - action: navigate
+    url: /?projectId=seed-demo
+
+  - action: click
+    text: Raw Agent View
+
+  - action: assertText
+    text: Write
+
+  - action: assertText
+    text: Edit
+
+  - action: assertText
+    text: Read
+
+  - action: assertText
+    text: Bash
+
+  - action: assertText
+    text: DENIED
+
+  - action: assertText
+    text: 150ms
+
+  - action: assertText
+    text: 320ms

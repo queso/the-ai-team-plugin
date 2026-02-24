@@ -347,6 +347,8 @@ Task(
 )
 ```
 
+**Hook enforcement:** Amy's `enforce-browser-verification` Stop hook will block her from completing without performing browser verification on UI features. The `track-browser-usage` PreToolUse hook tracks whether Amy has used agent-browser or Playwright tools during her session.
+
 **Subsequent work:**
 ```
 SendMessage(

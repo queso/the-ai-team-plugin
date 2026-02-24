@@ -237,7 +237,7 @@ describe('MCP Server Core Infrastructure', () => {
     });
 
 
-    it('should return server that can list all 20 tools', async () => {
+    it('should return server that can list all 21 tools', async () => {
       // Note: Full tool registration testing is done in index.test.ts (30 tests)
       // This test verifies the server wiring by checking tools/index exports exist
 
@@ -248,12 +248,12 @@ describe('MCP Server Core Infrastructure', () => {
       expect(typeof toolsIndex.getToolHandler).toBe('function');
 
       // The actual tool registration and count is tested in index.test.ts:
-      // - "should register exactly 20 tools"
+      // - "should register exactly 21 tools"
       // - "should register all board tools (4)"
       // - "should register all item tools (6)"
       // - "should register all agent tools (2)"
       // - "should register all mission tools (5)"
-      // - "should register all utils tools (3)"
+      // - "should register all utils tools (4)"
     });
   });
 });

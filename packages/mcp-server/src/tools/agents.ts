@@ -114,6 +114,12 @@ export async function agentStart(
 
     const data = response.data;
 
+    // Auto-post to activity feed so the agent's work appears in the timeline
+    client.post('/api/activity', {
+      agent: input.agent,
+      message: `Started working on ${input.itemId}`,
+    }).catch(() => {});  // Best-effort, don't fail the start
+
     return {
       content: [
         {
@@ -179,6 +185,13 @@ export async function agentStop(input: AgentStopInput): Promise<ToolResponse> {
     );
 
     const data = response.data;
+
+    // Auto-post to activity feed so the agent's completion appears in the timeline
+    const statusLabel = input.status === 'success' ? 'completed' : 'failed';
+    client.post('/api/activity', {
+      agent: input.agent,
+      message: `${statusLabel} ${input.itemId}: ${input.summary}`,
+    }).catch(() => {});  // Best-effort, don't fail the stop
 
     return {
       content: [

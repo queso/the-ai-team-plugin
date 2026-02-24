@@ -438,9 +438,9 @@ Or configure a different URL:
   Set ATEAM_API_URL in .claude/settings.local.json
 ```
 
-### Step 11: Check Plugin Dependencies
+### Step 11: Check Browser Testing Tools
 
-Check for Playwright plugin availability (see Plugin Dependencies section below).
+Check for agent-browser CLI (preferred) and Playwright plugin (fallback). See Plugin Dependencies section below.
 
 ## Required Permissions
 

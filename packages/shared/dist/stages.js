@@ -14,7 +14,7 @@ export const TRANSITION_MATRIX = {
     testing: ['review', 'blocked'],
     implementing: ['review', 'blocked'],
     probing: ['ready', 'done', 'blocked'],
-    review: ['done', 'testing', 'implementing', 'probing', 'blocked'],
+    review: ['testing', 'implementing', 'probing', 'blocked'],
     done: [],
     blocked: ['ready'],
 };
@@ -24,3 +24,29 @@ export function isValidTransition(from, to) {
 export function getValidNextStages(from) {
     return TRANSITION_MATRIX[from];
 }
+export const PIPELINE_STAGES = {
+    testing: {
+        agent: 'murdock',
+        agentDisplay: 'Murdock',
+        nextStage: 'review',
+        description: 'writes tests defining acceptance criteria',
+    },
+    implementing: {
+        agent: 'ba',
+        agentDisplay: 'B.A.',
+        nextStage: 'review',
+        description: 'implements code to pass tests',
+    },
+    review: {
+        agent: 'lynch',
+        agentDisplay: 'Lynch',
+        nextStage: 'probing',
+        description: 'reviews tests and implementation together',
+    },
+    probing: {
+        agent: 'amy',
+        agentDisplay: 'Amy',
+        nextStage: 'done',
+        description: 'investigates for bugs beyond test coverage',
+    },
+};

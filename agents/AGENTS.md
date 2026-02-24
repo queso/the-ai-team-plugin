@@ -11,25 +11,30 @@ All agent files use YAML frontmatter:
 name: agent-name              # Identifier (required)
 description: Role summary     # (required)
 permissionMode: acceptEdits   # Working agents that write files
+skills:                        # Optional - skill files to load at dispatch time
+  - skill-name
 hooks:                         # Runtime enforcement (see below)
   PreToolUse: [...]
+  PostToolUse: [...]           # Present on all agents (observer only)
   Stop: [...]
 ---
 ```
 
 Hannibal also has `tools:` listing available tools. Model selection (`opus`/`sonnet`) is in the body, not frontmatter.
 
+The `skills:` key is optional and lists skill files (from `skills/`) to load when the agent is dispatched. For example, Murdock includes `test-writing` and `tdd-workflow` to pull in detailed testing guidance without bloating the base agent prompt.
+
 ## Agent Boundaries
 
 | Agent | Writes | Cannot Write | Hooks |
 |-------|--------|-------------|-------|
 | **Hannibal** | Orchestration only | `src/**`, tests | `block-hannibal-writes`, `block-raw-mv`, `enforce-final-review` |
-| **Face** | Work items via MCP | Tests, implementation | None |
+| **Face** | Work items via MCP | Tests, implementation | observers only |
 | **Sosa** | Review reports | Work items directly | None |
 | **Murdock** | Tests + types | Implementation code | `block-raw-echo-log`, `enforce-completion-log` |
 | **B.A.** | Implementation | Tests | Same as Murdock |
-| **Lynch** | Review verdicts | Any code | Same as Murdock |
-| **Amy** | Debug scripts only | Production code, tests | Same as Murdock |
+| **Lynch** | Review verdicts | Any code | Same as Murdock + `block-lynch-browser` |
+| **Amy** | Debug scripts only | Production code, tests | Same as Murdock + `track-browser-usage`, `enforce-browser-verification` |
 | **Tawnia** | Docs (CHANGELOG, README) | `src/**`, tests | Same as Murdock |
 
 **Hooks enforce these boundaries at runtime.** Agents physically cannot violate them.
@@ -38,14 +43,29 @@ Hannibal also has `tools:` listing available tools. Model selection (`opus`/`son
 
 Scripts in `scripts/hooks/` run at lifecycle points. Exit code 0 = allow, non-zero = block.
 
-**Working agents** (Murdock, B.A., Lynch, Amy, Tawnia) all share:
+**All agents** carry per-agent observer hooks in their frontmatter (non-blocking, for telemetry):
+- `PreToolUse` → `observe-pre-tool-use.js <agent>` — logs every tool call with agent attribution
+- `PostToolUse` → `observe-post-tool-use.js <agent>` — logs tool completions with agent attribution
+- `Stop` → `observe-stop.js <agent>` — logs session end with agent attribution
+
+These fire on every tool invocation and always exit 0 (never block). The agent name is passed as a CLI argument so the API can attribute activity to the right agent.
+
+**Working agents** (Murdock, B.A., Lynch, Amy, Tawnia) all share enforcement hooks in addition to the observers:
 - `PreToolUse(Bash)` → `block-raw-echo-log.js` — forces MCP `log` tool instead of raw echo
 - `Stop` → `enforce-completion-log.js` — blocks exit until `agent_stop` MCP tool is called
 
-**Hannibal** has unique hooks:
+**Hannibal** has unique enforcement hooks:
 - `PreToolUse(Write|Edit)` → `block-hannibal-writes.js` — prevents writing to source/test files
 - `PreToolUse(Bash)` → `block-raw-mv.js` — prevents raw `mv` on mission files
 - `Stop` → `enforce-final-review.js` — blocks exit until final review + post-checks pass
+
+**Lynch** has an additional hook:
+- `PreToolUse(mcp__plugin_playwright_playwright__.*)` → `block-lynch-browser.js` — blocks Lynch from using any Playwright browser tools; browser-based verification is Amy's job, not the reviewer's
+
+**Amy** has additional hooks:
+- `PreToolUse(mcp__plugin_playwright)` → `track-browser-usage.js` — tracks Playwright tool usage without blocking; used for telemetry to verify Amy actually performed browser verification
+- `PreToolUse(Skill)` → `track-browser-usage.js` — same tracking when Amy invokes browser via a Skill
+- `Stop` → `enforce-browser-verification.js` — blocks Amy from completing without evidence of browser verification for UI features (checks work log for browser activity before allowing exit)
 
 ## Dispatch Modes
 

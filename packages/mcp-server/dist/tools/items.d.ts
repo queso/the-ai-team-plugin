@@ -11,11 +11,12 @@
  */
 import { z } from 'zod';
 import { type McpErrorResponse } from '../lib/errors.js';
+import type { ToolResponse } from '../lib/tool-response.js';
 export declare const ItemCreateInputSchema: z.ZodObject<{
     title: z.ZodString;
     description: z.ZodString;
-    type: z.ZodEnum<["feature", "bug", "task", "enhancement"]>;
-    priority: z.ZodEnum<["critical", "high", "medium", "low"]>;
+    type: z.ZodEnum<[string, ...string[]]>;
+    priority: z.ZodEnum<[string, ...string[]]>;
     status: z.ZodDefault<z.ZodOptional<z.ZodString>>;
     dependencies: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>>;
     parallel_group: z.ZodOptional<z.ZodString>;
@@ -34,10 +35,10 @@ export declare const ItemCreateInputSchema: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     status: string;
-    type: "feature" | "bug" | "task" | "enhancement";
+    type: string;
     title: string;
     description: string;
-    priority: "critical" | "high" | "medium" | "low";
+    priority: string;
     dependencies: string[];
     parallel_group?: string | undefined;
     outputs?: {
@@ -46,10 +47,10 @@ export declare const ItemCreateInputSchema: z.ZodObject<{
         types?: string | undefined;
     } | undefined;
 }, {
-    type: "feature" | "bug" | "task" | "enhancement";
+    type: string;
     title: string;
     description: string;
-    priority: "critical" | "high" | "medium" | "low";
+    priority: string;
     status?: string | undefined;
     dependencies?: string[] | undefined;
     parallel_group?: string | undefined;
@@ -68,7 +69,7 @@ export declare const ItemUpdateInputSchema: z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
     description: z.ZodOptional<z.ZodString>;
     status: z.ZodOptional<z.ZodString>;
-    priority: z.ZodOptional<z.ZodEnum<["critical", "high", "medium", "low"]>>;
+    priority: z.ZodOptional<z.ZodEnum<[string, ...string[]]>>;
     assigned_agent: z.ZodOptional<z.ZodString>;
     rejection_count: z.ZodOptional<z.ZodNumber>;
     dependencies: z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>;
@@ -91,7 +92,7 @@ export declare const ItemUpdateInputSchema: z.ZodObject<{
     status?: string | undefined;
     title?: string | undefined;
     description?: string | undefined;
-    priority?: "critical" | "high" | "medium" | "low" | undefined;
+    priority?: string | undefined;
     dependencies?: string[] | undefined;
     parallel_group?: string | undefined;
     outputs?: {
@@ -106,7 +107,7 @@ export declare const ItemUpdateInputSchema: z.ZodObject<{
     status?: string | undefined;
     title?: string | undefined;
     description?: string | undefined;
-    priority?: "critical" | "high" | "medium" | "low" | undefined;
+    priority?: string | undefined;
     dependencies?: string[] | undefined;
     parallel_group?: string | undefined;
     outputs?: {
@@ -197,13 +198,6 @@ interface RejectResult {
 interface RenderResult {
     markdown: string;
 }
-interface ToolResponse<T = unknown> {
-    content: Array<{
-        type: 'text';
-        text: string;
-    }>;
-    data?: T;
-}
 /**
  * Creates a new work item.
  */
@@ -239,8 +233,8 @@ export declare const itemTools: ({
     zodSchema: z.ZodObject<{
         title: z.ZodString;
         description: z.ZodString;
-        type: z.ZodEnum<["feature", "bug", "task", "enhancement"]>;
-        priority: z.ZodEnum<["critical", "high", "medium", "low"]>;
+        type: z.ZodEnum<[string, ...string[]]>;
+        priority: z.ZodEnum<[string, ...string[]]>;
         status: z.ZodDefault<z.ZodOptional<z.ZodString>>;
         dependencies: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>>;
         parallel_group: z.ZodOptional<z.ZodString>;
@@ -259,10 +253,10 @@ export declare const itemTools: ({
         }>>;
     }, "strip", z.ZodTypeAny, {
         status: string;
-        type: "feature" | "bug" | "task" | "enhancement";
+        type: string;
         title: string;
         description: string;
-        priority: "critical" | "high" | "medium" | "low";
+        priority: string;
         dependencies: string[];
         parallel_group?: string | undefined;
         outputs?: {
@@ -271,10 +265,10 @@ export declare const itemTools: ({
             types?: string | undefined;
         } | undefined;
     }, {
-        type: "feature" | "bug" | "task" | "enhancement";
+        type: string;
         title: string;
         description: string;
-        priority: "critical" | "high" | "medium" | "low";
+        priority: string;
         status?: string | undefined;
         dependencies?: string[] | undefined;
         parallel_group?: string | undefined;
@@ -294,7 +288,7 @@ export declare const itemTools: ({
         title: z.ZodOptional<z.ZodString>;
         description: z.ZodOptional<z.ZodString>;
         status: z.ZodOptional<z.ZodString>;
-        priority: z.ZodOptional<z.ZodEnum<["critical", "high", "medium", "low"]>>;
+        priority: z.ZodOptional<z.ZodEnum<[string, ...string[]]>>;
         assigned_agent: z.ZodOptional<z.ZodString>;
         rejection_count: z.ZodOptional<z.ZodNumber>;
         dependencies: z.ZodOptional<z.ZodArray<z.ZodEffects<z.ZodString, string, string>, "many">>;
@@ -317,7 +311,7 @@ export declare const itemTools: ({
         status?: string | undefined;
         title?: string | undefined;
         description?: string | undefined;
-        priority?: "critical" | "high" | "medium" | "low" | undefined;
+        priority?: string | undefined;
         dependencies?: string[] | undefined;
         parallel_group?: string | undefined;
         outputs?: {
@@ -332,7 +326,7 @@ export declare const itemTools: ({
         status?: string | undefined;
         title?: string | undefined;
         description?: string | undefined;
-        priority?: "critical" | "high" | "medium" | "low" | undefined;
+        priority?: string | undefined;
         dependencies?: string[] | undefined;
         parallel_group?: string | undefined;
         outputs?: {

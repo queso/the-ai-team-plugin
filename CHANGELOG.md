@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Raw Agent Observability Dashboard** (PRD-005) - Real-time visibility into agent tool calls via observer hooks and a dedicated UI
+  - Created HookEvent Prisma model with correlationId-based deduplication
+  - Added POST /api/hooks/events endpoint with Zod validation, batching, and deduplication
+  - Integrated hook events into SSE stream for real-time updates
+  - Built observer hook scripts (PreToolUse, PostToolUse, Stop) that fire-and-forget event data to API
+  - Added observer hooks to all 8 agent frontmatter files (hannibal, face, sosa, murdock, ba, lynch, amy, tawnia)
+  - Created Raw Agent View UI component with swim lanes showing tool calls per agent
+  - Added filtering controls (by agent, tool, status) for hook events
+  - Implemented dashboard navigation to switch between Mission Board and Raw Agent View
+  - Added duration pairing for PreToolUse → PostToolUse events (e.g., "Write took 1.2s")
+  - Created hook event pruning endpoint with transactional batch deletion
+  - Updated /ateam setup command with observer hook configuration
+
+- **Hook observability with per-agent attribution** - Plugin-level observer hooks capture tool calls across all sessions with correct agent tagging
+  - Created `hooks/hooks.json` at plugin root for telemetry hooks that fire automatically for all enabled sessions
+  - Added `observe-subagent.js` for legacy dispatch mode and `observe-teammate.js` for native teams mode
+  - Observer hooks await fetch and attribute events to the correct `AGENT_NAME` per invocation
+
+- **Agent boundary enforcement hooks** - 11 new enforcement scripts from hook event audit covering per-agent write restrictions, board operation enforcement, and orchestrator boundaries
+  - Added per-agent write blockers (e.g., `block-amy-test-writes.js`) preventing each agent from modifying files outside their role
+  - Added `block-raw-mv.js` preventing Hannibal from bypassing `board_move` with raw shell moves
+  - Added `block-hannibal-writes.js` preventing Hannibal from writing to `src/**` or test files
+
+- **Skills restructured to directory format** - Skills reorganized from flat files to `skills/<name>/SKILL.md` pattern
+  - Added `test-writing` skill with 5 banned anti-pattern categories (redundant implementation tests, tautological assertions, test-the-mock tests, pure-TypeScript type tests, scaffolding over-testing)
+  - `test-writing` skill wired into Murdock via `skills:` frontmatter
+  - Perspective-test skill and command migrated to the new directory format
+
+- **Browser verification enforcement for Amy** - Stop hook and tracking scripts ensure Amy completes browser verification during probing
+  - Created `enforce-browser-verification.js` Stop hook that blocks Amy from finishing without browser evidence
+  - Created `track-browser-usage.js` to record which browser tools were invoked during each probing session
+
+- **agent-browser detection in `/ateam setup`** - Setup command now detects the `agent-browser` CLI and configures it as Amy's primary browser testing tool, with Playwright MCP tools as fallback
+
+- **Kanban viewer e2e regression suite** (PRD-006) - End-to-end test suite covering critical Kanban UI workflows
+  - Added `workflow-regression` spec verifying board state transitions end-to-end
+  - Added UI fixes discovered during e2e verification
+
 - **Monorepo structure with shared types package** (PRD-004) - Migrated from two separate repositories into a unified bun workspaces monorepo
   - Created `packages/shared/` - @ai-team/shared package with shared TypeScript types, constants, and validation functions
   - Moved `mcp-server/` to `packages/mcp-server/` - now imports from @ai-team/shared
@@ -25,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Architecture analysis explains const assertions, indexed access types, and Record exhaustiveness
 
 ### Changed
+
+- **Amy now uses `agent-browser` CLI as primary browser testing tool** - Playwright MCP tools remain as fallback when `agent-browser` is unavailable
+
+- **Perspective-test skill and command updated** - Switched from Playwright MCP tools to `agent-browser` CLI as the primary browser interaction method
+
+- **Stage transition `review → done` blocked** - Enforced mandatory probing stage by preventing items from skipping directly from review to done
 
 - **MCP Server test suite cleanup** - Removed 170 dead tests and replaced with 62 behavioral tests
   - Deleted 6 fake MCP server test files testing mock schemas instead of real code (129 tests)
@@ -54,6 +98,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-detects Docker Compose installation
   - Provides one-command startup instructions for kanban-viewer
   - Updates `ateam.config.json` with dev server configuration
+
+### Fixed
+
+- **Hook scripts use `$CLAUDE_PLUGIN_ROOT` for paths** - Replaced hardcoded absolute paths in hook scripts with the `$CLAUDE_PLUGIN_ROOT` environment variable for portable plugin installations
+
+- **Agent name passed as CLI arg to observer hooks** - Observer hook scripts now receive the agent name as a CLI argument instead of an env var prefix, ensuring correct attribution in all invocation contexts
+
+- **Observer hooks await fetch and tag `AGENT_NAME` correctly** - Fixed observer hooks to properly await the HTTP request and tag events with the agent name before returning
+
 ---
 
 ## [2.3.0] - 2026-02-07

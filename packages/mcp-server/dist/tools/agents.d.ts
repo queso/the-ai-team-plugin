@@ -6,6 +6,7 @@
  * - agent_stop: Signals completion and adds work summary to work_log
  */
 import { z } from 'zod';
+import type { ToolResponse } from '../lib/tool-response.js';
 /**
  * Input schema for agent_start tool.
  */
@@ -49,20 +50,6 @@ export declare const AgentStopSchema: z.ZodObject<{
     files_modified?: string[] | undefined;
 }>;
 export type AgentStopInput = z.infer<typeof AgentStopSchema>;
-/**
- * MCP tool response content.
- */
-interface ToolContent {
-    type: 'text';
-    text: string;
-}
-/**
- * MCP tool response structure.
- */
-interface ToolResponse {
-    content: ToolContent[];
-    isError?: boolean;
-}
 /**
  * Claims an item and writes assigned_agent to frontmatter.
  *
@@ -187,5 +174,4 @@ export declare const agentTools: ({
     }>;
     handler: typeof agentStop;
 })[];
-export {};
 //# sourceMappingURL=agents.d.ts.map

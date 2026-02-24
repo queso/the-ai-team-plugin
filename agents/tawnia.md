@@ -7,11 +7,28 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "node scripts/hooks/block-raw-echo-log.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-raw-echo-log.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_move"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-move.js"
+    - matcher: "mcp__plugin_ai-team_ateam__board_claim"
+      hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-worker-board-claim.js"
+    - hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-pre-tool-use.js tawnia"
+  PostToolUse:
+    - hooks:
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-post-tool-use.js tawnia"
   Stop:
     - hooks:
         - type: command
-          command: "node scripts/hooks/enforce-completion-log.js"
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/enforce-completion-log.js"
+        - type: command
+          command: "node ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe-stop.js tawnia"
 ---
 
 # Tawnia Baker - Documentation Writer
@@ -268,7 +285,7 @@ SendMessage({
 })
 ```
 
-**IMPORTANT:** MCP tools remain the source of truth for all state changes. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, `board_move`, and `log` MCP tools for persistence.
+**IMPORTANT:** MCP tools remain the source of truth for work tracking. SendMessage is for coordination only - always use `agent_start`, `agent_stop`, and `log` MCP tools to record your work. Stage transitions (`board_move`) are Hannibal's responsibility.
 
 ## Logging Progress
 

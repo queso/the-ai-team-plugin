@@ -20,6 +20,7 @@ model Project {
   items      Item[]
   missions   Mission[]
   activities ActivityLog[]
+  hookEvents HookEvent[]
 }
 
 model Stage {
@@ -112,6 +113,7 @@ model Mission {
 
   items       MissionItem[]
   activities  ActivityLog[]
+  hookEvents  HookEvent[]
 
   // Indexes for common queries
   @@index([archivedAt])
@@ -141,4 +143,28 @@ model ActivityLog {
   timestamp DateTime @default(now())
 
   @@index([projectId])
+}
+
+model HookEvent {
+  id            Int      @id @default(autoincrement())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id])
+  missionId     String?
+  mission       Mission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  eventType     String                   // 'pre_tool_use' | 'post_tool_use' | 'post_tool_use_failure' | 'subagent_start' | 'subagent_stop' | 'stop'
+  agentName     String                   // 'murdock', 'ba', 'lynch', 'amy', 'hannibal', etc.
+  toolName      String?                  // Tool name (not present for subagent/stop events)
+  status        String                   // 'success' | 'failure' | 'denied' | 'pending'
+  durationMs    Int?                     // Duration in milliseconds (only for post_tool_use)
+  summary       String                   // Short human-readable summary
+  payload       String   @default("{}")  // JSON blob with event-specific detail
+  correlationId String?                  // Shared between PreToolUse and its matching PostToolUse
+  timestamp     DateTime @default(now())
+
+  // Indexes for common queries
+  @@index([projectId])
+  @@index([missionId])
+  @@index([timestamp])
+  @@index([agentName])
+  @@unique([correlationId, eventType])  // Deduplication - NULL values are considered distinct in SQLite
 }

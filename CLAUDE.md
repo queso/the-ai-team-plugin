@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Before modifying code in a subdirectory, read its AGENTS.md first** to understand local patterns and invariants.
 
-- **MCP Server**: `packages/mcp-server/AGENTS.md` - Bridge between Claude Code and the A(i)-Team API (20 tools, HTTP client, Zod schemas)
+- **MCP Server**: `packages/mcp-server/AGENTS.md` - Bridge between Claude Code and the A(i)-Team API (21 tools, HTTP client, Zod schemas)
 - **Agent Prompts**: `agents/AGENTS.md` - Agent behavior contracts, hooks, boundaries, and dispatch patterns
 - **Kanban Viewer**: `packages/kanban-viewer/CLAUDE.md` - Next.js web UI with Prisma/SQLite (already documented)
 
@@ -53,7 +53,7 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 │                             │                               │
 │                    ┌────────▼────────┐                      │
 │                    │   MCP Server    │                      │
-│                    │  (20 tools)     │                      │
+│                    │  (21 tools)     │                      │
 │                    └────────┬────────┘                      │
 └─────────────────────────────┼───────────────────────────────┘
                               │ HTTP + X-Project-ID header
@@ -147,6 +147,8 @@ briefings → ready → testing → implementing → review → probing → done
                                                         │    (Tawnia)     │
                                                         └─────────────────┘
 ```
+
+**Note on transition enforcement:** The diagram above shows the happy-path flow. The actual transition matrix enforces stricter rules: `testing` can only advance to `review` (not directly to `implementing`); `implementing` can only advance to `review`; `review` can send an item back to `testing` or `implementing` for rework, or forward to `probing`; `probing` cannot be skipped — `review` cannot transition directly to `done`. See `packages/shared/src/stages.ts` for the full `TRANSITION_MATRIX`.
 
 Each feature flows through stages sequentially. Different features can be at different stages simultaneously (pipeline parallelism). WIP limits control how many features are in-flight.
 
@@ -394,47 +396,89 @@ ai-team/
 │   │   │   ├── config.ts    # Environment configuration (projectId, apiUrl, etc.)
 │   │   │   ├── client/      # HTTP client with retry logic
 │   │   │   ├── lib/         # Error handling utilities
-│   │   │   └── tools/       # Tool implementations (20 tools)
+│   │   │   └── tools/       # Tool implementations (21 tools)
 │   │   │       ├── board.ts     # Board operations (4 tools)
 │   │   │       ├── items.ts     # Item operations (6 tools)
 │   │   │       ├── agents.ts    # Agent lifecycle (2 tools)
 │   │   │       ├── missions.ts  # Mission lifecycle (5 tools)
-│   │   │       ├── utils.ts     # Utilities (3 tools)
+│   │   │       ├── utils.ts     # Utilities (4 tools)
 │   │   │       └── index.ts     # Tool registration
 │   │   └── dist/            # Compiled JavaScript
 │   └── kanban-viewer/       # @ai-team/kanban-viewer - Web-based Kanban UI
 │       ├── package.json
 │       ├── Dockerfile
 │       └── src/             # React application
+├── hooks/                   # Plugin-level hooks (auto-loaded by Claude Code)
+│   └── hooks.json           # Observer hooks for Raw Agent View telemetry
 ├── playbooks/               # Dispatch-mode orchestration playbooks
 │   ├── orchestration-legacy.md   # Legacy Task/TaskOutput dispatch
 │   └── orchestration-native.md   # Native teams (TeamCreate/SendMessage) dispatch
 ├── agents/                  # Agent prompts and behavior (with frontmatter hooks)
-│   ├── hannibal.md          # Orchestrator (main context, has PreToolUse + Stop hooks)
-│   ├── face.md              # Decomposer
-│   ├── sosa.md              # Requirements Critic
-│   ├── murdock.md           # QA Engineer (has SubagentStop hook)
-│   ├── ba.md                # Implementer (has SubagentStop hook)
-│   ├── lynch.md             # Reviewer (has SubagentStop hook)
-│   ├── amy.md               # Investigator (has SubagentStop hook)
-│   └── tawnia.md            # Documentation writer (has SubagentStop hook)
+│   ├── AGENTS.md            # Local patterns, invariants, and hook contracts
+│   ├── hannibal.md          # Orchestrator (PreToolUse + PostToolUse + Stop hooks)
+│   ├── face.md              # Decomposer (PreToolUse + PostToolUse + Stop observers)
+│   ├── sosa.md              # Requirements Critic (PreToolUse + PostToolUse + Stop hooks)
+│   ├── murdock.md           # QA Engineer (PreToolUse + PostToolUse + Stop hooks)
+│   ├── ba.md                # Implementer (PreToolUse + PostToolUse + Stop hooks)
+│   ├── lynch.md             # Reviewer (PreToolUse + PostToolUse + Stop hooks)
+│   ├── amy.md               # Investigator (PreToolUse + PostToolUse + Stop hooks)
+│   ├── tawnia.md            # Documentation writer (PreToolUse + PostToolUse + Stop hooks)
+│   └── __tests__/           # Agent hook contract tests
 ├── commands/                # Slash command definitions
 │   ├── setup.md, plan.md, run.md, status.md, resume.md, unblock.md
 │   └── perspective-test.md  # Standalone user perspective testing
 ├── skills/
-│   ├── tdd-workflow.md      # TDD guidance
-│   └── perspective-test.md  # User perspective testing methodology
+│   ├── test-writing/
+│   │   ├── SKILL.md                          # Test quality rules (5 banned categories)
+│   │   └── references/
+│   │       └── testing-anti-patterns.md      # Detailed anti-pattern catalog
+│   ├── tdd-workflow/
+│   │   └── SKILL.md                          # TDD cycle and test granularity
+│   └── perspective-test/
+│       └── SKILL.md                          # User perspective testing methodology
 ├── scripts/                 # Hook enforcement scripts (for internal use)
+│   ├── vitest.config.ts     # Test configuration for hook scripts
 │   └── hooks/               # Agent lifecycle hooks
-│       ├── enforce-completion-log.js    # Stop hook for working agents
-│       ├── block-raw-echo-log.js        # PreToolUse hook for working agents (Bash)
-│       ├── block-raw-mv.js              # PreToolUse hook for Hannibal (Bash)
-│       ├── block-hannibal-writes.js     # PreToolUse hook for Hannibal (Write|Edit)
-│       └── enforce-final-review.js      # Stop hook for Hannibal
-├── lib/                     # Shared utilities (used by hooks)
-│   ├── board.js, lock.js, validate.js
+│       ├── lib/
+│       │   └── observer.js              # Shared observer utility
+│       ├── __tests__/                   # Hook unit tests
+│       │   ├── enforce-hooks.test.js
+│       │   └── observe-hooks.test.ts
+│       ├── # Observer hooks (telemetry)
+│       ├── observe-pre-tool-use.js      # PreToolUse observer
+│       ├── observe-post-tool-use.js     # PostToolUse observer
+│       ├── observe-stop.js              # Stop observer
+│       ├── observe-subagent.js          # Subagent lifecycle observer
+│       ├── observe-teammate.js          # Teammate lifecycle observer
+│       ├── track-browser-usage.js       # Browser tool usage tracker (Amy)
+│       ├── # Stop hooks (completion enforcement)
+│       ├── enforce-completion-log.js    # Require agent_stop before finishing
+│       ├── enforce-final-review.js      # Require final review (Hannibal)
+│       ├── enforce-orchestrator-boundary.js  # Plugin-level Hannibal enforcement
+│       ├── enforce-orchestrator-stop.js      # Plugin-level Hannibal stop
+│       ├── enforce-sosa-coverage.js     # Require item coverage (Sosa)
+│       ├── enforce-browser-verification.js   # Require browser testing (Amy)
+│       ├── # PreToolUse hooks (boundary enforcement)
+│       ├── block-raw-echo-log.js        # Block echo >> activity.log
+│       ├── block-raw-mv.js              # Block raw mv (Hannibal)
+│       ├── block-hannibal-writes.js     # Block src/** writes (Hannibal)
+│       ├── block-murdock-impl-writes.js # Block impl writes (Murdock)
+│       ├── block-ba-test-writes.js      # Block test writes (B.A.)
+│       ├── block-ba-bash-restrictions.js # Block dev server/git stash (B.A.)
+│       ├── block-amy-writes.js          # Block all project writes (Amy)
+│       ├── block-amy-test-writes.js     # Block test file writes (Amy)
+│       ├── block-lynch-browser.js       # Block Playwright (Lynch)
+│       ├── block-sosa-writes.js         # Block all writes (Sosa)
+│       ├── block-worker-board-move.js   # Block board_move (workers)
+│       ├── block-worker-board-claim.js  # Block board_claim (workers)
+│       └── diagnostic-hook.js           # Debug/diagnostic hook
 └── docs/
-    └── kanban-ui-prd.md     # PRD for web-based kanban board
+    ├── hook-audit.md
+    ├── test-anti-patterns.md
+    ├── kanban-ui-prd.md     # PRD for web-based kanban board
+    ├── compile-time-safety-verification.md
+    ├── future-thinking.md
+    └── teammate-tool-integration-prd.md
 ```
 
 **Monorepo Structure:**
@@ -450,7 +494,7 @@ The `.mcp.json` file at the repository root points to `packages/mcp-server/src/i
 
 ## MCP Tools
 
-Agents use MCP tools for all board and item operations. The MCP server exposes 20 tools across 5 modules:
+Agents use MCP tools for all board and item operations. The MCP server exposes 21 tools across 5 modules:
 
 | Module | Tools | Description |
 |--------|-------|-------------|
@@ -458,7 +502,7 @@ Agents use MCP tools for all board and item operations. The MCP server exposes 2
 | **Items** | `item_create`, `item_update`, `item_get`, `item_list`, `item_reject`, `item_render` | Work item CRUD operations |
 | **Agents** | `agent_start`, `agent_stop` | Agent lifecycle hooks |
 | **Missions** | `mission_init`, `mission_current`, `mission_precheck`, `mission_postcheck`, `mission_archive` | Mission lifecycle management |
-| **Utils** | `deps_check`, `activity_log`, `log` | Dependency validation and logging |
+| **Utils** | `plugin_root`, `deps_check`, `activity_log`, `log` | Plugin path resolution, dependency validation, and logging |
 
 ### Agent Lifecycle Tools
 
@@ -518,74 +562,95 @@ Configure these in `.claude/settings.local.json`:
 
 ## Agent Lifecycle Hooks
 
-The plugin uses Claude Code's hook system to enforce workflow discipline:
+The plugin uses Claude Code's hook system to enforce workflow discipline.
 
-### Working Agent Hooks (Murdock, B.A., Lynch, Amy, Tawnia)
+**IMPORTANT: Hook Data Source.** Claude Code sends hook context via **stdin as JSON**, NOT as environment variables. All hook scripts must read from stdin using `readFileSync(0, 'utf8')` and parse the JSON. The stdin JSON contains fields like `tool_name`, `tool_input`, `hook_event_name`, `session_id`, `cwd`, etc. The only env vars available are those from `settings.local.json` (e.g., `ATEAM_API_URL`, `ATEAM_PROJECT_ID`) and `CLAUDE_PROJECT_DIR`.
 
-All working agents have two hooks:
+**IMPORTANT: Plugin-Level Hooks.** Observer hooks for telemetry (Raw Agent View) are defined in `hooks/hooks.json` at the plugin root. This file is auto-discovered by Claude Code from the `hooks/` directory at the plugin root — `plugin.json` does not reference it explicitly. These hooks fire automatically for all sessions where the plugin is enabled — no per-project configuration needed. Agent frontmatter hooks (in `agents/*.md`) provide enforcement (blocking bad behavior) scoped to individual agent lifetimes. Use `${CLAUDE_PLUGIN_ROOT}` for paths in both locations.
 
-**PreToolUse Hook** - Blocks raw echo to activity log:
-```yaml
-hooks:
-  PreToolUse:
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: "node scripts/hooks/block-raw-echo-log.js"
-```
+### Plugin-Level Hooks (`hooks/hooks.json`)
 
-**Purpose:** Prevents agents from using raw `echo >> activity.log` commands. Agents must use the `log` or `activity_log` MCP tool instead for proper formatting and API integration.
+These hooks fire for all sessions where the plugin is enabled:
 
-**Stop Hook** - Enforces completion logging:
-```yaml
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: "node scripts/hooks/enforce-completion-log.js"
-```
+- **PreToolUse** (no matcher): `observe-pre-tool-use.js` — logs every tool call for Raw Agent View telemetry
+- **PreToolUse** (no matcher): `enforce-orchestrator-boundary.js` — blocks Hannibal from writing src, tests, or using Playwright
+- **PostToolUse** (no matcher): `observe-post-tool-use.js` — logs every tool result for telemetry
+- **Stop** (no matcher): `observe-stop.js` — logs agent stop events for telemetry
+- **Stop** (no matcher): `enforce-orchestrator-stop.js` — prevents mission ending without final review and post-checks
+- **SubagentStart** (no matcher): `observe-subagent.js` — logs subagent lifecycle events
+- **SubagentStop** (no matcher): `observe-subagent.js` — logs subagent lifecycle events
+- **TeammateIdle** (no matcher): `observe-teammate.js` — logs native teams teammate idle events
+- **TaskCompleted** (no matcher): `observe-teammate.js` — logs native teams task completion events
 
-**Purpose:** Prevents agents from finishing without calling the `agent_stop` MCP tool to record their work.
+### Shared Working Agent Hooks (Murdock, B.A., Lynch, Amy, Tawnia)
+
+All five working agents share these hooks in their frontmatter:
+
+**PreToolUse(Bash)** - Blocks raw echo to activity log (`block-raw-echo-log.js`):
+Prevents agents from using raw `echo >> activity.log` commands. Agents must use the `log` or `activity_log` MCP tool instead for proper formatting and API integration.
+
+**PreToolUse(mcp__plugin_ai-team_ateam__board_move)** - Blocks direct board moves (`block-worker-board-move.js`):
+Prevents working agents from calling `board_move` directly. Stage transitions are Hannibal's responsibility.
+
+**PreToolUse(mcp__plugin_ai-team_ateam__board_claim)** - Blocks direct board claims (`block-worker-board-claim.js`):
+Prevents working agents from calling `board_claim` directly. Item claims go through `agent_start`.
+
+**PreToolUse(no matcher)** - Observer (`observe-pre-tool-use.js {agent}`):
+Logs every tool call with the agent's name as an argument for per-agent attribution in the Raw Agent View.
+
+**PostToolUse(no matcher)** - Observer (`observe-post-tool-use.js {agent}`):
+Logs every tool result with the agent's name for telemetry.
+
+**Stop** - Enforces completion logging (`enforce-completion-log.js`):
+Prevents agents from finishing without calling the `agent_stop` MCP tool to record their work summary.
+
+**Stop** - Observer (`observe-stop.js {agent}`):
+Logs the stop event with the agent's name for telemetry.
+
+### Per-Agent Unique Hooks
+
+In addition to the shared hooks above, each agent has additional hooks specific to its role:
+
+**Murdock** (QA Engineer):
+- PreToolUse(Write|Edit) → `block-murdock-impl-writes.js`: Prevents Murdock from writing implementation files. Murdock writes tests and types only; implementation belongs to B.A.
+
+**B.A.** (Implementer):
+- PreToolUse(Bash) → `block-ba-bash-restrictions.js` (in addition to `block-raw-echo-log.js`): Enforces Bash restrictions specific to B.A.'s role.
+- PreToolUse(Write|Edit) → `block-ba-test-writes.js`: Prevents B.A. from writing or editing test files. Tests are Murdock's domain.
+
+**Lynch** (Reviewer):
+- PreToolUse(mcp__plugin_playwright_playwright__.*) → `block-lynch-browser.js`: Prevents Lynch from using Playwright browser tools. Lynch reviews code statically; browser investigation belongs to Amy.
+
+**Amy** (Investigator):
+- PreToolUse(Write|Edit) → `block-amy-writes.js`: Blocks ALL project file writes. Amy can only write to `/tmp`. Investigation findings belong in the `agent_stop` work_log summary, not as file artifacts.
+- PreToolUse(mcp__plugin_playwright) → `track-browser-usage.js`: Records browser tool usage so the Stop hook can verify Amy actually used the browser for UI features.
+- PreToolUse(Skill) → `track-browser-usage.js`: Also tracks browser usage invoked through the Skill tool.
+- Stop → `enforce-browser-verification.js` (runs before `enforce-completion-log.js`): Requires Amy to have performed browser verification for UI features before she can stop.
+
+**Sosa** (Requirements Critic):
+- PreToolUse(Write|Edit) → `block-sosa-writes.js`: Prevents Sosa from writing or editing any files. Sosa reviews and critiques only; modifications go through Face.
+- Stop → `enforce-sosa-coverage.js`: Requires Sosa to have produced adequate coverage of the decomposition before stopping.
+
+**Face** (Decomposer):
+Face has observer hooks only (no enforcement hooks beyond the plugin-level ones).
 
 ### Hannibal Hooks
 
-Hannibal has hooks to maintain orchestrator boundaries:
+Hannibal runs in the main Claude context and has frontmatter hooks for orchestrator boundary enforcement plus observer hooks:
 
-**PreToolUse Hook 1** - Blocks writes to source code:
-```yaml
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: "node scripts/hooks/block-hannibal-writes.js"
-```
+**PreToolUse(Write|Edit)** - Blocks writes to source code (`block-hannibal-writes.js`):
+Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
 
-**Purpose:** Prevents Hannibal from writing to `src/**` or test files. Implementation must be delegated to B.A. and Murdock.
+**PreToolUse(Bash)** - Blocks raw file moves (`block-raw-mv.js`):
+Prevents Hannibal from using raw `mv` commands on mission files. Stage transitions must go through the `board_move` MCP tool.
 
-**PreToolUse Hook 2** - Blocks raw file moves:
-```yaml
-    - matcher: "Bash"
-      hooks:
-        - type: command
-          command: "node scripts/hooks/block-raw-mv.js"
-```
-
-**Purpose:** Prevents Hannibal from using raw `mv` commands to move work item files. Stage transitions must go through the `board_move` MCP tool.
-
-**Stop Hook** - Enforces final review and post-checks:
-```yaml
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: "node scripts/hooks/enforce-final-review.js"
-```
-
-**Purpose:** Prevents mission from ending without:
+**Stop** - Enforces final review and post-checks (`enforce-final-review.js`):
+Prevents mission from ending without:
 1. All items reaching `done` stage
 2. Final Mission Review being completed by Lynch
 3. Post-mission checks passing (lint, tests, e2e)
+
+Note: The plugin-level `hooks/hooks.json` also registers `enforce-orchestrator-boundary.js` and `enforce-orchestrator-stop.js` as session-level hooks that apply to the Hannibal session independently of the frontmatter hooks. All observer hooks (PreToolUse, PostToolUse, Stop) are also present in Hannibal's frontmatter for per-agent attribution.
 
 ## Project Configuration
 
@@ -633,7 +698,7 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
 ```
 
 **Dev server** (`devServer`):
-- `url`: Where Amy should point Playwright for browser testing
+- `url`: Where Amy should point the browser for testing
 - `start`: Command to start the server (for user reference)
 - `restart`: Command to restart the server (e.g., to pick up code changes)
 - `managed`: If false, user manages server; Amy checks if running but doesn't start/restart it
@@ -650,10 +715,15 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
 
 ## Plugin Dependencies
 
-**Playwright Plugin (Recommended):**
-Amy uses Playwright MCP tools for browser-based testing. The `/ateam setup` command checks for this dependency.
+Amy (Investigator) uses browser testing tools during the probing stage to verify UI features. The `/ateam setup` command detects which tools are available and offers to install the preferred one.
 
-Without Playwright, Amy can still:
+**agent-browser CLI (Preferred):**
+Amy's primary browser testing tool. Installed globally via npm/bun (`npm install -g agent-browser`). Used via Bash commands (`agent-browser open`, `agent-browser snapshot`, etc.). The `/ateam setup` command checks for it and offers to install it if missing, adding `Bash(agent-browser:*)` and `Skill(agent-browser)` permissions automatically.
+
+**Playwright MCP Plugin (Fallback):**
+Still supported as a fallback if agent-browser is unavailable. Detected by the presence of MCP tools matching `mcp__*playwright*` (e.g., `browser_navigate`, `browser_snapshot`, `browser_click`). The `/ateam setup` command detects this automatically and adds the required MCP tool permissions.
+
+Without browser tools, Amy can still:
 - Run curl commands for API testing
 - Execute Node.js test scripts
 - Analyze code and logs

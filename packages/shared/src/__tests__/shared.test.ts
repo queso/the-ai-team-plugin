@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   ALL_STAGES,
   TRANSITION_MATRIX,
+  PIPELINE_STAGES,
   isValidTransition,
   getValidNextStages,
   type StageId,
@@ -41,9 +42,11 @@ describe('Shared Package', () => {
       expect(isValidTransition('briefings', 'ready')).toBe(true);
       expect(isValidTransition('ready', 'testing')).toBe(true);
       expect(isValidTransition('testing', 'review')).toBe(true);
-      expect(isValidTransition('review', 'done')).toBe(true);
+      expect(isValidTransition('review', 'probing')).toBe(true);
+      expect(isValidTransition('probing', 'done')).toBe(true);
 
-      // Invalid transitions
+      // Invalid transitions - review cannot skip probing to reach done
+      expect(isValidTransition('review', 'done')).toBe(false);
       expect(isValidTransition('briefings', 'done')).toBe(false);
       expect(isValidTransition('testing', 'done')).toBe(false);
       expect(isValidTransition('done', 'ready')).toBe(false);
@@ -54,11 +57,22 @@ describe('Shared Package', () => {
       expect(briefingsNext).toEqual(['ready', 'blocked']);
 
       const reviewNext = getValidNextStages('review');
-      expect(reviewNext).toContain('done');
+      expect(reviewNext).not.toContain('done');
+      expect(reviewNext).toContain('probing');
       expect(reviewNext).toContain('testing');
+
+      const probingNext = getValidNextStages('probing');
+      expect(probingNext).toContain('done');
 
       const doneNext = getValidNextStages('done');
       expect(doneNext).toEqual([]);
+    });
+
+    it('should define pipeline stages with agent assignments', () => {
+      expect(PIPELINE_STAGES.review?.agent).toBe('lynch');
+      expect(PIPELINE_STAGES.review?.nextStage).toBe('probing');
+      expect(PIPELINE_STAGES.probing?.agent).toBe('amy');
+      expect(PIPELINE_STAGES.probing?.nextStage).toBe('done');
     });
   });
 

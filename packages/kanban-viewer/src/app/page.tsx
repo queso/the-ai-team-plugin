@@ -15,6 +15,9 @@ import { useFilterState } from "@/hooks/use-filter-state";
 import { filterWorkItems } from "@/lib/filter-utils";
 import { deriveAgentStatusesFromWorkItems } from "@/lib/agent-status-utils";
 import { FilterBar } from "@/components/filter-bar";
+import { DashboardNav, type DashboardView } from "@/components/dashboard-nav";
+import { RawAgentView } from "@/components/raw-agent-view";
+import type { HookEventSummary } from "@/types/hook-event";
 import { transformBoardStateToMetadata, transformApiItemsToWorkItems } from "@/lib/api-transform";
 import type {
   WorkItem,
@@ -105,7 +108,9 @@ function HomeContent() {
   const [boardMetadata, setBoardMetadata] = useState<BoardMetadata>(defaultBoardMetadata);
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
+  const [hookEvents, setHookEvents] = useState<HookEventSummary[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("live-feed");
+  const [dashboardView, setDashboardView] = useState<DashboardView>("board");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
@@ -320,6 +325,16 @@ function HomeContent() {
     });
   }, []);
 
+  const onHookEvent = useCallback((event: HookEventSummary | HookEventSummary[]) => {
+    const newEvents = Array.isArray(event) ? event : [event];
+    setHookEvents((prev) => {
+      const existingIds = new Set(prev.map((e) => e.id));
+      const deduped = newEvents.filter((e) => !existingIds.has(e.id));
+      if (deduped.length === 0) return prev;
+      return [...prev, ...deduped];
+    });
+  }, []);
+
   const onDocumentationComplete = useCallback((data: DocumentationCompleteEvent['data']) => {
     setDocumentation({
       started_at: data.started_at,
@@ -413,6 +428,7 @@ function HomeContent() {
     onItemDeleted,
     onBoardUpdated,
     onActivityEntry,
+    onHookEvent,
     onMissionCompleted,
     onFinalReviewStarted,
     onFinalReviewComplete,
@@ -454,6 +470,7 @@ function HomeContent() {
     async function fetchBoardData() {
       setLoading(true);
       setError(null);
+      setHookEvents([]);
       let boardRes: Response;
       let logRes: Response;
 
@@ -629,51 +646,65 @@ function HomeContent() {
         className="px-4 py-1 text-sm text-muted-foreground"
       />
 
-      {/* Filter bar */}
-      <FilterBar
-        typeFilter={filterState.typeFilter}
-        agentFilter={filterState.agentFilter}
-        statusFilter={filterState.statusFilter}
-        searchQuery={filterState.searchQuery}
-        onTypeFilterChange={setTypeFilter}
-        onAgentFilterChange={setAgentFilter}
-        onStatusFilterChange={setStatusFilter}
-        onSearchQueryChange={setSearchQuery}
-        onClearFilters={resetFilters}
-      />
+      {/* Dashboard view nav */}
+      <DashboardNav currentView={dashboardView} onViewChange={setDashboardView} />
+
+      {/* Filter bar (board view only) */}
+      {dashboardView === "board" && (
+        <FilterBar
+          typeFilter={filterState.typeFilter}
+          agentFilter={filterState.agentFilter}
+          statusFilter={filterState.statusFilter}
+          searchQuery={filterState.searchQuery}
+          onTypeFilterChange={setTypeFilter}
+          onAgentFilterChange={setAgentFilter}
+          onStatusFilterChange={setStatusFilter}
+          onSearchQueryChange={setSearchQuery}
+          onClearFilters={resetFilters}
+        />
+      )}
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Kanban columns or empty state */}
-        {filtersHideAllItems ? (
-          <div
-            data-testid="filter-empty-state"
-            className="flex-1 flex flex-col items-center justify-center"
-          >
-            <p className="text-sm text-gray-500">No items match filters</p>
-            <button
-              type="button"
-              data-testid="empty-state-clear-filters"
-              className="mt-2 text-green-500 text-sm hover:underline"
-              onClick={resetFilters}
-            >
-              Clear filters
-            </button>
-          </div>
+        {dashboardView === "board" ? (
+          <>
+            {/* Kanban columns or empty state */}
+            {filtersHideAllItems ? (
+              <div
+                data-testid="filter-empty-state"
+                className="flex-1 flex flex-col items-center justify-center"
+              >
+                <p className="text-sm text-gray-500">No items match filters</p>
+                <button
+                  type="button"
+                  data-testid="empty-state-clear-filters"
+                  className="mt-2 text-green-500 text-sm hover:underline"
+                  onClick={resetFilters}
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="flex-1 flex gap-2 p-4 overflow-x-auto">
+                {ALL_STAGES.map((stage) => (
+                  <BoardColumn
+                    key={stage}
+                    stage={stage}
+                    items={itemsByStage[stage]}
+                    wipLimit={boardMetadata.wip_limits[stage]}
+                    onItemClick={(item) => setSelectedItem(item)}
+                    animatingItems={animatingItems}
+                    onAnimationEnd={handleAnimationEnd}
+                    onWipLimitChange={handleWipLimitChange}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="flex-1 flex gap-2 p-4 overflow-x-auto">
-            {ALL_STAGES.map((stage) => (
-              <BoardColumn
-                key={stage}
-                stage={stage}
-                items={itemsByStage[stage]}
-                wipLimit={boardMetadata.wip_limits[stage]}
-                onItemClick={(item) => setSelectedItem(item)}
-                animatingItems={animatingItems}
-                onAnimationEnd={handleAnimationEnd}
-                onWipLimitChange={handleWipLimitChange}
-              />
-            ))}
+          /* Raw Agent View */
+          <div className="flex-1">
+            <RawAgentView events={hookEvents} />
           </div>
         )}
 

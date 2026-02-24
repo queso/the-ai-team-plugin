@@ -1,0 +1,54 @@
+name: Kanban Board
+description: Verifies the kanban board renders all columns, work item titles, and agent badges after seeding with seed-demo data.
+
+steps:
+  - action: navigate
+    url: /?projectId=seed-demo
+
+  - action: assertText
+    text: BRIEFINGS
+
+  - action: assertText
+    text: READY
+
+  - action: assertText
+    text: TESTING
+
+  - action: assertText
+    text: IMPLEMENTING
+
+  - action: assertText
+    text: REVIEW
+
+  - action: assertText
+    text: PROBING
+
+  - action: assertText
+    text: DONE
+
+  - action: assertText
+    text: BLOCKED
+
+  - action: assertText
+    text: User authentication via OAuth2
+
+  - action: assertText
+    text: Dashboard widget data API
+
+  - action: assertText
+    text: Kanban board drag-and-drop
+
+  - action: assertText
+    text: Activity feed pagination
+
+  - action: assertText
+    text: Email notification service
+
+  - action: assertText
+    text: Lynch
+
+  - action: assertText
+    text: B.A.
+
+  - action: assertText
+    text: Murdock

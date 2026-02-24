@@ -3,3 +3,22 @@ export type StageId = (typeof ALL_STAGES)[number];
 export declare const TRANSITION_MATRIX: Record<StageId, readonly StageId[]>;
 export declare function isValidTransition(from: StageId, to: StageId): boolean;
 export declare function getValidNextStages(from: StageId): readonly StageId[];
+/**
+ * Maps each pipeline stage to the agent responsible for it and the
+ * expected next stage in the happy-path pipeline flow.
+ *
+ * Used by the MCP server to build actionable error messages that tell
+ * the orchestrator exactly which agent to dispatch when a transition
+ * is rejected.
+ */
+export interface PipelineStageInfo {
+    /** Agent responsible for work in this stage */
+    readonly agent: string;
+    /** Display name shown in error messages */
+    readonly agentDisplay: string;
+    /** The expected next stage in the happy-path pipeline */
+    readonly nextStage: StageId | null;
+    /** Human-readable description of what happens in this stage */
+    readonly description: string;
+}
+export declare const PIPELINE_STAGES: Partial<Record<StageId, PipelineStageInfo>>;

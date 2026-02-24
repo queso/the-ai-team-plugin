@@ -83,13 +83,19 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
 
 3. **Detect dispatch mode and load orchestration playbook**
 
-   Check the environment variable:
+   First, get the plugin root path:
+   ```
+   plugin_root()  # MCP tool - returns the absolute path to the plugin directory
+   ```
+
+   Then check the environment variable:
    ```
    Bash("echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS")
    ```
 
-   - If output is "1": `Read("playbooks/orchestration-native.md")`
-   - Otherwise: `Read("playbooks/orchestration-legacy.md")`
+   Using the plugin root path from above:
+   - If output is "1": `Read("{plugin_root}/playbooks/orchestration-native.md")`
+   - Otherwise: `Read("{plugin_root}/playbooks/orchestration-legacy.md")`
 
    **Read exactly ONE playbook. Do not read both.**
    The playbook contains your complete orchestration loop, dispatch

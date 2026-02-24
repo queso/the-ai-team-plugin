@@ -1,0 +1,33 @@
+name: Raw Agent View
+description: Verifies the Raw Agent View shows all 7 agent swim lanes and no empty state after seeding with seed-demo data.
+
+steps:
+  - action: navigate
+    url: /?projectId=seed-demo
+
+  - action: click
+    text: Raw Agent View
+
+  - action: assertText
+    text: Hannibal
+
+  - action: assertText
+    text: Face
+
+  - action: assertText
+    text: Murdock
+
+  - action: assertText
+    text: B.A.
+
+  - action: assertText
+    text: Amy
+
+  - action: assertText
+    text: Lynch
+
+  - action: assertText
+    text: Tawnia
+
+  - action: assertNotPresent
+    text: No hook events yet
