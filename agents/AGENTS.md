@@ -33,7 +33,7 @@ The `skills:` key is optional and lists skill files (from `skills/`) to load whe
 | **Sosa** | Review reports | Work items directly | None |
 | **Murdock** | Tests + types | Implementation code | `block-raw-echo-log`, `enforce-completion-log` |
 | **B.A.** | Implementation | Tests | Same as Murdock |
-| **Lynch** | Review verdicts | Any code | Same as Murdock + `block-lynch-browser` |
+| **Lynch** | Review verdicts | Any code | Same as Murdock + `block-lynch-writes`, `block-lynch-browser` |
 | **Amy** | Debug scripts only | Production code, tests | Same as Murdock + `track-browser-usage`, `enforce-browser-verification` |
 | **Tawnia** | Docs (CHANGELOG, README) | `src/**`, tests | Same as Murdock |
 
@@ -59,13 +59,48 @@ These fire on every tool invocation and always exit 0 (never block). The agent n
 - `PreToolUse(Bash)` → `block-raw-mv.js` — prevents raw `mv` on mission files
 - `Stop` → `enforce-final-review.js` — blocks exit until final review + post-checks pass
 
-**Lynch** has an additional hook:
+**Lynch** has additional hooks:
+- `PreToolUse(Write|Edit)` → `block-lynch-writes.js` — blocks Lynch from writing or editing any project files; `/tmp/` and `/var/` are allowed as scratch space
 - `PreToolUse(mcp__plugin_playwright_playwright__.*)` → `block-lynch-browser.js` — blocks Lynch from using any Playwright browser tools; browser-based verification is Amy's job, not the reviewer's
 
 **Amy** has additional hooks:
 - `PreToolUse(mcp__plugin_playwright)` → `track-browser-usage.js` — tracks Playwright tool usage without blocking; used for telemetry to verify Amy actually performed browser verification
 - `PreToolUse(Skill)` → `track-browser-usage.js` — same tracking when Amy invokes browser via a Skill
 - `Stop` → `enforce-browser-verification.js` — blocks Amy from completing without evidence of browser verification for UI features (checks work log for browser activity before allowing exit)
+
+## Dual-Registration Pattern
+
+All enforcement hooks are registered at **both** levels:
+
+1. **Agent frontmatter** (`agents/*.md`) — scoped to legacy subagent sessions; fires when the agent is dispatched as a background `Task` with `subagent_type`
+2. **`hooks/hooks.json`** (plugin level) — fires for all sessions, including native teammate sessions where frontmatter may not apply
+
+This is intentional for backward compatibility. Blocking is idempotent — an agent blocked by both levels is fine.
+
+**Agent identity resolution:** All enforcement hooks use `resolveAgent()` from `scripts/hooks/lib/resolve-agent.js` to extract the agent name from hook stdin JSON:
+- Reads `agent_type` first (e.g. `"ai-team:ba"` → `"ba"`)
+- Falls back to `teammate_name` for native teams sessions
+- Strips `ai-team:` prefix and lowercases
+- Returns `null` for unidentifiable sessions (fail-open for all hooks except `enforce-orchestrator-boundary.js`)
+
+## Shared Utilities
+
+Hook scripts share utilities in `scripts/hooks/lib/`:
+
+**`resolve-agent.js`** — canonical agent identification:
+- `resolveAgent(hookInput)` — extracts agent name from Claude Code hook stdin JSON; returns lowercase agent name (e.g. `"ba"`, `"murdock"`) or `null`
+- `isKnownAgent(name)` — checks against `KNOWN_AGENTS` list; use for fail-open on unknown/system agents (Explore, Plan, etc.)
+- `KNOWN_AGENTS` — `['hannibal', 'face', 'sosa', 'murdock', 'ba', 'lynch', 'amy', 'tawnia']`
+
+**`send-denied-event.js`** — denied event telemetry:
+- `sendDeniedEvent({ agentName, toolName, reason })` — fire-and-forget POST to API with `status: "denied"`
+- All enforcement hooks call this before `process.exit(2)` (and before JSON block response for `block-raw-echo-log.js`)
+- Events appear in Raw Agent View with status "denied"; silently ignores network failures
+
+**`observer.js`** — observer utilities:
+- `readHookInput()` — reads and parses stdin JSON
+- `buildObserverPayload()` / `sendObserverEvent()` — for telemetry POSTs
+- `registerAgent()` / `unregisterAgent()` / `lookupAgent()` — agent map for SubagentStart/Stop tracking
 
 ## Dispatch Modes
 

@@ -19,6 +19,26 @@
  *   __TEST_MOCK_NO_MISSION__ - Set to 'true' to simulate no active mission
  */
 
+import { readFileSync } from 'fs';
+import { resolveAgent, isKnownAgent } from './lib/resolve-agent.js';
+
+// Read hook input from stdin (optional — old callers may not pipe stdin)
+let hookInput = {};
+try {
+  const raw = readFileSync(0, 'utf8');
+  if (raw && raw.trim()) {
+    hookInput = JSON.parse(raw);
+  }
+} catch {
+  // Can't read stdin — assume main session (Hannibal), continue enforcing
+}
+
+// Only enforce for Hannibal (main session). Known non-hannibal agents pass through.
+const resolvedAgent = resolveAgent(hookInput);
+if (resolvedAgent !== null && resolvedAgent !== 'hannibal') {
+  process.exit(0);
+}
+
 const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';
 const mockBoard = process.env.__TEST_MOCK_BOARD__;

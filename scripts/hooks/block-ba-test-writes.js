@@ -10,6 +10,8 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
 
 let hookInput = {};
 try {
@@ -20,21 +22,36 @@ try {
   process.exit(0);
 }
 
-const toolInput = hookInput.tool_input || {};
-const filePath = toolInput.file_path || '';
+try {
+  const agent = resolveAgent(hookInput);
 
-if (!filePath) {
+  // Only enforce for B.A.
+  if (agent !== 'ba') {
+    process.exit(0);
+  }
+
+  const toolName = hookInput.tool_name || '';
+  const toolInput = hookInput.tool_input || {};
+  const filePath = toolInput.file_path || '';
+
+  if (!filePath) {
+    process.exit(0);
+  }
+
+  // Block writes to test/spec files
+  if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
+    const reason = `BLOCKED: B.A. cannot modify test files: ${filePath}. Tests are Murdock's responsibility.`;
+    sendDeniedEvent({ agentName: agent, toolName, reason });
+    process.stderr.write(`BLOCKED: B.A. cannot modify test files: ${filePath}\n`);
+    process.stderr.write('Tests are Murdock\'s responsibility. Implement code that passes the existing tests.\n');
+    process.stderr.write('If a test is genuinely broken, message Hannibal to have Murdock fix it.\n');
+    process.exit(2);
+  }
+
+  // Allow vitest.setup.ts, jest.setup.ts etc. — these are infrastructure, not tests
+  // Allow all other writes
+  process.exit(0);
+} catch {
+  // Fail open on any unexpected error
   process.exit(0);
 }
-
-// Block writes to test/spec files
-if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
-  console.error(`BLOCKED: B.A. cannot modify test files: ${filePath}`);
-  console.error('Tests are Murdock\'s responsibility. Implement code that passes the existing tests.');
-  console.error('If a test is genuinely broken, message Hannibal to have Murdock fix it.');
-  process.exit(2);
-}
-
-// Allow vitest.setup.ts, jest.setup.ts etc. — these are infrastructure, not tests
-// Allow all other writes
-process.exit(0);

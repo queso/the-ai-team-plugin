@@ -10,6 +10,8 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
 
 let hookInput = {};
 try {
@@ -20,14 +22,27 @@ try {
   process.exit(0);
 }
 
-const toolName = hookInput.tool_name || '';
+try {
+  const agent = resolveAgent(hookInput);
 
-if (/^mcp__plugin_playwright_playwright__/.test(toolName)) {
-  console.error('BLOCKED: Lynch cannot use Playwright browser tools.');
-  console.error('Code review is done by reading code, not by interacting with the browser.');
-  console.error('Browser-based testing is Amy\'s responsibility during the probing stage.');
-  process.exit(2);
+  // Only enforce for Lynch
+  if (agent !== 'lynch') {
+    process.exit(0);
+  }
+
+  const toolName = hookInput.tool_name || '';
+
+  if (/^mcp__plugin_playwright_playwright__/.test(toolName)) {
+    sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Lynch cannot use Playwright browser tools. Browser-based testing is Amy\'s responsibility.' });
+    process.stderr.write('BLOCKED: Lynch cannot use Playwright browser tools.\n');
+    process.stderr.write('Code review is done by reading code, not by interacting with the browser.\n');
+    process.stderr.write('Browser-based testing is Amy\'s responsibility during the probing stage.\n');
+    process.exit(2);
+  }
+
+  // Allow other tools
+  process.exit(0);
+} catch {
+  // Fail open on any unexpected error
+  process.exit(0);
 }
-
-// Allow other tools
-process.exit(0);

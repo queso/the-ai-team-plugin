@@ -23,6 +23,7 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
 
 // Read hook input from stdin
 let hookInput = {};
@@ -31,6 +32,13 @@ try {
   hookInput = JSON.parse(raw);
 } catch {
   // Can't read stdin, allow stop
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
+// Only enforce for Sosa
+const resolvedAgent = resolveAgent(hookInput);
+if (resolvedAgent !== 'sosa') {
   console.log(JSON.stringify({}));
   process.exit(0);
 }

@@ -25,6 +25,7 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent, isKnownAgent } from './lib/resolve-agent.js';
 
 // Read hook input from stdin
 let hookInput = {};
@@ -41,8 +42,16 @@ const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';
 const mockResponse = process.env.__TEST_MOCK_RESPONSE__;
 
+// Only enforce for working agents: murdock, ba, lynch, amy, tawnia
+const TARGET_AGENTS = ['murdock', 'ba', 'lynch', 'amy', 'tawnia'];
+const resolvedAgent = resolveAgent(hookInput);
+if (!resolvedAgent || !TARGET_AGENTS.includes(resolvedAgent)) {
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
 // Extract agent info from stdin JSON
-const agentName = hookInput.agent_type || '';
+const agentName = resolvedAgent;
 const agentOutput = hookInput.last_assistant_message || '';
 
 // Try to detect item ID from agent output

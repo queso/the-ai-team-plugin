@@ -26,6 +26,7 @@
 import { existsSync, unlinkSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { resolveAgent } from './lib/resolve-agent.js';
 
 // Read hook input from stdin
 let hookInput = {};
@@ -38,7 +39,7 @@ try {
   process.exit(0);
 }
 
-const agentName = (hookInput.agent_type || '').toLowerCase();
+const agentName = resolveAgent(hookInput) || '';
 const agentOutput = hookInput.last_assistant_message || '';
 const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';

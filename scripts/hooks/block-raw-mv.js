@@ -13,6 +13,8 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
 
 let hookInput = {};
 try {
@@ -23,29 +25,43 @@ try {
   process.exit(0);
 }
 
-const toolInput = hookInput.tool_input || {};
-const command = toolInput.command || '';
+try {
+  const agent = resolveAgent(hookInput);
 
-// Check if this is an mv command targeting mission files
-const isMvCommand = command.trim().startsWith('mv ') || command.includes('&& mv ') || command.includes('; mv ');
-const targetsMission = command.includes('mission/') || command.includes('/mission/');
+  // Only enforce for Hannibal — null (unidentifiable) fails open
+  if (agent !== 'hannibal') {
+    process.exit(0);
+  }
 
-if (isMvCommand && targetsMission) {
-  console.error('BLOCKED: Do not use raw `mv` to move mission files.');
-  console.error('');
-  console.error('Use the board_move MCP tool instead:');
-  console.error('');
-  console.error('  board_move(itemId="WI-001", to="done")');
-  console.error('');
-  console.error('The MCP tool ensures:');
-  console.error('  - Board state is updated in the API');
-  console.error('  - Stage transitions are validated');
-  console.error('  - WIP limits are enforced');
-  console.error('  - Activity is logged');
-  console.error('');
-  console.error('Available stages: briefings, ready, testing, implementing, review, probing, done, blocked');
-  process.exit(2);
+  const toolName = hookInput.tool_name || '';
+  const toolInput = hookInput.tool_input || {};
+  const command = toolInput.command || '';
+
+  // Check if this is an mv command targeting mission files
+  const isMvCommand = command.trim().startsWith('mv ') || command.includes('&& mv ') || command.includes('; mv ');
+  const targetsMission = command.includes('mission/') || command.includes('/mission/');
+
+  if (isMvCommand && targetsMission) {
+    sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Do not use raw `mv` to move mission files. Use the board_move MCP tool instead.' });
+    process.stderr.write('BLOCKED: Do not use raw `mv` to move mission files.\n');
+    process.stderr.write('\n');
+    process.stderr.write('Use the board_move MCP tool instead:\n');
+    process.stderr.write('\n');
+    process.stderr.write('  board_move(itemId="WI-001", to="done")\n');
+    process.stderr.write('\n');
+    process.stderr.write('The MCP tool ensures:\n');
+    process.stderr.write('  - Board state is updated in the API\n');
+    process.stderr.write('  - Stage transitions are validated\n');
+    process.stderr.write('  - WIP limits are enforced\n');
+    process.stderr.write('  - Activity is logged\n');
+    process.stderr.write('\n');
+    process.stderr.write('Available stages: briefings, ready, testing, implementing, review, probing, done, blocked\n');
+    process.exit(2);
+  }
+
+  // Allow other bash commands
+  process.exit(0);
+} catch {
+  // Fail open on any unexpected error
+  process.exit(0);
 }
-
-// Allow other bash commands
-process.exit(0);

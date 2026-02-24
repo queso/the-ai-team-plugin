@@ -383,6 +383,7 @@ describe('enforce-final-review', () => {
 describe('block-amy-test-writes', () => {
   it('should block writes to .test.ts files', () => {
     const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      agent_type: 'ai-team:amy',
       tool_input: { file_path: 'src/__tests__/feature-raptor.test.ts' },
     });
     expect(result.exitCode).toBe(2);
@@ -391,6 +392,7 @@ describe('block-amy-test-writes', () => {
 
   it('should block writes to .spec.tsx files', () => {
     const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      agent_type: 'ai-team:amy',
       tool_input: { file_path: 'src/components/Button.spec.tsx' },
     });
     expect(result.exitCode).toBe(2);
@@ -399,6 +401,7 @@ describe('block-amy-test-writes', () => {
 
   it('should block writes to raptor files', () => {
     const result = runHook(AMY_TEST_WRITES_HOOK, {}, {
+      agent_type: 'ai-team:amy',
       tool_input: { file_path: 'src/raptor-investigation.js' },
     });
     expect(result.exitCode).toBe(2);

@@ -10,6 +10,8 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
 
 let hookInput = {};
 try {
@@ -20,22 +22,37 @@ try {
   process.exit(0);
 }
 
-const toolInput = hookInput.tool_input || {};
-const filePath = toolInput.file_path || '';
+try {
+  const agent = resolveAgent(hookInput);
 
-// Block writes to src/ directory (handle both absolute and relative paths)
-if (filePath.includes('/src/') || filePath.startsWith('src/')) {
-  console.error(`BLOCKED: Hannibal cannot write to ${filePath}`);
-  console.error('Implementation code must be delegated to B.A.');
-  process.exit(2);
+  // Only enforce for Hannibal — null (unidentifiable) fails open
+  if (agent !== 'hannibal') {
+    process.exit(0);
+  }
+
+  const toolName = hookInput.tool_name || '';
+  const toolInput = hookInput.tool_input || {};
+  const filePath = toolInput.file_path || '';
+
+  // Block writes to src/ directory (handle both absolute and relative paths)
+  if (filePath.includes('/src/') || filePath.startsWith('src/')) {
+    sendDeniedEvent({ agentName: agent, toolName, reason: `BLOCKED: Hannibal cannot write to ${filePath}. Implementation code must be delegated to B.A.` });
+    process.stderr.write(`BLOCKED: Hannibal cannot write to ${filePath}\n`);
+    process.stderr.write('Implementation code must be delegated to B.A.\n');
+    process.exit(2);
+  }
+
+  // Block writes to test files
+  if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
+    sendDeniedEvent({ agentName: agent, toolName, reason: `BLOCKED: Hannibal cannot write to ${filePath}. Test files must be delegated to Murdock.` });
+    process.stderr.write(`BLOCKED: Hannibal cannot write to ${filePath}\n`);
+    process.stderr.write('Test files must be delegated to Murdock.\n');
+    process.exit(2);
+  }
+
+  // Allow other writes (mission/, ateam.config.json, etc.)
+  process.exit(0);
+} catch {
+  // Fail open on any unexpected error
+  process.exit(0);
 }
-
-// Block writes to test files
-if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
-  console.error(`BLOCKED: Hannibal cannot write to ${filePath}`);
-  console.error('Test files must be delegated to Murdock.');
-  process.exit(2);
-}
-
-// Allow other writes (mission/, etc.)
-process.exit(0);

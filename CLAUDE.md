@@ -409,7 +409,7 @@ ai-team/
 │       ├── Dockerfile
 │       └── src/             # React application
 ├── hooks/                   # Plugin-level hooks (auto-loaded by Claude Code)
-│   └── hooks.json           # Observer hooks for Raw Agent View telemetry
+│   └── hooks.json           # Plugin hooks: observer telemetry + enforcement hooks
 ├── playbooks/               # Dispatch-mode orchestration playbooks
 │   ├── orchestration-legacy.md   # Legacy Task/TaskOutput dispatch
 │   └── orchestration-native.md   # Native teams (TeamCreate/SendMessage) dispatch
@@ -440,7 +440,9 @@ ai-team/
 │   ├── vitest.config.ts     # Test configuration for hook scripts
 │   └── hooks/               # Agent lifecycle hooks
 │       ├── lib/
-│       │   └── observer.js              # Shared observer utility
+│       │   ├── observer.js              # Shared observer utility
+│       │   ├── resolve-agent.js         # Shared agent identity resolution (resolveAgent, isKnownAgent, KNOWN_AGENTS)
+│       │   └── send-denied-event.js     # Fire-and-forget denied event recording
 │       ├── __tests__/                   # Hook unit tests
 │       │   ├── enforce-hooks.test.js
 │       │   └── observe-hooks.test.ts
@@ -468,6 +470,7 @@ ai-team/
 │       ├── block-amy-writes.js          # Block all project writes (Amy)
 │       ├── block-amy-test-writes.js     # Block test file writes (Amy)
 │       ├── block-lynch-browser.js       # Block Playwright (Lynch)
+│       ├── block-lynch-writes.js        # Block file writes (Lynch)
 │       ├── block-sosa-writes.js         # Block all writes (Sosa)
 │       ├── block-worker-board-move.js   # Block board_move (workers)
 │       ├── block-worker-board-claim.js  # Block board_claim (workers)
@@ -568,12 +571,19 @@ The plugin uses Claude Code's hook system to enforce workflow discipline.
 
 **IMPORTANT: Plugin-Level Hooks.** Observer hooks for telemetry (Raw Agent View) are defined in `hooks/hooks.json` at the plugin root. This file is auto-discovered by Claude Code from the `hooks/` directory at the plugin root — `plugin.json` does not reference it explicitly. These hooks fire automatically for all sessions where the plugin is enabled — no per-project configuration needed. Agent frontmatter hooks (in `agents/*.md`) provide enforcement (blocking bad behavior) scoped to individual agent lifetimes. Use `${CLAUDE_PLUGIN_ROOT}` for paths in both locations.
 
+**IMPORTANT: Dual Registration.** All enforcement hooks are registered at BOTH the plugin level (`hooks/hooks.json`) AND in each agent's frontmatter. This is intentional for backward compatibility: frontmatter hooks scope to legacy subagent sessions, while plugin-level hooks catch native teammate sessions where frontmatter may not fire. Blocking is idempotent — being blocked by both levels is harmless.
+
+**IMPORTANT: Agent Identity in Hooks.** All enforcement hooks use `resolveAgent()` from `scripts/hooks/lib/resolve-agent.js` to identify the current agent from hook stdin JSON. In native teams mode, `agent_type` (e.g. `"ai-team:ba"`) identifies the agent. In legacy mode, frontmatter scoping provides identity; plugin-level hooks fall back to the agent map from `lookupAgent()`. Unknown/null agents fail open (exit 0) in all enforcement hooks except `enforce-orchestrator-boundary.js`, which treats null as the main (Hannibal) session.
+
+**IMPORTANT: Denied Event Telemetry.** All enforcement hooks call `sendDeniedEvent()` from `scripts/hooks/lib/send-denied-event.js` before blocking. This fires a fire-and-forget POST to the API with `status: "denied"`, recording which agent attempted the forbidden action. Events appear in the Raw Agent View with status "denied". No await, no throw on failure.
+
 ### Plugin-Level Hooks (`hooks/hooks.json`)
 
 These hooks fire for all sessions where the plugin is enabled:
 
 - **PreToolUse** (no matcher): `observe-pre-tool-use.js` — logs every tool call for Raw Agent View telemetry
-- **PreToolUse** (no matcher): `enforce-orchestrator-boundary.js` — blocks Hannibal from writing src, tests, or using Playwright
+- **PreToolUse** (no matcher): `enforce-orchestrator-boundary.js` — enforces allowlist for Hannibal's main session (allowlist: `ateam.config.json`, `.claude/*`, `/tmp/*`, `/var/*`); blocks Playwright browser tools; uses `resolveAgent()` + `lookupAgent()` for agent detection; expanded from blocklist to allowlist in PRD-007
+- **PreToolUse** (no matcher): `block-amy-writes.js`, `block-amy-test-writes.js`, `block-murdock-impl-writes.js`, `block-ba-test-writes.js`, `block-ba-bash-restrictions.js`, `block-sosa-writes.js`, `block-lynch-writes.js`, `block-lynch-browser.js`, `block-hannibal-writes.js`, `block-raw-echo-log.js`, `block-raw-mv.js`, `block-worker-board-claim.js`, `block-worker-board-move.js` — all enforcement hooks registered at plugin level (in addition to agent frontmatter); use `resolveAgent()` to identify target agent and fail-open for unknown sessions
 - **PostToolUse** (no matcher): `observe-post-tool-use.js` — logs every tool result for telemetry
 - **Stop** (no matcher): `observe-stop.js` — logs agent stop events for telemetry
 - **Stop** (no matcher): `enforce-orchestrator-stop.js` — prevents mission ending without final review and post-checks
@@ -619,6 +629,7 @@ In addition to the shared hooks above, each agent has additional hooks specific 
 - PreToolUse(Write|Edit) → `block-ba-test-writes.js`: Prevents B.A. from writing or editing test files. Tests are Murdock's domain.
 
 **Lynch** (Reviewer):
+- PreToolUse(Write|Edit) → `block-lynch-writes.js`: Prevents Lynch from writing or editing project files. Lynch reviews code statically; `/tmp/` and `/var/` are allowed as scratch space.
 - PreToolUse(mcp__plugin_playwright_playwright__.*) → `block-lynch-browser.js`: Prevents Lynch from using Playwright browser tools. Lynch reviews code statically; browser investigation belongs to Amy.
 
 **Amy** (Investigator):
