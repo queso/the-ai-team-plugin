@@ -35,19 +35,13 @@ SendMessage(type: "plan_approval_response", request_id: "...", recipient: "ba", 
 
 ## Mission-Active Marker
 
-At the **very start** of orchestration (before creating the team), create the mission-active marker so enforcement hooks know a mission is running:
+The MCP server automatically manages a marker file (`/tmp/.ateam-mission-active-{projectId}`) that tells enforcement hooks a mission is running:
 
-```
-Bash("touch /tmp/.ateam-mission-active-$ATEAM_PROJECT_ID")
-```
+- **`mission_precheck`** sets the marker when all checks pass
+- **`mission_archive(complete: true)`** clears the marker
+- **`mission_init`** clears any stale marker from a previous crashed session
 
-At **mission completion** (after Tawnia commits, just before team shutdown), clear the marker:
-
-```
-Bash("rm -f /tmp/.ateam-mission-active-$ATEAM_PROJECT_ID")
-```
-
-This marker distinguishes "Hannibal's session during /ateam run" from "normal Claude session". Without it, enforcement hooks block all writes in the main session even when no mission is running.
+No manual `Bash` commands needed — the marker lifecycle is handled at the code level.
 
 ## Team Initialization
 

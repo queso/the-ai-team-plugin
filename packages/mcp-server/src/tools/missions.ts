@@ -10,6 +10,9 @@
  */
 
 import { z } from 'zod';
+import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+import { tmpdir } from 'os';
 import { createClient } from '../client/index.js';
 import { config } from '../config.js';
 import { withErrorBoundary, type McpErrorResponse } from '../lib/errors.js';
@@ -24,6 +27,31 @@ const client = createClient({
   timeout: config.timeout,
   retries: config.retries,
 });
+
+// ============================================================================
+// Mission-Active Marker
+// ============================================================================
+// Marker file at /tmp/.ateam-mission-active-{projectId} tells enforcement
+// hooks that a mission is running. Managed here (not via playbook Bash
+// commands) so the guarantee is code-level, not LLM-instruction-level.
+
+function missionMarkerPath(): string {
+  return join(tmpdir(), `.ateam-mission-active-${config.projectId}`);
+}
+
+function setMissionActive(): void {
+  const p = missionMarkerPath();
+  try {
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, new Date().toISOString());
+  } catch { /* non-blocking — hooks degrade gracefully without marker */ }
+}
+
+function clearMissionActive(): void {
+  try {
+    unlinkSync(missionMarkerPath());
+  } catch { /* ignore — already cleared or never set */ }
+}
 
 // ============================================================================
 // Zod Schemas for Input Validation
@@ -175,6 +203,9 @@ export async function missionInit(
   input: MissionInitInput
 ): Promise<ToolResponse<MissionInitResult> | McpErrorResponse> {
   const handler = async (args: MissionInitInput) => {
+    // Clear any stale mission-active marker from a previous crashed session
+    clearMissionActive();
+
     const body: Record<string, unknown> = {
       name: args.name,
       prdPath: args.prdPath,
@@ -223,6 +254,13 @@ export async function missionPrecheck(
     }
 
     const result = await client.post<MissionPrecheckResult>('/api/missions/precheck', body);
+
+    // Set mission-active marker when prechecks pass — signals enforcement
+    // hooks that Hannibal's orchestration loop is about to start
+    if (result.data.allPassed) {
+      setMissionActive();
+    }
+
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result.data) }],
       data: result.data,
@@ -273,6 +311,13 @@ export async function missionArchive(
     }
 
     const result = await client.post<MissionArchiveResult>('/api/missions/archive', body);
+
+    // Clear mission-active marker when the full mission is archived
+    // (not for partial item archives or dry runs)
+    if (args.complete && !args.dryRun && result.data.success) {
+      clearMissionActive();
+    }
+
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result.data) }],
       data: result.data,
