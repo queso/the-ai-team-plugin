@@ -25,8 +25,8 @@ try {
 
   const agent = resolveAgent(hookInput);
 
-  // Only enforce for Lynch; let all other agents (including unknown/system) through
-  if (agent !== 'lynch') {
+  // Only enforce for Lynch (both per-feature and final review variants)
+  if (agent !== 'lynch' && agent !== 'lynch-final') {
     process.exit(0);
   }
 
