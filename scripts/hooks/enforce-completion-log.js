@@ -42,8 +42,8 @@ const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';
 const mockResponse = process.env.__TEST_MOCK_RESPONSE__;
 
-// Only enforce for working agents: murdock, ba, lynch, amy, tawnia
-const TARGET_AGENTS = ['murdock', 'ba', 'lynch', 'amy', 'tawnia'];
+// Only enforce for working agents: murdock, ba, lynch, lynch-final, amy, tawnia
+const TARGET_AGENTS = ['murdock', 'ba', 'lynch', 'lynch-final', 'amy', 'tawnia'];
 const resolvedAgent = resolveAgent(hookInput);
 if (!resolvedAgent || !TARGET_AGENTS.includes(resolvedAgent)) {
   console.log(JSON.stringify({}));

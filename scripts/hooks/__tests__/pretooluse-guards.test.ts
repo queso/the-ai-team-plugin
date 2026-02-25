@@ -551,7 +551,7 @@ describe('block-sosa-writes — agent guards', () => {
 });
 
 // =============================================================================
-// block-lynch-browser.js — target: lynch
+// block-lynch-browser.js — target: lynch, lynch-final
 // =============================================================================
 describe('block-lynch-browser — agent guards', () => {
   const HOOK = hookPath('block-lynch-browser.js');
@@ -569,6 +569,24 @@ describe('block-lynch-browser — agent guards', () => {
   it('blocks lynch using browser_snapshot (exit 2)', () => {
     const result = runHook(HOOK, {
       agent_type: 'lynch',
+      tool_name: 'mcp__plugin_playwright_playwright__browser_snapshot',
+    });
+    expect(result.exitCode).toBe(2);
+  });
+
+  it('blocks lynch-final using browser_navigate (exit 2)', () => {
+    const result = runHook(HOOK, {
+      agent_type: 'ai-team:lynch-final',
+      tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
+      tool_input: { url: 'http://localhost:3000' },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED/i);
+  });
+
+  it('blocks lynch-final using browser_snapshot (exit 2)', () => {
+    const result = runHook(HOOK, {
+      agent_type: 'ai-team:lynch-final',
       tool_name: 'mcp__plugin_playwright_playwright__browser_snapshot',
     });
     expect(result.exitCode).toBe(2);
@@ -609,7 +627,7 @@ describe('block-lynch-browser — agent guards', () => {
 });
 
 // =============================================================================
-// block-lynch-writes.js — target: lynch (added in WI-230)
+// block-lynch-writes.js — target: lynch, lynch-final (added in WI-230)
 // =============================================================================
 describe('block-lynch-writes — agent guards (regression)', () => {
   const HOOK = hookPath('block-lynch-writes.js');
@@ -619,6 +637,25 @@ describe('block-lynch-writes — agent guards (regression)', () => {
       agent_type: 'lynch',
       tool_name: 'Write',
       tool_input: { file_path: 'src/index.ts' },
+    });
+    expect(result.exitCode).toBe(2);
+  });
+
+  it('blocks lynch-final writing project files (exit 2)', () => {
+    const result = runHook(HOOK, {
+      agent_type: 'ai-team:lynch-final',
+      tool_name: 'Write',
+      tool_input: { file_path: 'src/services/auth.ts' },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toMatch(/BLOCKED/i);
+  });
+
+  it('blocks lynch-final editing project files (exit 2)', () => {
+    const result = runHook(HOOK, {
+      agent_type: 'ai-team:lynch-final',
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/components/Button.tsx' },
     });
     expect(result.exitCode).toBe(2);
   });

@@ -148,6 +148,12 @@ describe('enforce-orchestrator-boundary — Hannibal blocked writes', () => {
 // Hannibal — ALLOWED writes (within allowlist)
 // =============================================================================
 describe('enforce-orchestrator-boundary — Hannibal allowed writes', () => {
+  // Mission marker must be active so the hook reaches the allowlist logic.
+  // Without it the hook exits early (no mission = not enforcing), making
+  // the assertions vacuous — they'd pass even if allowlist logic regressed.
+  beforeAll(() => setMissionMarker());
+  afterAll(() => clearMissionMarker());
+
   it('allows Hannibal writing ateam.config.json', () => {
     const result = runHook({
       tool_name: 'Write',
@@ -380,7 +386,13 @@ describe('enforce-orchestrator-boundary — edge cases', () => {
   });
 
   it('exits 0 on stdin parse error (fail-open)', () => {
+    // When bad JSON is given, the hook should fail open (exit 0), not exit 2.
+    // We capture the result directly instead of relying on try/catch, which
+    // would silently pass if the hook exits 0 (no throw = catch never runs).
+    const result = runHook({ _raw: 'not valid json' } as any);
+    // Actually send truly malformed JSON via the raw execFileSync path
     const fullEnv = { ...process.env, ATEAM_PROJECT_ID: 'test-project' };
+    let exitCode: number;
     try {
       execFileSync('node', [HOOK], {
         env: fullEnv,
@@ -388,8 +400,11 @@ describe('enforce-orchestrator-boundary — edge cases', () => {
         timeout: 5000,
         input: 'not valid json',
       });
+      // If no throw, the process exited 0 — that's the expected fail-open behavior
+      exitCode = 0;
     } catch (err: any) {
-      expect(err.status).not.toBe(2);
+      exitCode = err.status ?? 1;
     }
+    expect(exitCode).toBe(0);
   });
 });

@@ -203,9 +203,6 @@ export async function missionInit(
   input: MissionInitInput
 ): Promise<ToolResponse<MissionInitResult> | McpErrorResponse> {
   const handler = async (args: MissionInitInput) => {
-    // Clear any stale mission-active marker from a previous crashed session
-    clearMissionActive();
-
     const body: Record<string, unknown> = {
       name: args.name,
       prdPath: args.prdPath,
@@ -215,6 +212,12 @@ export async function missionInit(
     }
 
     const result = await client.post<MissionInitResult>('/api/missions', body);
+
+    // Clear any stale mission-active marker from a previous crashed session.
+    // Done AFTER the POST succeeds so we don't incorrectly clear the marker
+    // when there's an actually-running mission and the POST throws.
+    clearMissionActive();
+
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result.data) }],
       data: result.data,

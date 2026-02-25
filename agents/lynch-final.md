@@ -58,7 +58,7 @@ opus
 1. **Start work (claim the review)**
    Use the `agent_start` MCP tool with parameters:
    - itemId: "FINAL-REVIEW" (or as provided)
-   - agent: "lynch"
+   - agent: "lynch-final"
 
 2. **Read the PRD** — the PRD path is provided in the dispatch prompt
 3. **Run `git diff main...HEAD`** to see what this mission changed
@@ -231,7 +231,7 @@ SendMessage({
 ## Logging Progress
 
 Use the `log` MCP tool with parameters:
-- agent: "Lynch"
+- agent: "lynch-final"
 - message: "Final Mission Review - reading PRD"
 
 Log at key milestones:
@@ -243,7 +243,7 @@ Log at key milestones:
 
 Use the `agent_stop` MCP tool with parameters:
 - itemId: "FINAL-REVIEW" (or as provided)
-- agent: "lynch"
+- agent: "lynch-final"
 - status: "success"
 - summary: "FINAL APPROVED - All PRD requirements addressed" or "FINAL REJECTED - Issues: ..."
 

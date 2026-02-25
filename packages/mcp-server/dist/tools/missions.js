@@ -90,8 +90,6 @@ export const MissionArchiveInputSchema = z.object({
  */
 export async function missionInit(input) {
     const handler = async (args) => {
-        // Clear any stale mission-active marker from a previous crashed session
-        clearMissionActive();
         const body = {
             name: args.name,
             prdPath: args.prdPath,
@@ -100,6 +98,10 @@ export async function missionInit(input) {
             body.force = args.force;
         }
         const result = await client.post('/api/missions', body);
+        // Clear any stale mission-active marker from a previous crashed session.
+        // Done AFTER the POST succeeds so we don't incorrectly clear the marker
+        // when there's an actually-running mission and the POST throws.
+        clearMissionActive();
         return {
             content: [{ type: 'text', text: JSON.stringify(result.data) }],
             data: result.data,
