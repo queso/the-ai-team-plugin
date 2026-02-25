@@ -18,6 +18,8 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
 
 let hookInput = {};
 try {
@@ -28,50 +30,65 @@ try {
   process.exit(0);
 }
 
-const toolInput = hookInput.tool_input || {};
-const filePath = toolInput.file_path || '';
+try {
+  const agent = resolveAgent(hookInput);
 
-if (!filePath) {
+  // Only enforce for Murdock
+  if (agent !== 'murdock') {
+    process.exit(0);
+  }
+
+  const toolName = hookInput.tool_name || '';
+  const toolInput = hookInput.tool_input || {};
+  const filePath = toolInput.file_path || '';
+
+  if (!filePath) {
+    process.exit(0);
+  }
+
+  // Allow writes to /tmp/ (throwaway scripts, debugging artifacts)
+  if (filePath.startsWith('/tmp/') || filePath.startsWith('/var/')) {
+    process.exit(0);
+  }
+
+  // Allow test files: *.test.{ts,tsx,js,jsx}, *.spec.{ts,tsx,js,jsx}
+  if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
+    process.exit(0);
+  }
+
+  // Allow files inside __tests__/ directories
+  if (filePath.includes('/__tests__/')) {
+    process.exit(0);
+  }
+
+  // Allow files inside top-level tests/ directories
+  if (filePath.match(/\/tests\//)) {
+    process.exit(0);
+  }
+
+  // Allow type definition files: *.d.ts
+  if (filePath.match(/\.d\.ts$/)) {
+    process.exit(0);
+  }
+
+  // Allow files inside /types/ directories
+  if (filePath.match(/\/types\//)) {
+    process.exit(0);
+  }
+
+  // Allow vitest/jest setup files
+  if (filePath.match(/\/(vitest|jest)\.setup\.(ts|js|tsx|jsx)$/)) {
+    process.exit(0);
+  }
+
+  // Block everything else — this is implementation territory
+  const reason = `BLOCKED: Murdock cannot write implementation files: ${filePath}. Implementation is B.A.'s job.`;
+  sendDeniedEvent({ agentName: agent, toolName, reason });
+  process.stderr.write(`BLOCKED: Murdock cannot write implementation files: ${filePath}\n`);
+  process.stderr.write('Implementation is B.A.\'s job. Murdock writes tests and type definitions ONLY.\n');
+  process.stderr.write('If you need a type, create a .d.ts file or place it in a /types/ directory.\n');
+  process.exit(2);
+} catch {
+  // Fail open on any unexpected error
   process.exit(0);
 }
-
-// Allow writes to /tmp/ (throwaway scripts, debugging artifacts)
-if (filePath.startsWith('/tmp/') || filePath.startsWith('/var/')) {
-  process.exit(0);
-}
-
-// Allow test files: *.test.{ts,tsx,js,jsx}, *.spec.{ts,tsx,js,jsx}
-if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
-  process.exit(0);
-}
-
-// Allow files inside __tests__/ directories
-if (filePath.includes('/__tests__/')) {
-  process.exit(0);
-}
-
-// Allow files inside top-level tests/ directories
-if (filePath.match(/\/tests\//)) {
-  process.exit(0);
-}
-
-// Allow type definition files: *.d.ts
-if (filePath.match(/\.d\.ts$/)) {
-  process.exit(0);
-}
-
-// Allow files inside /types/ directories
-if (filePath.match(/\/types\//)) {
-  process.exit(0);
-}
-
-// Allow vitest/jest setup files
-if (filePath.match(/\/(vitest|jest)\.setup\.(ts|js|tsx|jsx)$/)) {
-  process.exit(0);
-}
-
-// Block everything else — this is implementation territory
-console.error(`BLOCKED: Murdock cannot write implementation files: ${filePath}`);
-console.error('Implementation is B.A.\'s job. Murdock writes tests and type definitions ONLY.');
-console.error('If you need a type, create a .d.ts file or place it in a /types/ directory.');
-process.exit(2);

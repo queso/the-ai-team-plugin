@@ -9,22 +9,39 @@
  * his frontmatter hooks in agents/hannibal.md never fire.
  *
  * Solution: This hook runs at the PLUGIN level (hooks/hooks.json), firing
- * for ALL sessions. It detects whether the current session is the main
- * session (Hannibal) and only enforces restrictions in that case.
+ * for ALL sessions. It uses resolveAgent() to detect the current agent and
+ * only enforces restrictions for the main session (Hannibal / null agent).
+ *
+ * Mission-active guard: Only enforces when a mission is running (marker file
+ * exists). Without a mission, the main session is a normal user session,
+ * not Hannibal. This prevents blocking writes during normal Claude usage.
  *
  * Detection:
- *   1. hookInput.agent_type set → subagent session → exit 0 (allow)
+ *   1. resolveAgent() returns a known non-hannibal agent → exit 0 (allow)
  *   2. Agent map shows worker name → worker active in main session → exit 0
- *   3. Agent map shows 'hannibal' or null → main session → enforce
+ *   3. Agent is hannibal or null → main session → check mission-active → enforce allowlist
  *
- * Blocks (main session only):
- *   - Write/Edit to src/**, test files, project source directories
- *   - Playwright browser tools (Amy's responsibility)
+ * Allowlist (main session only — Hannibal may ONLY write to):
+ *   - ateam.config.json
+ *   - .claude/** (settings, commands, etc.)
+ *   - /tmp/**
+ *   - /var/**
+ *
+ * Also blocks Playwright browser tools for main session (Amy's responsibility).
  */
 
 import { readHookInput, lookupAgent } from './lib/observer.js';
+import { resolveAgent, isKnownAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
+import { isMissionActive } from './lib/mission-active.js';
 
-const hookInput = readHookInput();
+let hookInput = {};
+try {
+  hookInput = readHookInput();
+} catch {
+  process.exit(0);
+}
+
 const toolName = hookInput.tool_name || '';
 
 // Fast exit for tools we never care about
@@ -52,14 +69,19 @@ if (
 
 // --- Agent Detection ---
 
-// Subagent sessions have agent_type set by Claude Code
-if (hookInput.agent_type) {
+const resolvedAgent = resolveAgent(hookInput);
+
+// Known non-hannibal agents (workers): allow through — they have their own hooks
+if (resolvedAgent !== null && resolvedAgent !== 'hannibal') {
+  process.exit(0);
+}
+
+// Unknown system agents (Explore, Plan, etc.): allow through
+if (resolvedAgent !== null && !isKnownAgent(resolvedAgent)) {
   process.exit(0);
 }
 
 // Check agent map: if a worker is active (between SubagentStart/Stop), allow.
-// The observer registers the active agent on SubagentStart and re-registers
-// 'hannibal' on SubagentStop.
 const sessionId = hookInput.session_id || '';
 const mappedAgent = lookupAgent(sessionId);
 
@@ -69,53 +91,53 @@ if (mappedAgent && mappedAgent !== 'hannibal') {
 }
 
 // We're in the main session and Hannibal is in control.
-// (mappedAgent is 'hannibal' after SubagentStop, or null before first dispatch)
+// (resolvedAgent is 'hannibal' or null; mappedAgent is 'hannibal' or null)
+
+// --- Mission-Active Guard ---
+// No active mission → this is a normal Claude session, not Hannibal.
+// Allow all operations without enforcement.
+if (!isMissionActive()) {
+  process.exit(0);
+}
 
 // --- Enforcement ---
 
 const toolInput = hookInput.tool_input || {};
+const agentLabel = resolvedAgent || 'hannibal';
 
 // Block Playwright browser tools (Amy's job)
 if (toolName.startsWith('mcp__plugin_playwright_playwright__')) {
-  console.error(`BLOCKED: Hannibal cannot use browser tools (${toolName})`);
-  console.error("Browser testing is Amy's responsibility.");
-  console.error('Dispatch Amy to probe the feature instead.');
+  sendDeniedEvent({ agentName: agentLabel, toolName, reason: `BLOCKED: Hannibal cannot use browser tools (${toolName}). Browser testing is Amy's responsibility.` });
+  process.stderr.write(`BLOCKED: Hannibal cannot use browser tools (${toolName})\n`);
+  process.stderr.write("Browser testing is Amy's responsibility.\n");
+  process.stderr.write('Dispatch Amy to probe the feature instead.\n');
   process.exit(2);
 }
 
-// Block Write/Edit to source code and test files
+// Apply allowlist for Write/Edit
 if (toolName === 'Write' || toolName === 'Edit') {
   const filePath = toolInput.file_path || '';
   if (!filePath) {
     process.exit(0);
   }
 
-  // Block writes to src/ directory
-  if (filePath.includes('/src/') || filePath.startsWith('src/')) {
-    console.error(`BLOCKED: Hannibal cannot write to ${filePath}`);
-    console.error('Implementation code must be delegated to B.A.');
-    process.exit(2);
-  }
-
-  // Block writes to test/spec files
-  if (filePath.match(/\.(test|spec)\.(ts|js|tsx|jsx)$/)) {
-    console.error(`BLOCKED: Hannibal cannot write to ${filePath}`);
-    console.error('Test files must be delegated to Murdock.');
-    process.exit(2);
-  }
-
-  // Block writes to other project source directories (handle both absolute and relative paths)
+  // Allowlist: ateam.config.json, .claude/*, /tmp/*, /var/*
+  // Match both relative (.claude/) and absolute (/.claude/) paths
   if (
-    filePath.match(
-      /(^|\/)(?:app|lib|components|pages|utils|services|hooks|styles|public)\//
-    )
+    filePath === 'ateam.config.json' ||
+    filePath.startsWith('.claude/') ||
+    filePath.includes('/.claude/') ||
+    filePath.startsWith('/tmp/') ||
+    filePath.startsWith('/var/')
   ) {
-    console.error(
-      `BLOCKED: Hannibal cannot modify project source: ${filePath}`
-    );
-    console.error('All implementation must be delegated to B.A.');
-    process.exit(2);
+    process.exit(0);
   }
+
+  // Everything else is blocked
+  sendDeniedEvent({ agentName: agentLabel, toolName, reason: `BLOCKED: Hannibal cannot write to ${filePath}. Delegate implementation to B.A. or Murdock.` });
+  process.stderr.write(`BLOCKED: Hannibal cannot write to ${filePath}\n`);
+  process.stderr.write('Hannibal orchestrates only. Delegate implementation to B.A. or Murdock.\n');
+  process.exit(2);
 }
 
 // Allow everything else

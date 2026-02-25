@@ -112,7 +112,7 @@ export async function boardMove(input, client = getDefaultClient()) {
                 else {
                     message += `Valid next stages: ${validNext.join(', ')}. `;
                 }
-                message += `No stage in the pipeline may be skipped. `;
+                message += "No stage in the pipeline may be skipped. ";
                 message += `Allowed transitions from '${fromStage}': ${validNext.join(', ')}.`;
             }
             return {

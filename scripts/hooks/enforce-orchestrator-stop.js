@@ -9,19 +9,34 @@
  * for the main session, not for worker subagent sessions (which have their
  * own Stop hooks via frontmatter).
  *
+ * Mission-active guard: Only enforces when a mission is running (marker file
+ * exists). Without a mission, the main session is a normal user session,
+ * not Hannibal. This prevents blocking normal session stops.
+ *
  * Stop hooks use JSON stdout format:
  *   { "decision": "block", "additionalContext": "..." } - block stop
  *   {} - allow stop
  */
 
 import { readHookInput, lookupAgent } from './lib/observer.js';
+import { resolveAgent, isKnownAgent } from './lib/resolve-agent.js';
+import { isMissionActive } from './lib/mission-active.js';
 
 const hookInput = readHookInput();
 
 // --- Agent Detection ---
 
-// Subagent sessions: their frontmatter Stop hooks handle enforcement
-if (hookInput.agent_type) {
+// Use resolveAgent() for robust agent identification (handles ai-team: prefix, casing)
+const resolvedAgent = resolveAgent(hookInput);
+
+// Any known non-hannibal agent: their frontmatter Stop hooks handle enforcement
+if (resolvedAgent !== null && resolvedAgent !== 'hannibal') {
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
+// Unknown system agents (Explore, Plan, etc.): pass through
+if (resolvedAgent !== null && !isKnownAgent(resolvedAgent)) {
   console.log(JSON.stringify({}));
   process.exit(0);
 }
@@ -35,31 +50,47 @@ if (mappedAgent && mappedAgent !== 'hannibal') {
   process.exit(0);
 }
 
+// --- Mission-Active Guard ---
+// No active mission → this is a normal Claude session, not Hannibal.
+// Allow stop without enforcement.
+if (!isMissionActive()) {
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
 // --- Main session (Hannibal) enforcement ---
 
 const apiUrl = process.env.ATEAM_API_URL || '';
 const projectId = process.env.ATEAM_PROJECT_ID || '';
+const mockBoard = process.env.__TEST_MOCK_BOARD__;
 
-// No API config = no active mission to enforce
-if (!apiUrl || !projectId) {
+// No API config and no mock = no active mission to enforce
+if (!mockBoard && (!apiUrl || !projectId)) {
   console.log(JSON.stringify({}));
   process.exit(0);
 }
 
 async function checkCompletion() {
-  // Fetch board state
-  const boardResp = await fetch(
-    `${apiUrl.replace(/\/+$/, '')}/api/projects/${projectId}/board`,
-    { headers: { 'X-Project-ID': projectId } }
-  );
+  let boardData;
 
-  if (!boardResp.ok) {
-    // API error — allow stop (don't trap the user)
-    console.log(JSON.stringify({}));
-    process.exit(0);
+  if (mockBoard !== undefined) {
+    boardData = JSON.parse(mockBoard);
+  } else {
+    // Fetch board state
+    const boardResp = await fetch(
+      `${apiUrl.replace(/\/+$/, '')}/api/projects/${projectId}/board`,
+      { headers: { 'X-Project-ID': projectId } }
+    );
+
+    if (!boardResp.ok) {
+      // API error — allow stop (don't trap the user)
+      console.log(JSON.stringify({}));
+      process.exit(0);
+    }
+
+    boardData = await boardResp.json();
   }
 
-  const boardData = await boardResp.json();
   const columns = boardData.columns || {};
 
   // Check for items still in active stages

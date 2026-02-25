@@ -2,6 +2,8 @@
 
 > **You are in NATIVE TEAMS mode.** Use `TeamCreate`, `Task` with `team_name`/`name` params, and `SendMessage` for coordination.
 
+Read `docs/ORCHESTRATION.md` for environment setup, permissions, and dispatch reference.
+
 This playbook contains the complete orchestration loop, agent dispatch patterns, completion detection, and concrete examples for native teams dispatch mode.
 
 ## API Reference
@@ -31,6 +33,16 @@ SendMessage(type: "shutdown_request", recipient: "murdock", content: "Work compl
 SendMessage(type: "plan_approval_response", request_id: "...", recipient: "ba", approve: true)
 ```
 
+## Mission-Active Marker
+
+The MCP server automatically manages a marker file (`/tmp/.ateam-mission-active-{projectId}`) that tells enforcement hooks a mission is running:
+
+- **`mission_precheck`** sets the marker when all checks pass
+- **`mission_archive(complete: true)`** clears the marker
+- **`mission_init`** clears any stale marker from a previous crashed session
+
+No manual `Bash` commands needed — the marker lifecycle is handled at the code level.
+
 ## Team Initialization
 
 At mission start, create a team:
@@ -39,7 +51,31 @@ At mission start, create a team:
 TeamCreate(team_name: "mission-{missionId}", description: "A(i)-Team mission: {mission name}")
 ```
 
-This creates the team container. Individual agents are spawned on-demand as items enter their stages.
+This creates the team container.
+
+## Agent Pre-Warming
+
+Spawn all pipeline agents immediately after team creation, before dispatching any work. This caches their prompts so subsequent `SendMessage` calls are cheap (cached prefix).
+
+```
+Task(team_name: "mission-{id}", name: "murdock", subagent_type: "ai-team:murdock",
+     model: "sonnet", description: "Murdock: standby",
+     prompt: "You are Murdock. Await work item assignments from Hannibal via SendMessage.")
+
+Task(team_name: "mission-{id}", name: "ba", subagent_type: "ai-team:ba",
+     model: "sonnet", description: "B.A.: standby",
+     prompt: "You are B.A. Await work item assignments from Hannibal via SendMessage.")
+
+Task(team_name: "mission-{id}", name: "lynch", subagent_type: "ai-team:lynch",
+     model: "sonnet", description: "Lynch: standby",
+     prompt: "You are Lynch. Await review assignments from Hannibal via SendMessage.")
+
+Task(team_name: "mission-{id}", name: "amy", subagent_type: "ai-team:amy",
+     model: "sonnet", description: "Amy: standby",
+     prompt: "You are Amy. Await probing assignments from Hannibal via SendMessage.")
+```
+
+Tawnia is NOT pre-warmed (only runs once at mission end — caching won't help).
 
 ## Teammate Tracking
 
@@ -59,9 +95,10 @@ Unlike legacy mode, you do NOT need task IDs for polling. Teammates send message
 |-------|------|---------------|-------|-------------|
 | Murdock | `murdock` | `ai-team:murdock` | `sonnet` | QA Engineer - writes tests |
 | B.A. | `ba` | `ai-team:ba` | `sonnet` | Implementer - writes code |
-| Lynch | `lynch` | `ai-team:lynch` | (default) | Reviewer - reviews code |
+| Lynch | `lynch` | `ai-team:lynch` | `sonnet` | Reviewer - per-feature reviews |
+| Lynch (Final) | `lynch-final` | `ai-team:lynch-final` | `opus` | Final Mission Review (PRD+diff) |
 | Amy | `amy` | `ai-team:amy` | `sonnet` | Investigator - probes for bugs |
-| Tawnia | `tawnia` | `ai-team:tawnia` | `sonnet` | Documentation writer |
+| Tawnia | `tawnia` | `ai-team:tawnia` | `haiku` | Documentation writer |
 
 Spawn syntax:
 ```
@@ -155,6 +192,12 @@ LOOP CONTINUOUSLY:
 - Phase 2: Unlock next-wave items when deps complete (correct waiting)
 - Phase 3: Keep pipeline full up to WIP limit
 
+## Minimizing Per-Cycle Token Spend
+
+- Use `deps_check()` (without `verbose: true`) in the orchestration loop. Only use `deps_check(verbose: true)` for debugging stuck dependencies.
+- Call `board_read()` only when you need the full board state (start of loop, after wave completion). Between those, track state from teammate completion messages instead of re-reading the full board.
+- Use `item_list(stage: "ready")` instead of `board_read()` when you only need to check the ready queue.
+
 ## Message-Based Completion Detection
 
 In native teams mode, completion works differently from legacy polling:
@@ -233,7 +276,7 @@ Task(
 SendMessage(
   type: "message",
   recipient: "murdock",
-  content: "New work item: WI-005 - {title}\n\n{full work item details}\n\nCreate tests at: {outputs.test}",
+  content: "New work: WI-005 - {title}\nTest file: {outputs.test}\nTypes file: {outputs.types}\nFetch full details with item_get(id: 'WI-005') or item_render(id: 'WI-005').",
   summary: "New test work for WI-005"
 )
 ```
@@ -271,7 +314,7 @@ Task(
 SendMessage(
   type: "message",
   recipient: "ba",
-  content: "New work item: WI-005 - {title}\n\n{details}\n\nTests at: {outputs.test}\nImplement at: {outputs.impl}",
+  content: "New work: WI-005 - {title}\nTest file: {outputs.test}\nImpl file: {outputs.impl}\nFetch full details with item_get(id: 'WI-005') or item_render(id: 'WI-005').",
   summary: "New implementation work for WI-005"
 )
 ```
@@ -289,6 +332,7 @@ Task(
   team_name: "mission-{missionId}",
   name: "lynch",
   subagent_type: "ai-team:lynch",
+  model: "sonnet",
   description: "Lynch: {feature title}",
   prompt: "... [Lynch prompt from agents/lynch.md]
 
@@ -310,7 +354,7 @@ Task(
 SendMessage(
   type: "message",
   recipient: "lynch",
-  content: "New review: WI-005 - {title}\n\nReview files:\n- Test: {outputs.test}\n- Impl: {outputs.impl}",
+  content: "New review: WI-005 - {title}\nTest: {outputs.test}\nImpl: {outputs.impl}\nTypes: {outputs.types}\nFetch full details with item_get(id: 'WI-005') or item_render(id: 'WI-005').",
   summary: "New review work for WI-005"
 )
 ```
@@ -354,7 +398,7 @@ Task(
 SendMessage(
   type: "message",
   recipient: "amy",
-  content: "New probe: WI-005 - {title}\n\nFiles:\n- Test: {outputs.test}\n- Impl: {outputs.impl}",
+  content: "New probe: WI-005 - {title}\nTest: {outputs.test}\nImpl: {outputs.impl}\nTypes: {outputs.types}\nFetch full details with item_get(id: 'WI-005') or item_render(id: 'WI-005').",
   summary: "New probing work for WI-005"
 )
 ```
@@ -368,7 +412,7 @@ Task(
   team_name: "mission-{missionId}",
   name: "tawnia",
   subagent_type: "ai-team:tawnia",
-  model: "sonnet",
+  model: "haiku",
   description: "Tawnia: Documentation and final commit",
   prompt: "... [Tawnia prompt from agents/tawnia.md]
 
@@ -392,37 +436,35 @@ Wait for Tawnia's completion message (auto-delivered).
 
 ## Final Mission Review Dispatch
 
-When ALL items reach `done` stage, dispatch Lynch for Final Mission Review:
+When ALL items reach `done` stage, fetch `prdPath` from the `mission_current` response.
+
+**Always spawn a new Lynch-Final agent** for the final review (it uses a different, slimmer prompt optimized for PRD+diff review):
 
 ```
-# If Lynch is already spawned as a teammate:
-SendMessage(
-  type: "message",
-  recipient: "lynch",
-  content: "FINAL MISSION REVIEW - Review ALL code produced in this mission together.
-
-  [Include Final Mission Review section from agents/lynch.md]
-
-  Files to review:
-  Implementation files: {list all outputs.impl}
-  Test files: {list all outputs.test}
-  Type files: {list all outputs.types}
-
-  Respond with VERDICT: FINAL APPROVED or VERDICT: FINAL REJECTED",
-  summary: "Final mission review request"
-)
-
-# If Lynch needs to be spawned:
 Task(
   team_name: "mission-{missionId}",
-  name: "lynch",
-  subagent_type: "ai-team:lynch",
+  name: "lynch-final",
+  subagent_type: "ai-team:lynch-final",
+  model: "opus",
   description: "Lynch: Final Mission Review",
-  prompt: "... [same content as message above] ..."
+  prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.
+
+  PRD path: {prdPath from mission_current}
+
+  Review scope: Read the PRD, then run `git diff main...HEAD` to see what
+  this mission changed. Review the diff against the PRD requirements.
+
+  Do NOT read the entire codebase. Focus on:
+  1. PRD requirements — is each one addressed in the diff?
+  2. The mission's commits — correct, consistent, secure?
+  3. Integration — do changes wire into the existing codebase?
+
+  When done, call agent_stop, then notify Hannibal:
+  SendMessage(type: 'message', recipient: 'hannibal', content: 'DONE: FINAL-REVIEW - FINAL APPROVED/REJECTED - summary', summary: 'Final mission review complete')"
 )
 ```
 
-Wait for Lynch's completion message with the verdict.
+Wait for Lynch-Final's completion message with the verdict.
 
 ## Concrete Example: Dependency Waves + Pipeline Parallelism
 
@@ -547,7 +589,7 @@ Native teams are ephemeral - they don't survive session restarts. On resume:
    for item in review stage:
        board_release(itemId)
        Task(team_name: "mission-{missionId}", name: "lynch",
-            subagent_type: "ai-team:lynch", ...)
+            subagent_type: "ai-team:lynch", model: "sonnet", ...)
        active_teammates[item_id] = "lynch"
 
    for item in probing stage:

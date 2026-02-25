@@ -10,6 +10,8 @@
  */
 
 import { readFileSync } from 'fs';
+import { resolveAgent } from './lib/resolve-agent.js';
+import { sendDeniedEvent } from './lib/send-denied-event.js';
 
 let hookInput = {};
 try {
@@ -20,15 +22,28 @@ try {
   process.exit(0);
 }
 
-const toolName = hookInput.tool_name || '';
+try {
+  const agent = resolveAgent(hookInput);
 
-if (toolName === 'Write' || toolName === 'Edit') {
-  console.error('BLOCKED: Sosa cannot write or edit files.');
-  console.error('Sosa reviews Face\'s decomposition and provides recommendations.');
-  console.error('Put your findings in your review report (as text output).');
-  console.error('Face will use your recommendations to refine the work items.');
-  process.exit(2);
+  // Only enforce for Sosa
+  if (agent !== 'sosa') {
+    process.exit(0);
+  }
+
+  const toolName = hookInput.tool_name || '';
+
+  if (toolName === 'Write' || toolName === 'Edit') {
+    sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Sosa cannot write or edit files.' });
+    process.stderr.write('BLOCKED: Sosa cannot write or edit files.\n');
+    process.stderr.write('Sosa reviews Face\'s decomposition and provides recommendations.\n');
+    process.stderr.write('Put your findings in your review report (as text output).\n');
+    process.stderr.write('Face will use your recommendations to refine the work items.\n');
+    process.exit(2);
+  }
+
+  // Allow other tools
+  process.exit(0);
+} catch {
+  // Fail open on any unexpected error
+  process.exit(0);
 }
-
-// Allow other tools
-process.exit(0);
