@@ -9,6 +9,10 @@
  * for the main session, not for worker subagent sessions (which have their
  * own Stop hooks via frontmatter).
  *
+ * Mission-active guard: Only enforces when a mission is running (marker file
+ * exists). Without a mission, the main session is a normal user session,
+ * not Hannibal. This prevents blocking normal session stops.
+ *
  * Stop hooks use JSON stdout format:
  *   { "decision": "block", "additionalContext": "..." } - block stop
  *   {} - allow stop
@@ -16,6 +20,7 @@
 
 import { readHookInput, lookupAgent } from './lib/observer.js';
 import { resolveAgent, isKnownAgent } from './lib/resolve-agent.js';
+import { isMissionActive } from './lib/mission-active.js';
 
 const hookInput = readHookInput();
 
@@ -41,6 +46,14 @@ const sessionId = hookInput.session_id || '';
 const mappedAgent = lookupAgent(sessionId);
 
 if (mappedAgent && mappedAgent !== 'hannibal') {
+  console.log(JSON.stringify({}));
+  process.exit(0);
+}
+
+// --- Mission-Active Guard ---
+// No active mission → this is a normal Claude session, not Hannibal.
+// Allow stop without enforcement.
+if (!isMissionActive()) {
   console.log(JSON.stringify({}));
   process.exit(0);
 }

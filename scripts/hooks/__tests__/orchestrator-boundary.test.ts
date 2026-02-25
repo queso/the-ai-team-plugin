@@ -10,10 +10,20 @@
  * fires for the main session (Hannibal). Agent detection uses resolveAgent().
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+
+// Mission-active marker — tests that expect enforcement need this file to exist
+const MISSION_MARKER = join(tmpdir(), '.ateam-mission-active-test-project');
+function setMissionMarker() {
+  writeFileSync(MISSION_MARKER, new Date().toISOString());
+}
+function clearMissionMarker() {
+  try { unlinkSync(MISSION_MARKER); } catch { /* ignore */ }
+}
 
 const HOOK = join(__dirname, '..', 'enforce-orchestrator-boundary.js');
 
@@ -68,6 +78,9 @@ describe('enforce-orchestrator-boundary — static checks', () => {
 // =============================================================================
 describe('enforce-orchestrator-boundary — Hannibal blocked writes', () => {
   // In the main session, no agent_type is set (Hannibal is the main context)
+  // Mission marker must exist for enforcement to kick in
+  beforeAll(() => setMissionMarker());
+  afterAll(() => clearMissionMarker());
 
   it('blocks Hannibal writing .env.example', () => {
     const result = runHook({
@@ -230,6 +243,9 @@ describe('enforce-orchestrator-boundary — worker agents not affected', () => {
 // Legacy mode: resolveAgent() returns null → still enforce for Hannibal
 // =============================================================================
 describe('enforce-orchestrator-boundary — legacy mode (null agent)', () => {
+  beforeAll(() => setMissionMarker());
+  afterAll(() => clearMissionMarker());
+
   it('blocks when no agent_type and no session map entry (null → treat as Hannibal)', () => {
     // No agent_type means main session. resolveAgent returns null but hook
     // should still enforce the allowlist for the main context.
@@ -255,6 +271,9 @@ describe('enforce-orchestrator-boundary — legacy mode (null agent)', () => {
 // Playwright block still works
 // =============================================================================
 describe('enforce-orchestrator-boundary — Playwright block', () => {
+  beforeAll(() => setMissionMarker());
+  afterAll(() => clearMissionMarker());
+
   it('blocks Playwright browser_navigate for main session', () => {
     const result = runHook({
       tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
@@ -277,6 +296,56 @@ describe('enforce-orchestrator-boundary — Playwright block', () => {
       agent_type: 'amy',
       tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
       tool_input: { url: 'http://localhost:3000' },
+    });
+    expect(result.exitCode).toBe(0);
+  });
+});
+
+// =============================================================================
+// Mission-active guard: no marker = no enforcement
+// =============================================================================
+describe('enforce-orchestrator-boundary — mission-active guard', () => {
+  // Ensure no marker exists for these tests
+  beforeAll(() => clearMissionMarker());
+  afterAll(() => clearMissionMarker());
+
+  it('allows writes when no mission is active (no marker file)', () => {
+    const result = runHook({
+      tool_name: 'Write',
+      tool_input: { file_path: 'src/index.ts' },
+      // no agent_type = main session, but no mission marker
+    });
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('allows Playwright when no mission is active', () => {
+    const result = runHook({
+      tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
+      tool_input: { url: 'http://localhost:3000' },
+    });
+    expect(result.exitCode).toBe(0);
+  });
+});
+
+// =============================================================================
+// Absolute .claude/ path support
+// =============================================================================
+describe('enforce-orchestrator-boundary — absolute .claude/ paths', () => {
+  beforeAll(() => setMissionMarker());
+  afterAll(() => clearMissionMarker());
+
+  it('allows absolute path containing /.claude/', () => {
+    const result = runHook({
+      tool_name: 'Write',
+      tool_input: { file_path: '/Users/josh/Code/my-project/.claude/settings.local.json' },
+    });
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('allows absolute path to nested .claude/ file', () => {
+    const result = runHook({
+      tool_name: 'Write',
+      tool_input: { file_path: '/home/user/project/.claude/commands/deploy.md' },
     });
     expect(result.exitCode).toBe(0);
   });

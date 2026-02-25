@@ -13,10 +13,20 @@
  *   - enforce-orchestrator-stop.js → hannibal
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
+
+// Mission-active marker — enforce-orchestrator-stop needs this to enforce
+const MISSION_MARKER = join(tmpdir(), '.ateam-mission-active-test-project');
+function setMissionMarker() {
+  writeFileSync(MISSION_MARKER, new Date().toISOString());
+}
+function clearMissionMarker() {
+  try { unlinkSync(MISSION_MARKER); } catch { /* ignore */ }
+}
 
 const HOOKS_DIR = join(__dirname, '..');
 
@@ -411,6 +421,10 @@ describe('enforce-final-review — agent guards', () => {
 // =============================================================================
 describe('enforce-orchestrator-stop — agent guards', () => {
   const HOOK = hookPath('enforce-orchestrator-stop.js');
+
+  // Mission marker must exist for enforcement to kick in on the main session
+  beforeAll(() => setMissionMarker());
+  afterAll(() => clearMissionMarker());
 
   it('uses resolveAgent() in source', () => {
     const source = readFileSync(HOOK, 'utf8');

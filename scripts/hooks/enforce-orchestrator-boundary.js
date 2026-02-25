@@ -12,10 +12,14 @@
  * for ALL sessions. It uses resolveAgent() to detect the current agent and
  * only enforces restrictions for the main session (Hannibal / null agent).
  *
+ * Mission-active guard: Only enforces when a mission is running (marker file
+ * exists). Without a mission, the main session is a normal user session,
+ * not Hannibal. This prevents blocking writes during normal Claude usage.
+ *
  * Detection:
  *   1. resolveAgent() returns a known non-hannibal agent → exit 0 (allow)
  *   2. Agent map shows worker name → worker active in main session → exit 0
- *   3. Agent is hannibal or null → main session → enforce allowlist
+ *   3. Agent is hannibal or null → main session → check mission-active → enforce allowlist
  *
  * Allowlist (main session only — Hannibal may ONLY write to):
  *   - ateam.config.json
@@ -29,6 +33,7 @@
 import { readHookInput, lookupAgent } from './lib/observer.js';
 import { resolveAgent, isKnownAgent } from './lib/resolve-agent.js';
 import { sendDeniedEvent } from './lib/send-denied-event.js';
+import { isMissionActive } from './lib/mission-active.js';
 
 let hookInput = {};
 try {
@@ -88,6 +93,13 @@ if (mappedAgent && mappedAgent !== 'hannibal') {
 // We're in the main session and Hannibal is in control.
 // (resolvedAgent is 'hannibal' or null; mappedAgent is 'hannibal' or null)
 
+// --- Mission-Active Guard ---
+// No active mission → this is a normal Claude session, not Hannibal.
+// Allow all operations without enforcement.
+if (!isMissionActive()) {
+  process.exit(0);
+}
+
 // --- Enforcement ---
 
 const toolInput = hookInput.tool_input || {};
@@ -110,9 +122,11 @@ if (toolName === 'Write' || toolName === 'Edit') {
   }
 
   // Allowlist: ateam.config.json, .claude/*, /tmp/*, /var/*
+  // Match both relative (.claude/) and absolute (/.claude/) paths
   if (
     filePath === 'ateam.config.json' ||
     filePath.startsWith('.claude/') ||
+    filePath.includes('/.claude/') ||
     filePath.startsWith('/tmp/') ||
     filePath.startsWith('/var/')
   ) {
