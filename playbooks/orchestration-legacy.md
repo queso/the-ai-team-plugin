@@ -2,6 +2,8 @@
 
 > **You are in LEGACY mode.** Use `Task` with `run_in_background: true` and poll with `TaskOutput`.
 
+Read `docs/ORCHESTRATION.md` for environment setup, permissions, and dispatch reference.
+
 This playbook contains the complete orchestration loop, agent dispatch patterns, completion detection, and concrete examples for legacy (Task/TaskOutput) dispatch mode.
 
 ## Task Tracking
@@ -15,6 +17,22 @@ active_tasks = {
 ```
 
 When dispatching agents with `run_in_background: true`, the Task tool returns a task_id. Store this to poll individual items later.
+
+## Mission-Active Marker
+
+At the **very start** of orchestration (before entering the loop), create the mission-active marker so enforcement hooks know a mission is running:
+
+```
+Bash("touch /tmp/.ateam-mission-active-$ATEAM_PROJECT_ID")
+```
+
+At **mission completion** (after Tawnia commits, just before reporting success), clear the marker:
+
+```
+Bash("rm -f /tmp/.ateam-mission-active-$ATEAM_PROJECT_ID")
+```
+
+This marker distinguishes "Hannibal's session during /ateam run" from "normal Claude session". Without it, enforcement hooks block all writes in the main session even when no mission is running.
 
 ## The Orchestration Loop
 
@@ -93,6 +111,12 @@ LOOP CONTINUOUSLY:
 - Phase 1: Advance items IMMEDIATELY - no waiting for siblings
 - Phase 2: Unlock next-wave items when deps complete (correct waiting)
 - Phase 3: Keep pipeline full up to WIP limit
+
+## Minimizing Per-Cycle Token Spend
+
+- Use `deps_check()` (without `verbose: true`) in the orchestration loop. Only use `deps_check(verbose: true)` for debugging stuck dependencies.
+- Call `board_read()` only when you need the full board state (start of loop, after wave completion). Between those, track state from agent completion results instead of re-reading the full board.
+- Use `item_list(stage: "ready")` instead of `board_read()` when you only need to check the ready queue.
 
 ## TaskOutput Polling Pattern
 
@@ -238,6 +262,7 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:lynch",
+  model: "sonnet",
   run_in_background: true,
   description: "Lynch: {feature title}",
   prompt: "... [Lynch prompt from agents/lynch.md]
@@ -295,36 +320,25 @@ board_read(filter: "agents")
 
 ## Final Mission Review Dispatch
 
-When ALL items reach `done` stage:
+When ALL items reach `done` stage, fetch `prdPath` from the `mission_current` response, then dispatch:
 
 ```
 Task(
-  subagent_type: "ai-team:lynch",
+  subagent_type: "ai-team:lynch-final",
+  model: "opus",
   run_in_background: true,
   description: "Lynch: Final Mission Review",
   prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.
 
-  This is NOT a per-feature review. Review ALL code produced in this mission together.
+  PRD path: {prdPath from mission_current}
 
-  [Include Final Mission Review section from agents/lynch.md]
+  Review scope: Read the PRD, then run `git diff main...HEAD` to see what
+  this mission changed. Review the diff against the PRD requirements.
 
-  Files to review:
-  Implementation files:
-  - {all outputs.impl files}
-
-  Test files:
-  - {all outputs.test files}
-
-  Type files (if any):
-  - {all outputs.types files}
-
-  Review for:
-  1. Readability & consistency across all files
-  2. Testability patterns
-  3. Race conditions & async issues
-  4. Security vulnerabilities
-  5. Code quality & DRY violations
-  6. Integration issues between modules
+  Do NOT read the entire codebase. Focus on:
+  1. PRD requirements — is each one addressed in the diff?
+  2. The mission's commits — correct, consistent, secure?
+  3. Integration — do changes wire into the existing codebase?
 
   Respond with:
   VERDICT: FINAL APPROVED
@@ -344,7 +358,7 @@ After post-checks pass:
 ```
 Task(
   subagent_type: "ai-team:tawnia",
-  model: "sonnet",
+  model: "haiku",
   run_in_background: true,
   description: "Tawnia: Documentation and final commit",
   prompt: "... [Tawnia prompt from agents/tawnia.md]
@@ -397,7 +411,7 @@ for item in implementing stage:
 
 for item in review stage:
     board_release(itemId)
-    task = Task(subagent_type: "ai-team:lynch", run_in_background: true, ...)
+    task = Task(subagent_type: "ai-team:lynch", model: "sonnet", run_in_background: true, ...)
     active_tasks[item_id] = task.id
 
 for item in probing stage:
