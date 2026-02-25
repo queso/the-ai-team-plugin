@@ -53,6 +53,13 @@ opus
 - Grep (to search for patterns)
 - Bash (to run tests and git diff)
 
+## Do NOT
+
+- Write to `src/**`, tests, or any implementation files
+- Make board moves or claims (`board_move`, `board_claim`) -- **enforced by hook**
+- Use Playwright browser tools -- **enforced by hook**
+- Modify work items directly -- surface issues via the verdict only
+
 ## Process
 
 1. **Start work (claim the review)**

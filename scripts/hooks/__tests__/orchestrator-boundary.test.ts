@@ -387,10 +387,7 @@ describe('enforce-orchestrator-boundary — edge cases', () => {
 
   it('exits 0 on stdin parse error (fail-open)', () => {
     // When bad JSON is given, the hook should fail open (exit 0), not exit 2.
-    // We capture the result directly instead of relying on try/catch, which
-    // would silently pass if the hook exits 0 (no throw = catch never runs).
-    const result = runHook({ _raw: 'not valid json' } as any);
-    // Actually send truly malformed JSON via the raw execFileSync path
+    // Send truly malformed JSON via the raw execFileSync path
     const fullEnv = { ...process.env, ATEAM_PROJECT_ID: 'test-project' };
     let exitCode: number;
     try {

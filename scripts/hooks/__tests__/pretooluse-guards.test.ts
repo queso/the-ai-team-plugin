@@ -907,7 +907,7 @@ describe('block-raw-mv — agent guards', () => {
 });
 
 // =============================================================================
-// block-worker-board-claim.js — target: murdock,ba,lynch,amy,tawnia
+// block-worker-board-claim.js — target: murdock,ba,lynch,lynch-final,amy,tawnia
 // =============================================================================
 describe('block-worker-board-claim — agent guards', () => {
   const HOOK = hookPath('block-worker-board-claim.js');
@@ -958,6 +958,15 @@ describe('block-worker-board-claim — agent guards', () => {
     expect(result.exitCode).toBe(2);
   });
 
+  it('blocks lynch-final calling board_claim (exit 2)', () => {
+    const result = runHook(HOOK, {
+      agent_type: 'lynch-final',
+      tool_name: 'mcp__plugin_ai-team_ateam__board_claim',
+      tool_input: { itemId: 'WI-001' },
+    });
+    expect(result.exitCode).toBe(2);
+  });
+
   it('allows non-target agent hannibal to call board_claim (exit 0)', () => {
     const result = runHook(HOOK, {
       agent_type: 'hannibal',
@@ -986,7 +995,7 @@ describe('block-worker-board-claim — agent guards', () => {
 });
 
 // =============================================================================
-// block-worker-board-move.js — target: murdock,ba,lynch,amy,tawnia
+// block-worker-board-move.js — target: murdock,ba,lynch,lynch-final,amy,tawnia
 // =============================================================================
 describe('block-worker-board-move — agent guards', () => {
   const HOOK = hookPath('block-worker-board-move.js');
@@ -1031,6 +1040,15 @@ describe('block-worker-board-move — agent guards', () => {
   it('blocks tawnia calling board_move (exit 2)', () => {
     const result = runHook(HOOK, {
       agent_type: 'tawnia',
+      tool_name: 'mcp__plugin_ai-team_ateam__board_move',
+      tool_input: { itemId: 'WI-001', to: 'done' },
+    });
+    expect(result.exitCode).toBe(2);
+  });
+
+  it('blocks lynch-final calling board_move (exit 2)', () => {
+    const result = runHook(HOOK, {
+      agent_type: 'lynch-final',
       tool_name: 'mcp__plugin_ai-team_ateam__board_move',
       tool_input: { itemId: 'WI-001', to: 'done' },
     });

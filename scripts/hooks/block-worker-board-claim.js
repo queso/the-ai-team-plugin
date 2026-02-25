@@ -6,7 +6,7 @@
  * Workers should use agent_start to claim items, which handles both
  * the board claim and the assigned_agent metadata in one call.
  *
- * Targets: murdock, ba, lynch, amy, tawnia
+ * Targets: murdock, ba, lynch, lynch-final, amy, tawnia
  *
  * Claude Code sends hook context via stdin JSON (tool_name, tool_input).
  */
@@ -36,10 +36,13 @@ try {
   const toolName = hookInput.tool_name || '';
 
   if (toolName === 'mcp__plugin_ai-team_ateam__board_claim') {
-    sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Working agents cannot call board_claim directly. Use agent_start instead.' });
-    process.stderr.write('BLOCKED: Working agents cannot call board_claim directly.\n');
-    process.stderr.write('Use agent_start to claim items — it handles both the board claim and metadata.\n');
-    process.exit(2);
+    try {
+      sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Working agents cannot call board_claim directly. Use agent_start instead.' });
+    } finally {
+      process.stderr.write('BLOCKED: Working agents cannot call board_claim directly.\n');
+      process.stderr.write('Use agent_start to claim items — it handles both the board claim and metadata.\n');
+      process.exit(2);
+    }
   }
 
   // Allow other tools

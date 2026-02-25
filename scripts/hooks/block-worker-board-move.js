@@ -5,7 +5,7 @@
  * Blocks working agents (Murdock, B.A., Lynch, Amy, Tawnia) from calling
  * the board_move MCP tool. Stage transitions are Hannibal's responsibility.
  *
- * Targets: murdock, ba, lynch, amy, tawnia
+ * Targets: murdock, ba, lynch, lynch-final, amy, tawnia
  *
  * Claude Code sends hook context via stdin JSON (tool_name, tool_input).
  */
@@ -35,11 +35,14 @@ try {
   const toolName = hookInput.tool_name || '';
 
   if (toolName === 'mcp__plugin_ai-team_ateam__board_move') {
-    sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Working agents cannot call board_move. Stage transitions are Hannibal\'s responsibility.' });
-    process.stderr.write('BLOCKED: Working agents cannot call board_move.\n');
-    process.stderr.write('Stage transitions are Hannibal\'s responsibility.\n');
-    process.stderr.write('Use agent_stop to signal completion, then Hannibal will advance the item.\n');
-    process.exit(2);
+    try {
+      sendDeniedEvent({ agentName: agent, toolName, reason: 'BLOCKED: Working agents cannot call board_move. Stage transitions are Hannibal\'s responsibility.' });
+    } finally {
+      process.stderr.write('BLOCKED: Working agents cannot call board_move.\n');
+      process.stderr.write('Stage transitions are Hannibal\'s responsibility.\n');
+      process.stderr.write('Use agent_stop to signal completion, then Hannibal will advance the item.\n');
+      process.exit(2);
+    }
   }
 
   // Allow other tools
