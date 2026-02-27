@@ -296,10 +296,10 @@ export function useBoardEvents(
         case "hook-event":
           if (callbacksRef.current.onHookEvent) {
             // Revive timestamp strings to Date objects from JSON.parse
-            const reviveTimestamp = (evt: Record<string, unknown>) => ({
-              ...evt,
-              timestamp: new Date(evt.timestamp as string),
-            });
+            const reviveTimestamp = (evt: unknown) => {
+              const obj = evt as Record<string, unknown>;
+              return { ...obj, timestamp: new Date(obj.timestamp as string) };
+            };
             const hookData = boardEvent.data;
             const revivedData = Array.isArray(hookData)
               ? hookData.map(reviveTimestamp)

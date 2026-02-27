@@ -27,11 +27,16 @@ const VALID_PRIORITIES: ItemPriority[] = ITEM_PRIORITIES as unknown as ItemPrior
 
 /**
  * Generate next item ID in WI-NNN format.
+ * Uses MAX(id) instead of COUNT(*) to avoid collisions when items have been hard-deleted.
  */
 async function generateItemId(): Promise<string> {
-  const count = await prisma.item.count();
-  const nextNumber = count + 1;
-  return `WI-${String(nextNumber).padStart(3, '0')}`;
+  const items = await prisma.item.findMany({
+    select: { id: true },
+    orderBy: { id: 'desc' },
+    take: 1,
+  });
+  const maxNum = items.length > 0 ? parseInt(items[0].id.replace('WI-', ''), 10) : 0;
+  return `WI-${String(maxNum + 1).padStart(3, '0')}`;
 }
 
 /**
