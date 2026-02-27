@@ -35,6 +35,11 @@ interface HookEventInput {
   payload?: string;
   correlationId?: string;
   timestamp: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheCreationTokens?: number;
+  cacheReadTokens?: number;
+  model?: string;
 }
 
 /** Response for single event creation. */
@@ -220,6 +225,11 @@ export async function POST(
             payload: event.payload ?? '{}',
             correlationId: event.correlationId ?? null,
             timestamp: new Date(event.timestamp),
+            inputTokens: event.inputTokens ?? null,
+            outputTokens: event.outputTokens ?? null,
+            cacheCreationTokens: event.cacheCreationTokens ?? null,
+            cacheReadTokens: event.cacheReadTokens ?? null,
+            model: event.model ?? null,
           },
         });
 
