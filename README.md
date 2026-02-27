@@ -74,7 +74,7 @@ git submodule add git@github.com:yourorg/ai-team.git .claude/ai-team
 your-project/
 ├── .claude/
 │   └── ai-team/           # This plugin (submodule)
-├── ateam.config.json      # Created by /ateam setup
+├── ateam.config.json      # Created by /ai-team:setup
 └── src/
 ```
 
@@ -87,22 +87,22 @@ git submodule update --remote .claude/ai-team
 
 ```bash
 # First time: configure project ID and permissions
-/ateam setup
+/ai-team:setup
 
 # Plan a mission from a PRD
-/ateam plan ./docs/my-feature-prd.md
+/ai-team:plan ./docs/my-feature-prd.md
 
 # Execute with pipeline agents
-/ateam run
+/ai-team:run
 
 # Check progress anytime
-/ateam status
+/ai-team:status
 
 # Resume after interruption
-/ateam resume
+/ai-team:resume
 
 # Unblock a stuck item
-/ateam unblock 015 --guidance "Try using the existing AuthService"
+/ai-team:unblock 015 --guidance "Try using the existing AuthService"
 ```
 
 ## Kanban Dashboard
@@ -136,7 +136,7 @@ Switch between views using the navigation tabs at the top of the dashboard.
 
 ## Pipeline Flow
 
-### Planning Phase (`/ateam plan`)
+### Planning Phase (`/ai-team:plan`)
 
 Two-pass refinement ensures quality before work begins:
 
@@ -153,7 +153,7 @@ PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready stage
 
 Use `--skip-refinement` to bypass Sosa for simple PRDs.
 
-### Execution Phase (`/ateam run`)
+### Execution Phase (`/ai-team:run`)
 
 **Before starting execution:**
 - **Pre-Mission Checks**: Runs `mission_precheck` MCP tool to verify lint and tests pass (establishes baseline)
@@ -273,7 +273,7 @@ If issues are found, specific items return to the pipeline for fixes.
 ### Mission Lifecycle Checks
 
 **Pre-Mission Checks** (`mission_precheck` MCP tool):
-- Run before `/ateam run` starts execution
+- Run before `/ai-team:run` starts execution
 - Configured via `ateam.config.json` (typically lint + unit tests)
 - Ensures codebase is in clean state before mission begins
 - Establishes baseline - if tests are already failing, mission can't determine what it broke
@@ -307,7 +307,7 @@ If issues are found, specific items return to the pipeline for fixes.
 
 ## Commands
 
-### `/ateam setup`
+### `/ai-team:setup`
 
 Configure project ID, permissions, and settings. **Run this once per project.**
 
@@ -325,7 +325,7 @@ This command:
 6. **Verifies API connectivity**
 7. **Checks for browser testing tools** (agent-browser preferred, Playwright fallback)
 
-### `/ateam plan <prd-file> [--skip-refinement]`
+### `/ai-team:plan <prd-file> [--skip-refinement]`
 
 Initialize a mission from a PRD file with two-pass refinement:
 1. Face decomposes PRD into work items
@@ -334,19 +334,19 @@ Initialize a mission from a PRD file with two-pass refinement:
 
 Use `--skip-refinement` to bypass Sosa's review for simple PRDs.
 
-### `/ateam run [--wip N] [--max-wip M]`
+### `/ai-team:run [--wip N] [--max-wip M]`
 
 Execute the mission. Default WIP: 3, max: 5.
 
-### `/ateam status`
+### `/ai-team:status`
 
 Display the mission board with current progress.
 
-### `/ateam resume`
+### `/ai-team:resume`
 
 Resume an interrupted mission.
 
-### `/ateam unblock <item-id> [--guidance "hint"]`
+### `/ai-team:unblock <item-id> [--guidance "hint"]`
 
 Unblock a stuck work item with optional guidance.
 
@@ -547,7 +547,7 @@ Hook scripts live in `scripts/hooks/`. Exit code 0 = allow, non-zero = block.
 
 ## Project Configuration
 
-`ateam.config.json` (created by `/ateam setup`):
+`ateam.config.json` (created by `/ai-team:setup`):
 
 ```json
 {
@@ -575,7 +575,7 @@ Hook scripts live in `scripts/hooks/`. Exit code 0 = allow, non-zero = block.
 
 **Cause:** Background agents can't prompt for approval interactively.
 
-**Fix:** Run `/ateam setup` to configure required permissions, or manually add to `.claude/settings.local.json`:
+**Fix:** Run `/ai-team:setup` to configure required permissions, or manually add to `.claude/settings.local.json`:
 ```json
 {
   "env": {

@@ -386,7 +386,7 @@ When Tawnia completes, she reports:
 
 ## Resume Recovery (Legacy Mode)
 
-When resuming an interrupted mission with `/ateam resume`:
+When resuming an interrupted mission with `/ai-team:resume`:
 
 1. Read board state with `board_read()`
 2. Initialize `active_tasks = {}` (fresh start - old task IDs are invalid)

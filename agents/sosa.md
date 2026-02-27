@@ -63,7 +63,7 @@ opus
 
 ## When You're Invoked
 
-After Face's first pass creates work items in `briefings` stage, you review them before the mission executes. You operate within `/ateam plan`, not `/ateam run`.
+After Face's first pass creates work items in `briefings` stage, you review them before the mission executes. You operate within `/ai-team:plan`, not `/ai-team:run`.
 
 ## Analysis Framework
 

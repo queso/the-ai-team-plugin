@@ -66,7 +66,7 @@ target-repo/
 ### Stage 1: Planning (IMPLEMENTED)
 
 ```bash
-claude "/ateam plan ./prd.md"
+claude "/ai-team:plan ./prd.md"
 ```
 
 **Now includes two-pass refinement with Sosa:**
@@ -81,7 +81,7 @@ Use `--skip-refinement` to bypass Sosa for simple PRDs.
 ### Stage 2: Execution
 
 ```bash
-claude "/ateam run --wip 3"
+claude "/ai-team:run --wip 3"
 ```
 
 - Agents work in parallel (pipeline parallelism)
@@ -237,7 +237,7 @@ The A(i)-Team maps almost directly to traditional Scrum/Kanban:
 
 ## Backlog Refinement: Two-Pass Decomposition (IMPLEMENTED)
 
-> **Status: IMPLEMENTED** - Sosa now reviews Face's decomposition during `/ateam plan`.
+> **Status: IMPLEMENTED** - Sosa now reviews Face's decomposition during `/ai-team:plan`.
 
 Face's decomposition was previously single-pass. Now, backlog refinement is conversational - Sosa asks questions, clarifies edge cases, and refines stories before the team commits to them.
 
@@ -312,7 +312,7 @@ Face's decomposition was previously single-pass. Now, backlog refinement is conv
 
 ### Recommendation: Option B (AI-Assisted Refinement) - IMPLEMENTED
 
-> **Status: IMPLEMENTED** - This is now the default behavior of `/ateam plan`.
+> **Status: IMPLEMENTED** - This is now the default behavior of `/ai-team:plan`.
 
 Option B was chosen and implemented:
 - AI does the heavy lifting on both decomposition AND critique
@@ -420,14 +420,14 @@ Option B was chosen and implemented:
 └─────────────────────────────────────────────────────────────────────────────┘
                            │
                            ▼
-                    Stage 1: Execution (/ateam run)
+                    Stage 1: Execution (/ai-team:run)
 ```
 
 ### Command Flow - IMPLEMENTED
 
 ```bash
 # Unified command with refinement built-in
-claude "/ateam plan ./prd.md"
+claude "/ai-team:plan ./prd.md"
 
 # Current implemented flow:
 # 1. Face reads PRD, produces draft breakdown in briefings/
@@ -438,7 +438,7 @@ claude "/ateam plan ./prd.md"
 # 6. Items with deps stay in briefings/ for Hannibal
 
 # Then execute as normal
-claude "/ateam run --wip 3"
+claude "/ai-team:run --wip 3"
 ```
 
 ### Skip Refinement Option - IMPLEMENTED
@@ -446,7 +446,7 @@ claude "/ateam run --wip 3"
 For simple PRDs or when you trust the breakdown:
 
 ```bash
-claude "/ateam plan ./prd.md --skip-refinement"
+claude "/ai-team:plan ./prd.md --skip-refinement"
 # → Face decomposes directly, no Sosa review, no human Q&A
 # → Use for small/simple projects or when iterating quickly
 ```
@@ -488,7 +488,7 @@ If work items are:
 
 ### The 2-Rejection Limit
 
-Currently: blocked items expect `/ateam unblock` with human guidance.
+Currently: blocked items expect `/ai-team:unblock` with human guidance.
 
 **In fully automated mode, options:**
 1. PR includes blocked items flagged as "needs human attention"

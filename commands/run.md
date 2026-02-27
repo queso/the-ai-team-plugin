@@ -1,11 +1,11 @@
-# /ateam run
+# /ai-team:run
 
 Execute the mission with the pipeline flow.
 
 ## Usage
 
 ```
-/ateam run [--wip N] [--max-wip M]
+/ai-team:run [--wip N] [--max-wip M]
 ```
 
 ## Arguments
@@ -71,7 +71,7 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    Use `mission_current` MCP tool to check for active mission.
    ```
    if mission not found:
-       error "No mission found. Run /ateam plan first."
+       error "No mission found. Run /ai-team:plan first."
        exit
    ```
 
@@ -182,13 +182,13 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
 
 ```
 # Default WIP of 3
-/ateam run
+/ai-team:run
 
 # Higher parallelism
-/ateam run --wip 4 --max-wip 6
+/ai-team:run --wip 4 --max-wip 6
 
 # Sequential (one at a time)
-/ateam run --wip 1 --max-wip 1
+/ai-team:run --wip 1 --max-wip 1
 ```
 
 ## Implementation Notes
@@ -232,7 +232,7 @@ The dispatch mode (legacy Task/TaskOutput vs. native TeamCreate/SendMessage) is 
 
 ## Errors
 
-- **No mission found**: Run `/ateam plan` first
-- **All items blocked**: Human intervention needed via `/ateam unblock`
+- **No mission found**: Run `/ai-team:plan` first
+- **All items blocked**: Human intervention needed via `/ai-team:unblock`
 - **Agent failure**: Item returned to previous stage for retry
 - **API unavailable**: Cannot connect to A(i)-Team server

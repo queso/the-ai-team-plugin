@@ -1,11 +1,11 @@
-# /ateam status
+# /ai-team:status
 
 Check mission progress and current state.
 
 ## Usage
 
 ```
-/ateam status
+/ai-team:status
 ```
 
 ## Behavior
@@ -14,7 +14,7 @@ Check mission progress and current state.
    Use `mission_current` MCP tool to check for active mission.
    ```
    if mission not found:
-       error "No mission found. Run /ateam plan first."
+       error "No mission found. Run /ai-team:plan first."
        exit
    ```
 
@@ -83,7 +83,7 @@ BLOCKED: 0
   ⚠ 015-auth-tests
     Rejected 2 times
     Last feedback: "Tests not covering error cases"
-    Use: /ateam unblock 015 --guidance "Add network timeout tests"
+    Use: /ai-team:unblock 015 --guidance "Add network timeout tests"
 
 ═══════════════════════════════════════════════════════════════
 ```
@@ -108,5 +108,5 @@ No agents are launched - this uses MCP tools directly.
 
 ## Errors
 
-- **No mission found**: Run `/ateam plan` first
+- **No mission found**: Run `/ai-team:plan` first
 - **API unavailable**: Cannot connect to A(i)-Team server

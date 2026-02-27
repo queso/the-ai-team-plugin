@@ -1,11 +1,11 @@
-# /ateam plan
+# /ai-team:plan
 
 Initialize a mission from a PRD file with two-pass refinement.
 
 ## Usage
 
 ```
-/ateam plan <prd-file> [--skip-refinement]
+/ai-team:plan <prd-file> [--skip-refinement]
 ```
 
 ## Arguments
@@ -16,7 +16,7 @@ Initialize a mission from a PRD file with two-pass refinement.
 ## Flow
 
 ```
-/ateam plan ./prd.md
+/ai-team:plan ./prd.md
          │
          ▼
 ┌─────────────────────────────────────┐
@@ -195,18 +195,18 @@ Refinement applied:
 - {warnings} warnings addressed
 - {questions} questions answered
 
-Ready for /ateam run
+Ready for /ai-team:run
 ```
 
 ## Example
 
 ```
-/ateam plan ./docs/shipping-feature-prd.md
+/ai-team:plan ./docs/shipping-feature-prd.md
 ```
 
 With skip refinement:
 ```
-/ateam plan ./docs/simple-fix-prd.md --skip-refinement
+/ai-team:plan ./docs/simple-fix-prd.md --skip-refinement
 ```
 
 ## Output

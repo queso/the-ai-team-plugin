@@ -129,7 +129,7 @@ Combine native TeammateTool spawning with our MCP persistence layer to get:
 
 ### FR-1: Team Initialization
 
-When `/ateam run` starts, Hannibal creates a team:
+When `/ai-team:run` starts, Hannibal creates a team:
 
 ```javascript
 TeammateTool({
@@ -297,12 +297,12 @@ TeammateTool({
 
 Native teams don't support `/resume`. Handle this:
 
-1. On `/ateam resume`, check for orphaned team references
+1. On `/ai-team:resume`, check for orphaned team references
 2. If team doesn't exist, log warning and spawn fresh teammates
 3. MCP state is source of truth - agents pick up from board state
 
 ```javascript
-// In /ateam resume
+// In /ai-team:resume
 const missionState = await mcp.mission_current();
 const readyItems = missionState.columns.ready;
 
@@ -452,7 +452,7 @@ if (useNativeTeams) {
 
 **Mitigation:**
 - MCP state is source of truth
-- `/ateam resume` spawns fresh teammates from board state
+- `/ai-team:resume` spawns fresh teammates from board state
 - Work items track progress, not teammate sessions
 
 ### Risk: Token Cost
@@ -505,7 +505,7 @@ if (useNativeTeams) {
 
 ### Manual Testing
 - Full mission with native teams
-- Session crash and `/ateam resume`
+- Session crash and `/ai-team:resume`
 - Split pane visualization
 - Interactive agent messaging
 
@@ -515,8 +515,8 @@ if (useNativeTeams) {
 - [ ] Update Hannibal dispatch to use TeammateTool
 - [ ] Update agent prompts with team communication
 - [ ] Add teammate mode configuration
-- [ ] Update `/ateam run` command
-- [ ] Update `/ateam resume` for orphaned teams
+- [ ] Update `/ai-team:run` command
+- [ ] Update `/ai-team:resume` for orphaned teams
 - [ ] Add split pane setup documentation
 - [ ] Test parallel Task/TeammateTool support
 - [ ] Performance testing with 5 teammates

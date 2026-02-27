@@ -68,19 +68,19 @@ Native handles orchestration, MCP handles persistence.
 ## Plugin Commands
 
 ### Mission Commands
-- `/ateam setup` - Configure project ID, permissions, teammate mode, and settings (run once per project)
-- `/ateam plan <prd-file>` - Initialize mission from PRD, Face decomposes into work items
-- `/ateam run [--wip N]` - Execute mission with pipeline agents (default WIP: 3)
-- `/ateam status` - Display kanban board with current progress
-- `/ateam resume` - Resume interrupted mission from saved state
-- `/ateam unblock <item-id> [--guidance "hint"]` - Unblock stuck items
+- `/ai-team:setup` - Configure project ID, permissions, teammate mode, and settings (run once per project)
+- `/ai-team:plan <prd-file>` - Initialize mission from PRD, Face decomposes into work items
+- `/ai-team:run [--wip N]` - Execute mission with pipeline agents (default WIP: 3)
+- `/ai-team:status` - Display kanban board with current progress
+- `/ai-team:resume` - Resume interrupted mission from saved state
+- `/ai-team:unblock <item-id> [--guidance "hint"]` - Unblock stuck items
 
 ### Standalone Skills
 - `/perspective-test <feature>` - Test a feature from user's perspective (static analysis + browser verification)
 
 ## Agent Dispatch (Dual Mode)
 
-The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. The `/ateam run` command detects the mode and loads the appropriate orchestration playbook:
+The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. The `/ai-team:run` command detects the mode and loads the appropriate orchestration playbook:
 
 - **Legacy mode** (default): `playbooks/orchestration-legacy.md` - Uses `Task` with `run_in_background: true` and `TaskOutput` polling
 - **Native teams mode** (env var = "1"): `playbooks/orchestration-native.md` - Uses `TeamCreate`, `Task` with `team_name`, and `SendMessage`
@@ -107,7 +107,7 @@ The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_
 
 **Native Teams Mode:** When using native teams, agents are spawned as teammates via `Task` with `team_name` parameter. The same permissions in `.claude/settings.local.json` are still required for filesystem operations.
 
-Run `/ateam setup` once per project to configure required permissions in `.claude/settings.local.json`:
+Run `/ai-team:setup` once per project to configure required permissions in `.claude/settings.local.json`:
 
 ```json
 {
@@ -166,7 +166,7 @@ Configure these in `.claude/settings.local.json`:
 
 ## Project Configuration
 
-The `/ateam setup` command **auto-detects** project settings and creates `ateam.config.json`:
+The `/ai-team:setup` command **auto-detects** project settings and creates `ateam.config.json`:
 
 ### Auto-Detection Sources
 
@@ -202,7 +202,7 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
 - `managed`: If false, user manages server; Amy checks if running but doesn't start/restart it
 
 **Pre-mission checks** (`mission_precheck` MCP tool):
-- Run before `/ateam run` starts execution
+- Run before `/ai-team:run` starts execution
 - Ensures codebase is in clean state (no existing lint/test failures)
 - Establishes baseline for mission work
 
@@ -213,10 +213,10 @@ The `/ateam setup` command **auto-detects** project settings and creates `ateam.
 
 ## Plugin Dependencies
 
-Amy (Investigator) uses browser testing tools during the probing stage to verify UI features. The `/ateam setup` command detects which tools are available and offers to install the preferred one.
+Amy (Investigator) uses browser testing tools during the probing stage to verify UI features. The `/ai-team:setup` command detects which tools are available and offers to install the preferred one.
 
 **agent-browser CLI (Preferred):**
-Amy's primary browser testing tool. Installed globally via npm/bun (`npm install -g agent-browser`). Used via Bash commands (`agent-browser open`, `agent-browser snapshot`, etc.). The `/ateam setup` command checks for it and offers to install it if missing, adding `Bash(agent-browser:*)` and `Skill(agent-browser)` permissions automatically.
+Amy's primary browser testing tool. Installed globally via npm/bun (`npm install -g agent-browser`). Used via Bash commands (`agent-browser open`, `agent-browser snapshot`, etc.). The `/ai-team:setup` command checks for it and offers to install it if missing, adding `Bash(agent-browser:*)` and `Skill(agent-browser)` permissions automatically.
 
 **Playwright MCP Plugin (Fallback):**
-Still supported as a fallback if agent-browser is unavailable. Detected by the presence of MCP tools matching `mcp__*playwright*` (e.g., `browser_navigate`, `browser_snapshot`, `browser_click`). The `/ateam setup` command detects this automatically and adds the required MCP tool permissions.
+Still supported as a fallback if agent-browser is unavailable. Detected by the presence of MCP tools matching `mcp__*playwright*` (e.g., `browser_navigate`, `browser_snapshot`, `browser_click`). The `/ai-team:setup` command detects this automatically and adds the required MCP tool permissions.

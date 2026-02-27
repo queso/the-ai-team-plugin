@@ -38,7 +38,7 @@ The two repositories share 10+ domain concepts with no compile-time safety betwe
 
 **Schema drift is already happening.** The kanban-viewer's agent list is missing `Sosa` (added to the plugin in a later commit). The transition matrix in `board.ts` includes `ready -> implementing` but the API may not. Every domain change requires coordinated edits across both repos with no compiler to catch mismatches.
 
-**Operational friction is high.** Users must separately clone, install, configure, and run the kanban-viewer. The `/ateam setup` command configures `ATEAM_API_URL` but cannot help users actually start the API server. This is a common source of setup failures.
+**Operational friction is high.** Users must separately clone, install, configure, and run the kanban-viewer. The `/ai-team:setup` command configures `ATEAM_API_URL` but cannot help users actually start the API server. This is a common source of setup failures.
 
 ### 1.3 Solution
 
@@ -452,14 +452,14 @@ End-to-end verification that the plugin still works after restructuring. This is
 **Verification steps:**
 1. Start Claude Code with `--plugin-dir` pointing to the repo root
 2. Verify all MCP tools are registered (use `mission_current` to test connectivity)
-3. Verify slash commands work (`/ateam status`)
+3. Verify slash commands work (`/ai-team:status`)
 4. Verify agent prompts are discovered (agents/ directory)
 5. Run `bun test` at workspace root to confirm all tests pass
 
 **Acceptance Criteria:**
 - [ ] Plugin loads without errors
 - [ ] All 20 MCP tools respond to invocations
-- [ ] `/ateam status` command executes
+- [ ] `/ai-team:status` command executes
 - [ ] `bun test` passes across all workspaces
 
 ---
@@ -693,18 +693,18 @@ This is a manual verification step, not an automated test.
 
 ### 4.4 Wave 3: Setup automation
 
-These items improve the developer experience by integrating the kanban-viewer into the `/ateam setup` flow. After Wave 3, a new user can get the full A(i)-Team running with minimal manual steps.
+These items improve the developer experience by integrating the kanban-viewer into the `/ai-team:setup` flow. After Wave 3, a new user can get the full A(i)-Team running with minimal manual steps.
 
 ---
 
-#### WI-013: Update /ateam setup to detect and start kanban-viewer
+#### WI-013: Update /ai-team:setup to detect and start kanban-viewer
 
 **Type:** enhancement
 **Priority:** medium
 **Dependencies:** WI-006
 
 **Description:**
-Update the `/ateam setup` command (`commands/setup.md`) to detect whether Docker is available and offer to build/start the kanban-viewer container.
+Update the `/ai-team:setup` command (`commands/setup.md`) to detect whether Docker is available and offer to build/start the kanban-viewer container.
 
 **New setup step (after API URL configuration):**
 

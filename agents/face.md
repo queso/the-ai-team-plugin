@@ -44,7 +44,7 @@ opus
 
 ## Two-Pass Planning
 
-Face is invoked twice during `/ateam plan`:
+Face is invoked twice during `/ai-team:plan`:
 
 ### First Pass: Decomposition
 

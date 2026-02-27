@@ -233,7 +233,7 @@ describe('Utility Tools', () => {
       it('should handle no mission directory error', async () => {
         const error = {
           status: 404,
-          message: 'No mission directory found. Run /ateam plan first.',
+          message: 'No mission directory found. Run /ai-team:plan first.',
           code: 'NO_MISSION',
         };
         mockClient.get.mockRejectedValueOnce(error);

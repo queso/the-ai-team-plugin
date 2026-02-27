@@ -33,7 +33,7 @@ The A(i)-Team is a developer tool — its users are developers and engineering l
 Today, operators either:
 - Watch Claude Code terminal output in real-time (defeating the purpose of automation)
 - Trust the pipeline and only check results at the end (risking wasted compute on stuck agents)
-- Use `/ateam status` periodically (shows board state, not agent behavior)
+- Use `/ai-team:status` periodically (shows board state, not agent behavior)
 
 Raw agent observability fills the gap between "board-level progress" and "terminal-level noise" — structured, filterable, real-time visibility into what every agent is actually doing.
 
@@ -52,7 +52,7 @@ Add a "Raw Agent View" to the kanban-viewer that captures Claude Code hook event
 - Filtering by agent, tool type, and status
 - Tool call duration tracking (PreToolUse → PostToolUse pairing)
 - Permission denial highlighting
-- `/ateam setup` integration to auto-configure hook scripts
+- `/ai-team:setup` integration to auto-configure hook scripts
 
 **Out of Scope:**
 - Token usage tracking (Claude Code hooks do not currently expose token counts)
@@ -151,7 +151,7 @@ Add a "Raw Agent View" to the kanban-viewer that captures Claude Code hook event
 
 #### Setup Integration
 
-18. The `/ateam setup` command shall offer to configure hook scripts in the project's `.claude/settings.json` (or equivalent hook configuration location).
+18. The `/ai-team:setup` command shall offer to configure hook scripts in the project's `.claude/settings.json` (or equivalent hook configuration location).
 
 19. Setup shall detect whether the kanban-viewer API is reachable before enabling hook event reporting. If the API is not running, setup shall warn the user and skip hook configuration.
 
@@ -225,7 +225,7 @@ The `correlationId` enables pairing PreToolUse with its PostToolUse/PostToolUseF
 | Existing SSE infrastructure (`/api/board/events`) | kanban-viewer | Stable, in production |
 | `useBoardEvents` React hook | kanban-viewer | Stable, supports multiple event callbacks |
 | Claude Code hook system (PreToolUse, Stop) | Claude Code | Stable, used by existing enforcement hooks |
-| `/ateam setup` command | plugin commands/ | Stable, needs extension |
+| `/ai-team:setup` command | plugin commands/ | Stable, needs extension |
 
 ### External
 
@@ -447,14 +447,14 @@ Update all agent `.md` files in `agents/` to include observer hook configuration
 
 ---
 
-#### WI-007: Update /ateam setup to configure observer hooks
+#### WI-007: Update /ai-team:setup to configure observer hooks
 
 **Type:** enhancement
 **Priority:** medium
 **Dependencies:** WI-005
 
 **Description:**
-Extend the `/ateam setup` command to offer hook event reporting configuration. Setup shall check if the kanban-viewer API is reachable and offer to enable observability hooks.
+Extend the `/ai-team:setup` command to offer hook event reporting configuration. Setup shall check if the kanban-viewer API is reachable and offer to enable observability hooks.
 
 **Acceptance Criteria:**
 - [ ] Setup detects API availability before offering hook configuration
@@ -600,4 +600,4 @@ The Raw Agent Observability Dashboard is complete when:
 4. **Filterable** — The view can be filtered by agent, tool type, and status
 5. **Non-intrusive** — Hook scripts add no perceptible delay to agent operations (< 100ms overhead)
 6. **Zero regression** — The existing mission board, activity feed, and SSE infrastructure work identically with hook events enabled
-7. **Self-configuring** — `/ateam setup` configures hook event reporting automatically when the API is available
+7. **Self-configuring** — `/ai-team:setup` configures hook event reporting automatically when the API is available

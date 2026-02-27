@@ -240,14 +240,14 @@ Use the `--plugin-dir` flag to test during development:
 claude --plugin-dir /path/to/ai-team
 ```
 
-Once installed, the plugin's slash commands (`/ateam plan`, `/ateam run`, etc.) become available.
+Once installed, the plugin's slash commands (`/ai-team:plan`, `/ai-team:run`, etc.) become available.
 
 ### First-Time Setup
 
 After installation, run setup to configure the project:
 
 ```
-/ateam setup
+/ai-team:setup
 ```
 
 This will:

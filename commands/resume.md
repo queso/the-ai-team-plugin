@@ -1,11 +1,11 @@
-# /ateam resume
+# /ai-team:resume
 
 Resume an interrupted mission from where it left off.
 
 ## Usage
 
 ```
-/ateam resume
+/ai-team:resume
 ```
 
 ## Behavior
@@ -61,7 +61,7 @@ Resume an interrupted mission from where it left off.
    plugin_root()  # MCP tool - returns the absolute path to the plugin directory
    ```
 
-   Then check the environment variable (same as `/ateam run`):
+   Then check the environment variable (same as `/ai-team:run`):
    ```
    Bash("echo $CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS")
    ```
@@ -102,7 +102,7 @@ Resume an interrupted mission from where it left off.
    ```
 
 7. **Start Hannibal orchestration**
-   - Same as `/ateam run` from recovered state
+   - Same as `/ai-team:run` from recovered state
    - Hannibal picks up from current board state
 
 ## Recovery Rules
@@ -134,7 +134,7 @@ and agents are re-dispatched to resume work. No backward board moves are needed.
 
 ### Items in `blocked` stage
 - Stay blocked
-- Require human intervention via `/ateam unblock`
+- Require human intervention via `/ai-team:unblock`
 
 ## Example
 
@@ -143,7 +143,7 @@ and agents are re-dispatched to resume work. No backward board moves are needed.
 ^C
 
 # Later, resume
-/ateam resume
+/ai-team:resume
 ```
 
 Output:
@@ -175,7 +175,7 @@ This command:
 
 1. Uses `board_read` MCP tool to get current state
 2. Uses `board_release` MCP tool to clear stale agent assignments
-3. Loads the orchestration playbook (same env var check as `/ateam run`)
+3. Loads the orchestration playbook (same env var check as `/ai-team:run`)
 4. Re-dispatches agents at their current stage using the playbook's resume/recovery section
 5. Main Claude BECOMES Hannibal and continues orchestration
 
@@ -203,6 +203,6 @@ The dispatch mode (legacy Task/TaskOutput vs. native TeamCreate/SendMessage) is 
 ## Errors
 
 - **No mission found**: Nothing to resume
-- **All items blocked**: No work to resume (use `/ateam unblock`)
+- **All items blocked**: No work to resume (use `/ai-team:unblock`)
 - **API unavailable**: Cannot connect to A(i)-Team server
 - **Orphaned team**: Previous team session lost on restart (normal behavior, auto-recovered)

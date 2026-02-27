@@ -1,11 +1,11 @@
-# /ateam unblock
+# /ai-team:unblock
 
 Unblock a stuck work item and return it to the ready queue.
 
 ## Usage
 
 ```
-/ateam unblock <item-id> [--guidance "hint for agent"]
+/ai-team:unblock <item-id> [--guidance "hint for agent"]
 ```
 
 ## Arguments
@@ -54,21 +54,21 @@ Unblock a stuck work item and return it to the ready queue.
    Human guidance added: {yes/no}
 
    Item is now in ready stage.
-   Run /ateam run or /ateam resume to continue.
+   Run /ai-team:run or /ai-team:resume to continue.
    ```
 
 ## Example
 
 ```
 # See what's blocked
-/ateam status
+/ai-team:status
 
 # Shows:
 # BLOCKED:
 #   015-auth-tests - "Tests not covering error cases"
 
 # Unblock with guidance
-/ateam unblock 015 --guidance "Focus on network timeout and 401/403 response handling"
+/ai-team:unblock 015 --guidance "Focus on network timeout and 401/403 response handling"
 ```
 
 Output:
@@ -82,13 +82,13 @@ Human guidance added: yes
   "Focus on network timeout and 401/403 response handling"
 
 Item is now in ready stage.
-Run /ateam run or /ateam resume to continue.
+Run /ai-team:run or /ai-team:resume to continue.
 ```
 
 ## Without Guidance
 
 ```
-/ateam unblock 015
+/ai-team:unblock 015
 ```
 
 Output:
@@ -109,7 +109,7 @@ Item is now in ready stage.
 Before unblocking, you may want to understand why it failed:
 
 ```
-/ateam status
+/ai-team:status
 ```
 
 Shows:
@@ -129,7 +129,7 @@ Shows:
       "Tests not covering network timeout cases.
        Need to test what happens when auth server is unreachable."
 
-    Tip: /ateam unblock 015 --guidance "your hint here"
+    Tip: /ai-team:unblock 015 --guidance "your hint here"
 
 ═══════════════════════════════════════════════════════════════
 ```

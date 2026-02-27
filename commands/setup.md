@@ -1,11 +1,11 @@
-# /ateam setup
+# /ai-team:setup
 
 Configure Claude Code permissions and project settings for A(i)-Team.
 
 ## Usage
 
 ```
-/ateam setup
+/ai-team:setup
 ```
 
 ## What This Command Does
@@ -298,16 +298,16 @@ Use the A(i)-Team workflow when:
 
 ### Commands
 
-- `/ateam plan <prd-file>` - Decompose a PRD into tracked work items
-- `/ateam run` - Execute the mission with parallel agents
-- `/ateam status` - Check current progress
-- `/ateam resume` - Resume an interrupted mission
+- `/ai-team:plan <prd-file>` - Decompose a PRD into tracked work items
+- `/ai-team:run` - Execute the mission with parallel agents
+- `/ai-team:status` - Check current progress
+- `/ai-team:resume` - Resume an interrupted mission
 
 ### Workflow
 
 1. Place your PRD in the `prd/` directory
-2. Run `/ateam plan prd/your-feature.md`
-3. Run `/ateam run` to execute
+2. Run `/ai-team:plan prd/your-feature.md`
+3. Run `/ai-team:run` to execute
 
 The A(i)-Team will:
 - Break down the PRD into testable units
@@ -317,7 +317,7 @@ The A(i)-Team will:
 - Probe for bugs
 - Update documentation and commit
 
-**Do NOT** work on PRD features directly without using `/ateam plan` first.
+**Do NOT** work on PRD features directly without using `/ai-team:plan` first.
 ```
 
 **Check for existing section:**
@@ -540,7 +540,7 @@ To pick up the new settings, please:
   1. Exit this session (/exit or Ctrl+C)
   2. Restart Claude Code in this directory
 
-After restart, run /ateam plan to begin.
+After restart, run /ai-team:plan to begin.
 ```
 
 ## Customization
@@ -585,7 +585,7 @@ Amy can use the Playwright plugin for browser-based bug hunting.
 To install it:
 1. Go to the Claude Code plugins repository
 2. Install the official Playwright plugin
-3. Run: /ateam setup again to verify
+3. Run: /ai-team:setup again to verify
 
 Without Playwright, Amy can still:
 - Run curl commands for API testing
@@ -611,9 +611,9 @@ If these tools exist, Playwright is properly installed.
 
 - **Restart required after first setup** - The MCP server reads environment variables at startup, so you must restart Claude Code after initial setup for `ATEAM_PROJECT_ID` and `ATEAM_API_URL` to take effect
 - Uses `settings.local.json` by default (gitignored) to avoid committing permissions
-- Run this once per project before using `/ateam plan`
+- Run this once per project before using `/ai-team:plan`
 - Safe to run multiple times - won't duplicate permissions, CLAUDE.md sections, or teammate config
 - Playwright plugin is recommended but not strictly required
 - Project ID enables running multiple A(i)-Team projects simultaneously
-- CLAUDE.md injection ensures Claude uses `/ateam plan` for PRD work instead of ad-hoc development
+- CLAUDE.md injection ensures Claude uses `/ai-team:plan` for PRD work instead of ad-hoc development
 - Native Agent Teams is optional - the plugin works with standard background task dispatch if not enabled

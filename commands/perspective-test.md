@@ -156,5 +156,5 @@ Without agent-browser, falls back to static analysis only with a warning.
 
 ## Related
 
-- `/ateam run` - Full A(i)-Team mission with Amy's probing phase
+- `/ai-team:run` - Full A(i)-Team mission with Amy's probing phase
 - `skills/perspective-test/SKILL.md` - Detailed methodology reference

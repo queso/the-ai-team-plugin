@@ -20,7 +20,7 @@ The A(i)-Team is a Claude Code plugin for parallel agent orchestration. It trans
 
 ### Pipeline Flow
 
-**Planning Phase (`/ateam plan`):**
+**Planning Phase (`/ai-team:plan`):**
 ```
 PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready stage
            ↓                  ↓               ↓
@@ -28,7 +28,7 @@ PRD → Face (1st pass) → Sosa (review) → Face (2nd pass) → ready stage
         stage            (human)
 ```
 
-**Execution Phase (`/ateam run`):**
+**Execution Phase (`/ai-team:run`):**
 ```
 briefings → ready → testing → implementing → review → probing → done
                        ↑           ↑            ↑         ↑       │
@@ -110,7 +110,7 @@ The `outputs` field is critical - without it, Murdock and B.A. don't know where 
 ### Working Directory
 **All agents work on the TARGET PROJECT, not the ai-team plugin directory.**
 
-- The target project is the user's working directory where `/ateam` commands are run
+- The target project is the user's working directory where `/ai-team:*` commands are run
 - NEVER explore, search, or modify files in the ai-team plugin directory (`.claude/ai-team/` or similar)
 - When Face or other agents explore codebases, they explore the TARGET PROJECT's `src/`, `tests/`, etc.
 - The MCP tools handle all communication with the A(i)-Team system - no need to explore plugin internals
@@ -201,7 +201,7 @@ Use MCP tools for mission items. Use native tasks for orchestration checkpoints.
 
 ### Agent Dispatch
 
-The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. The `/ateam run` command detects the mode and loads the appropriate orchestration playbook. Hannibal reads exactly ONE playbook at mission start.
+The plugin supports two dispatch modes, controlled by `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`. The `/ai-team:run` command detects the mode and loads the appropriate orchestration playbook. Hannibal reads exactly ONE playbook at mission start.
 
 **Planning Phase (both modes):**
 - Face: `subagent_type: "ai-team:face"`, `model: "opus"`
