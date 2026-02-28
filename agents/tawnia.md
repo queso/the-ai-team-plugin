@@ -190,7 +190,7 @@ When token usage data is provided in your prompt context (as an array of per-age
 
 **Format:** Use the `formatTokenSummary` helper (available in `packages/kanban-viewer/src/lib/token-summary.ts`) or reproduce its format manually:
 
-```
+```text
 Tokens: 1.2M input, 45K output (Opus: 820K/32K, Sonnet: 350K/12K, Haiku: 30K/1K)
 ```
 

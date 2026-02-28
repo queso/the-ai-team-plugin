@@ -61,10 +61,27 @@ const DEFAULT_PRICING: PricingConfig = {
   },
 };
 
+function isModelPricing(value: unknown): value is ModelPricing {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.input_per_1m === 'number' &&
+    typeof v.output_per_1m === 'number' &&
+    typeof v.cache_read_per_1m === 'number'
+  );
+}
+
+function isPricingConfig(value: unknown): value is PricingConfig {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (!v.models || typeof v.models !== 'object' || !isModelPricing(v.fallback)) return false;
+  return Object.values(v.models as Record<string, unknown>).every(isModelPricing);
+}
+
 /**
  * Module-level cache for the pricing config loaded from ateam.config.json.
  * null  = not yet attempted
- * false = attempted but file was absent or had no "pricing" key
+ * false = attempted but file was absent or had no valid "pricing" key
  * PricingConfig = successfully loaded
  */
 let _cachedPricing: PricingConfig | null | false = null;
@@ -84,11 +101,12 @@ export function loadPricingFromConfig(): PricingConfig | null {
     const raw = fs.readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(raw) as Record<string, unknown>;
 
-    if (parsed.pricing && typeof parsed.pricing === 'object') {
-      _cachedPricing = parsed.pricing as PricingConfig;
+    if (isPricingConfig(parsed.pricing)) {
+      _cachedPricing = parsed.pricing;
       return _cachedPricing;
     }
 
+    console.warn('[token-cost] Invalid pricing config shape, using defaults');
     _cachedPricing = false;
     return null;
   } catch {

@@ -188,6 +188,30 @@ export async function POST(
           { status: 400 }
         );
       }
+
+      // Validate token fields are non-negative integers when present
+      const tokenFields = [
+        ['inputTokens', event.inputTokens],
+        ['outputTokens', event.outputTokens],
+        ['cacheCreationTokens', event.cacheCreationTokens],
+        ['cacheReadTokens', event.cacheReadTokens],
+      ] as const;
+
+      for (const [field, value] of tokenFields) {
+        if (value !== undefined && (typeof value !== 'number' || !Number.isInteger(value) || value < 0)) {
+          return NextResponse.json(
+            createValidationError(`${field} must be a non-negative integer`).toResponse(),
+            { status: 400 }
+          );
+        }
+      }
+
+      if (event.model !== undefined && (typeof event.model !== 'string' || event.model.trim() === '')) {
+        return NextResponse.json(
+          createValidationError('model must be a non-empty string').toResponse(),
+          { status: 400 }
+        );
+      }
     }
 
     // Find current mission for this project

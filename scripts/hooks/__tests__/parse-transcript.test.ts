@@ -14,8 +14,8 @@
  *
  * The function lives at: scripts/hooks/lib/parse-transcript.js
  *
- * MODULE FORMAT NOTE: Implementation should be CommonJS (module.exports)
- * to match the existing hook ecosystem (hooks use require()).
+ * MODULE FORMAT NOTE: Implementation uses ESM (export function) to match
+ * the observer hook ecosystem which uses ESM imports.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

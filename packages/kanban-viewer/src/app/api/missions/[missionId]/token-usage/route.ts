@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAndValidateProjectId } from '@/lib/project-utils';
 import { calculateTokenCost } from '@/lib/token-cost';
+import { createDatabaseError } from '@/lib/errors';
 import type { ApiError } from '@/types/api';
 
 interface RouteContext {
@@ -131,50 +132,52 @@ export async function POST(request: Request, context: RouteContext) {
       }
     }
 
-    // Upsert each group into MissionTokenUsage
+    // Upsert each group into MissionTokenUsage atomically
     const agents: AgentRow[] = [];
 
-    for (const group of groups.values()) {
-      const { totalUsd } = calculateTokenCost(
-        {
-          inputTokens: group.inputTokens,
-          outputTokens: group.outputTokens,
-          cacheCreationTokens: group.cacheCreationTokens,
-          cacheReadTokens: group.cacheReadTokens,
-        },
-        group.model
-      );
+    await prisma.$transaction(async (tx) => {
+      for (const group of groups.values()) {
+        const { totalUsd } = calculateTokenCost(
+          {
+            inputTokens: group.inputTokens,
+            outputTokens: group.outputTokens,
+            cacheCreationTokens: group.cacheCreationTokens,
+            cacheReadTokens: group.cacheReadTokens,
+          },
+          group.model
+        );
 
-      await prisma.missionTokenUsage.upsert({
-        where: {
-          missionId_agentName_model: {
+        await tx.missionTokenUsage.upsert({
+          where: {
+            missionId_agentName_model: {
+              missionId,
+              agentName: group.agentName,
+              model: group.model,
+            },
+          },
+          create: {
             missionId,
+            projectId,
             agentName: group.agentName,
             model: group.model,
+            inputTokens: group.inputTokens,
+            outputTokens: group.outputTokens,
+            cacheCreationTokens: group.cacheCreationTokens,
+            cacheReadTokens: group.cacheReadTokens,
+            estimatedCostUsd: totalUsd,
           },
-        },
-        create: {
-          missionId,
-          projectId,
-          agentName: group.agentName,
-          model: group.model,
-          inputTokens: group.inputTokens,
-          outputTokens: group.outputTokens,
-          cacheCreationTokens: group.cacheCreationTokens,
-          cacheReadTokens: group.cacheReadTokens,
-          estimatedCostUsd: totalUsd,
-        },
-        update: {
-          inputTokens: group.inputTokens,
-          outputTokens: group.outputTokens,
-          cacheCreationTokens: group.cacheCreationTokens,
-          cacheReadTokens: group.cacheReadTokens,
-          estimatedCostUsd: totalUsd,
-        },
-      });
+          update: {
+            inputTokens: group.inputTokens,
+            outputTokens: group.outputTokens,
+            cacheCreationTokens: group.cacheCreationTokens,
+            cacheReadTokens: group.cacheReadTokens,
+            estimatedCostUsd: totalUsd,
+          },
+        });
 
-      agents.push({ ...group, estimatedCostUsd: totalUsd });
-    }
+        agents.push({ ...group, estimatedCostUsd: totalUsd });
+      }
+    });
 
     return NextResponse.json({
       success: true,
@@ -186,14 +189,10 @@ export async function POST(request: Request, context: RouteContext) {
     });
   } catch (error) {
     console.error('POST /api/missions/[missionId]/token-usage error:', error);
-    const apiError: ApiError = {
-      success: false,
-      error: {
-        code: 'DATABASE_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to aggregate token usage',
-      },
-    };
-    return NextResponse.json(apiError, { status: 500 });
+    return NextResponse.json(
+      createDatabaseError('Failed to aggregate token usage', error).toResponse(),
+      { status: 500 }
+    );
   }
 }
 
@@ -246,13 +245,9 @@ export async function GET(request: Request, context: RouteContext) {
     });
   } catch (error) {
     console.error('GET /api/missions/[missionId]/token-usage error:', error);
-    const apiError: ApiError = {
-      success: false,
-      error: {
-        code: 'DATABASE_ERROR',
-        message: error instanceof Error ? error.message : 'Failed to fetch token usage',
-      },
-    };
-    return NextResponse.json(apiError, { status: 500 });
+    return NextResponse.json(
+      createDatabaseError('Failed to fetch token usage', error).toResponse(),
+      { status: 500 }
+    );
   }
 }

@@ -499,6 +499,7 @@ function HomeContent() {
       setLoading(true);
       setError(null);
       setHookEvents([]);
+      setTokenUsage(null);
       let boardRes: Response;
       let logRes: Response;
 

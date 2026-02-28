@@ -34,7 +34,6 @@ export function parseTranscriptUsage(transcriptPath) {
   let cacheCreationTokens = 0;
   let cacheReadTokens = 0;
   let model = null;
-  let hadAnyValidLine = false;
 
   for (const line of lines) {
     try {
@@ -45,11 +44,9 @@ export function parseTranscriptUsage(transcriptPath) {
         outputTokens += usage.output_tokens || 0;
         cacheCreationTokens += usage.cache_creation_input_tokens || 0;
         cacheReadTokens += usage.cache_read_input_tokens || 0;
-        hadAnyValidLine = true;
       }
       if (usage && entry?.message?.model) {
         model = entry.message.model;
-        hadAnyValidLine = true;
       }
     } catch {
       // Skip malformed lines
