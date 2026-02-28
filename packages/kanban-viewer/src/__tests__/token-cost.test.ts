@@ -16,11 +16,17 @@
  * The function lives at: packages/kanban-viewer/src/lib/token-cost.ts
  */
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { calculateTokenCost } from '@/lib/token-cost';
+import fs from 'fs';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { calculateTokenCost, _resetPricingCache, loadPricingFromConfig } from '@/lib/token-cost';
+
+beforeEach(() => {
+  _resetPricingCache();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
+  _resetPricingCache();
 });
 
 describe('calculateTokenCost() - known model pricing', () => {
@@ -79,6 +85,81 @@ describe('calculateTokenCost() - edge case: zero tokens', () => {
     const result = calculateTokenCost(tokens, 'claude-sonnet-4-6');
 
     expect(result.totalUsd).toBe(0);
+    expect(result.usedFallback).toBe(false);
+  });
+});
+
+describe('loadPricingFromConfig() - config file present with pricing key', () => {
+  it('should load pricing from ateam.config.json and use those rates in calculateTokenCost', () => {
+    // Spy on fs.readFileSync to return a config with custom pricing distinct from DEFAULT_PRICING.
+    // Custom input rate is $10/1M (vs DEFAULT $3/1M) so we can assert the loaded value was used.
+    const customConfig = {
+      pricing: {
+        models: {
+          'claude-sonnet-4-6': {
+            input_per_1m: 10.00,
+            output_per_1m: 50.00,
+            cache_read_per_1m: 1.00,
+          },
+        },
+        fallback: {
+          input_per_1m: 5.00,
+          output_per_1m: 20.00,
+          cache_read_per_1m: 0.50,
+        },
+      },
+    };
+
+    vi.spyOn(fs, 'readFileSync').mockImplementation((filePath: unknown, ...rest: unknown[]) => {
+      if (typeof filePath === 'string' && filePath.endsWith('ateam.config.json')) {
+        return JSON.stringify(customConfig);
+      }
+      // Delegate to real fs for anything else
+      return (fs.readFileSync as unknown as (...a: unknown[]) => unknown)(filePath, ...rest) as string;
+    });
+
+    // loadPricingFromConfig should return the custom config
+    const loaded = loadPricingFromConfig();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.models['claude-sonnet-4-6'].input_per_1m).toBe(10.00);
+
+    // calculateTokenCost (without explicit override) should use the loaded custom rates
+    const tokens = {
+      inputTokens: 1_000_000,  // $10.00 at custom rate (not default $3.00)
+      outputTokens: 0,
+      cacheCreationTokens: 0,
+      cacheReadTokens: 0,
+    };
+    const result = calculateTokenCost(tokens, 'claude-sonnet-4-6');
+    expect(result.totalUsd).toBeCloseTo(10.00, 2);
+    expect(result.usedFallback).toBe(false);
+  });
+});
+
+describe('loadPricingFromConfig() - config file absent', () => {
+  it('should return null and fall back to DEFAULT_PRICING when ateam.config.json does not exist', () => {
+    // Spy on fs.readFileSync so the ateam.config.json read throws ENOENT
+    vi.spyOn(fs, 'readFileSync').mockImplementation((filePath: unknown, ...rest: unknown[]) => {
+      if (typeof filePath === 'string' && filePath.endsWith('ateam.config.json')) {
+        const err = Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' });
+        throw err;
+      }
+      return (fs.readFileSync as unknown as (...a: unknown[]) => unknown)(filePath, ...rest) as string;
+    });
+
+    // loadPricingFromConfig should return null when the file is absent
+    const loaded = loadPricingFromConfig();
+    expect(loaded).toBeNull();
+
+    // calculateTokenCost should still work correctly, using DEFAULT_PRICING rates
+    const tokens = {
+      inputTokens: 1_000_000,  // $3.00 at DEFAULT sonnet rate
+      outputTokens: 0,
+      cacheCreationTokens: 0,
+      cacheReadTokens: 0,
+    };
+    const result = calculateTokenCost(tokens, 'claude-sonnet-4-6');
+    expect(result.totalUsd).toBeCloseTo(3.00, 2);
     expect(result.usedFallback).toBe(false);
   });
 });

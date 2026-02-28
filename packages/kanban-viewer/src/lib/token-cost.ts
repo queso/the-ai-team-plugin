@@ -2,8 +2,14 @@
  * token-cost.ts - Token usage cost calculator.
  *
  * Calculates estimated USD cost from token counts and model name.
- * Uses built-in pricing config; falls back to default rates for unknown models.
+ * Loads pricing from ateam.config.json at the project root (process.cwd()) at
+ * runtime; falls back to DEFAULT_PRICING if the file is absent or has no
+ * "pricing" key.  The loaded config is cached at the module level so the file
+ * is only read once per process lifetime.
  */
+
+import fs from 'fs';
+import path from 'path';
 
 interface ModelPricing {
   input_per_1m: number;
@@ -56,27 +62,76 @@ const DEFAULT_PRICING: PricingConfig = {
 };
 
 /**
+ * Module-level cache for the pricing config loaded from ateam.config.json.
+ * null  = not yet attempted
+ * false = attempted but file was absent or had no "pricing" key
+ * PricingConfig = successfully loaded
+ */
+let _cachedPricing: PricingConfig | null | false = null;
+
+/**
+ * Reads pricing from <project-root>/ateam.config.json synchronously.
+ * Returns the PricingConfig on success, or null if unavailable.
+ * Result is cached so the file is read at most once per process.
+ */
+export function loadPricingFromConfig(): PricingConfig | null {
+  if (_cachedPricing !== null) {
+    return _cachedPricing || null;
+  }
+
+  try {
+    const configPath = path.join(process.cwd(), 'ateam.config.json');
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+    if (parsed.pricing && typeof parsed.pricing === 'object') {
+      _cachedPricing = parsed.pricing as PricingConfig;
+      return _cachedPricing;
+    }
+
+    _cachedPricing = false;
+    return null;
+  } catch {
+    _cachedPricing = false;
+    return null;
+  }
+}
+
+/**
+ * Resets the module-level pricing cache.
+ * Intended for use in tests only — do not call in production code.
+ */
+export function _resetPricingCache(): void {
+  _cachedPricing = null;
+}
+
+/**
  * Calculates the estimated USD cost for a set of token counts and model.
  *
  * Cache creation tokens are billed at the input rate.
  * Cache read tokens are billed at the discounted cache_read rate.
  *
+ * If no explicit pricingConfig is provided, the function loads pricing from
+ * ateam.config.json (cached), falling back to DEFAULT_PRICING.
+ *
  * @param tokens - Token count breakdown
  * @param model - Model name (e.g., 'claude-sonnet-4-6')
- * @param pricingConfig - Optional override for pricing config
+ * @param pricingConfig - Optional explicit pricing override
  */
 export function calculateTokenCost(
   tokens: TokenCounts,
   model: string,
-  pricingConfig: PricingConfig = DEFAULT_PRICING
+  pricingConfig?: PricingConfig
 ): TokenCostResult {
-  const pricing = pricingConfig.models[model];
+  const effectivePricing = pricingConfig ?? loadPricingFromConfig() ?? DEFAULT_PRICING;
+
+  const pricing = effectivePricing.models[model];
   let usedFallback = false;
   let rates: ModelPricing;
 
   if (!pricing) {
     console.warn(`[token-cost] Unknown model "${model}", using fallback pricing`);
-    rates = pricingConfig.fallback;
+    rates = effectivePricing.fallback;
     usedFallback = true;
   } else {
     rates = pricing;
