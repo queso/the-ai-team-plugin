@@ -47,7 +47,7 @@ export function parseTranscriptUsage(transcriptPath) {
         cacheReadTokens += usage.cache_read_input_tokens || 0;
         hadAnyValidLine = true;
       }
-      if (entry?.message?.model) {
+      if (usage && entry?.message?.model) {
         model = entry.message.model;
         hadAnyValidLine = true;
       }

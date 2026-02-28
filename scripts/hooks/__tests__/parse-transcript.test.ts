@@ -7,7 +7,7 @@
  *   - outputTokens: sum of usage.output_tokens
  *   - cacheCreationTokens: sum of usage.cache_creation_input_tokens
  *   - cacheReadTokens: sum of usage.cache_read_input_tokens
- *   - model: last model value found in any message (last-wins)
+ *   - model: last model value found in a message that ALSO has usage data
  *
  * Returns null values for all fields when the file cannot be read.
  * Skips malformed JSONL lines and sums remaining valid ones.
@@ -154,6 +154,48 @@ describe('parseTranscriptUsage() - empty transcript', () => {
     expect(result.cacheCreationTokens).toBe(0);
     expect(result.cacheReadTokens).toBe(0);
     expect(result.model).toBeNull();
+  });
+});
+
+describe('parseTranscriptUsage() - model only from messages with usage data', () => {
+  it('should ignore model from a trailing message that has no usage data', () => {
+    // Bug scenario: a message with a model but no usage appearing AFTER a message
+    // that has both a model and usage should NOT override the model — the "last
+    // model wins" logic must only consider entries that also carry usage data.
+    const path = writeTempTranscript([
+      // First message: has both model and usage — this model should be returned
+      {
+        type: 'assistant',
+        message: {
+          model: 'claude-sonnet-4-6',
+          usage: {
+            input_tokens: 500,
+            output_tokens: 100,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+          },
+        },
+      },
+      // Last message: has a model but NO usage — should NOT override the model
+      {
+        type: 'assistant',
+        message: {
+          model: 'claude-opus-4-6',
+          // No usage field
+        },
+      },
+    ]);
+    tempFiles.push(path);
+
+    const result = parseTranscriptUsage(path);
+
+    // Token totals come only from the first message
+    expect(result.inputTokens).toBe(500);
+    expect(result.outputTokens).toBe(100);
+    expect(result.cacheCreationTokens).toBe(0);
+    expect(result.cacheReadTokens).toBe(0);
+    // Model must come from the message that had usage data, not the trailing one
+    expect(result.model).toBe('claude-sonnet-4-6');
   });
 });
 
