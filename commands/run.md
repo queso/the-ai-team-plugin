@@ -1,3 +1,6 @@
+---
+model: sonnet
+---
 # /ai-team:run
 
 Execute the mission with the pipeline flow.

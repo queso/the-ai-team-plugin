@@ -1,3 +1,6 @@
+---
+model: sonnet
+---
 # /ai-team:plan
 
 Initialize a mission from a PRD file with two-pass refinement.

@@ -1,5 +1,6 @@
 ---
 name: tawnia
+model: haiku
 description: Documentation writer - updates docs and makes final commit
 permissionMode: acceptEdits
 hooks:
@@ -45,7 +46,7 @@ technical-writer (or default clean-code-architect)
 
 ## Model
 
-sonnet
+haiku
 
 ## Tools
 

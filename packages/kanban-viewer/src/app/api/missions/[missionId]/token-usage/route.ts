@@ -51,10 +51,10 @@ function sumTotals(agents: AgentRow[]): Totals {
  * POST /api/missions/:missionId/token-usage
  *
  * Reads HookEvent rows for the mission using dedup logic:
- * - subagent_stop events for all agents (subagents)
- * - stop events WHERE agentName = 'hannibal' only
+ * - subagent_stop events: SUM all (each is an independent process with its own totals)
+ * - stop events (hannibal): take LATEST only per agent+model (cumulative session totals)
  *
- * Groups by agentName+model, sums tokens, calculates cost, upserts MissionTokenUsage.
+ * Groups by agentName+model, calculates cost, upserts MissionTokenUsage.
  */
 export async function POST(request: Request, context: RouteContext) {
   try {
@@ -67,17 +67,13 @@ export async function POST(request: Request, context: RouteContext) {
     }
     const projectId = projectValidation.projectId;
 
-    // Fetch deduplicated hook events:
-    // - All subagent_stop events (covers all subagents)
-    // - stop events only where agentName = 'hannibal'
-    const hookEvents = await prisma.hookEvent.findMany({
+    // --- Subagent events: sum all (each subagent_stop is independent) ---
+    const subagentEvents = await prisma.hookEvent.findMany({
       where: {
         missionId,
         projectId,
-        OR: [
-          { eventType: 'subagent_stop', agentName: { not: 'hannibal' } },
-          { eventType: 'stop', agentName: 'hannibal' },
-        ],
+        eventType: 'subagent_stop',
+        agentName: { not: 'hannibal' },
         inputTokens: { not: null },
         model: { not: null },
       },
@@ -91,6 +87,40 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
 
+    // --- Stop events (hannibal): take only the latest per agent+model ---
+    // stop events report cumulative session-to-date totals, so summing
+    // multiple stop events would massively over-count. We take only the
+    // most recent event (highest id) per agent+model combination.
+    const stopEvents = await prisma.hookEvent.findMany({
+      where: {
+        missionId,
+        projectId,
+        eventType: 'stop',
+        agentName: 'hannibal',
+        inputTokens: { not: null },
+        model: { not: null },
+      },
+      select: {
+        id: true,
+        agentName: true,
+        model: true,
+        inputTokens: true,
+        outputTokens: true,
+        cacheCreationTokens: true,
+        cacheReadTokens: true,
+      },
+      orderBy: { id: 'desc' },
+    });
+
+    // Keep only the latest stop event per agent+model
+    const latestStopByKey = new Map<string, typeof stopEvents[number]>();
+    for (const event of stopEvents) {
+      const key = `${event.agentName}:${event.model}`;
+      if (!latestStopByKey.has(key)) {
+        latestStopByKey.set(key, event);
+      }
+    }
+
     // Warn if hook events were excluded due to missing token data
     const totalEventCount = await prisma.hookEvent.count({
       where: {
@@ -103,16 +133,20 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
 
-    if (totalEventCount > hookEvents.length) {
+    const includedCount = subagentEvents.length + latestStopByKey.size;
+    // Note: for stop events, we intentionally use only the latest per agent+model,
+    // so excluded count reflects both missing-data exclusions and cumulative dedup
+    const excludedForMissingData = totalEventCount - subagentEvents.length - stopEvents.length;
+    if (excludedForMissingData > 0) {
       console.warn(
-        `[token-aggregation] Mission ${missionId}: ${totalEventCount - hookEvents.length} hook event(s) excluded (missing token/model data)`
+        `[token-aggregation] Mission ${missionId}: ${excludedForMissingData} hook event(s) excluded (missing token/model data)`
       );
     }
 
-    // Group by agentName+model
+    // Group subagent events by agentName+model (sum all)
     const groups = new Map<string, { agentName: string; model: string; inputTokens: number; outputTokens: number; cacheCreationTokens: number; cacheReadTokens: number }>();
 
-    for (const event of hookEvents) {
+    for (const event of subagentEvents) {
       const key = `${event.agentName}:${event.model}`;
       const existing = groups.get(key);
       if (existing) {
@@ -130,6 +164,19 @@ export async function POST(request: Request, context: RouteContext) {
           cacheReadTokens: event.cacheReadTokens ?? 0,
         });
       }
+    }
+
+    // Add latest stop events (no summing — each is already a cumulative total)
+    for (const event of latestStopByKey.values()) {
+      const key = `${event.agentName}:${event.model}`;
+      groups.set(key, {
+        agentName: event.agentName,
+        model: event.model!,
+        inputTokens: event.inputTokens ?? 0,
+        outputTokens: event.outputTokens ?? 0,
+        cacheCreationTokens: event.cacheCreationTokens ?? 0,
+        cacheReadTokens: event.cacheReadTokens ?? 0,
+      });
     }
 
     // Upsert each group into MissionTokenUsage atomically

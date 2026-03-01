@@ -62,11 +62,13 @@ beforeEach(async () => {
 });
 
 describe('POST /api/missions/:missionId/token-usage - aggregation', () => {
-  it('should aggregate HookEvent token data into MissionTokenUsage rows with correct sums and costs', async () => {
-    // Seed two subagent_stop events for murdock on sonnet and one stop event for hannibal on opus
+  it('should sum subagent_stop events and use latest stop event for hannibal', async () => {
+    // subagent_stop events are independent (from separate processes) → sum all.
+    // stop events are cumulative session totals → take only the latest.
     const ts = new Date().toISOString();
     await prisma.hookEvent.createMany({
       data: [
+        // Two independent subagent_stop events for murdock → should be summed
         {
           projectId: PROJECT_ID,
           missionId: MISSION_ID,
@@ -95,6 +97,7 @@ describe('POST /api/missions/:missionId/token-usage - aggregation', () => {
           cacheReadTokens: 200,
           model: 'claude-sonnet-4-6',
         },
+        // Single stop event for hannibal → use as-is
         {
           projectId: PROJECT_ID,
           missionId: MISSION_ID,
@@ -134,7 +137,7 @@ describe('POST /api/missions/:missionId/token-usage - aggregation', () => {
     const murdockRow = agents.find((a) => a.agentName === 'murdock');
     expect(murdockRow).toBeDefined();
     expect(murdockRow!.model).toBe('claude-sonnet-4-6');
-    expect(murdockRow!.inputTokens).toBe(1500);          // 1000 + 500
+    expect(murdockRow!.inputTokens).toBe(1500);          // 1000 + 500 (summed)
     expect(murdockRow!.outputTokens).toBe(300);          // 200 + 100
     expect(murdockRow!.cacheCreationTokens).toBe(500);   // 500 + 0
     expect(murdockRow!.cacheReadTokens).toBe(1000);      // 800 + 200
@@ -145,6 +148,78 @@ describe('POST /api/missions/:missionId/token-usage - aggregation', () => {
     expect(hannibalRow!.model).toBe('claude-opus-4-6');
     expect(hannibalRow!.inputTokens).toBe(5000);
     expect(hannibalRow!.outputTokens).toBe(1000);
+  });
+
+  it('should use only the latest stop event when hannibal has multiple cumulative stop events', async () => {
+    // Hannibal fires a stop event on every turn, each containing cumulative
+    // session-to-date totals. Summing them would massively over-count.
+    // The aggregation must take only the latest (highest id) stop event.
+    const ts = new Date();
+    await prisma.hookEvent.createMany({
+      data: [
+        // Turn 1: cumulative total so far
+        {
+          projectId: PROJECT_ID,
+          missionId: MISSION_ID,
+          eventType: 'stop',
+          agentName: 'hannibal',
+          status: 'stopped',
+          summary: 'hannibal turn 1',
+          timestamp: new Date(ts.getTime()),
+          inputTokens: 1000,
+          outputTokens: 200,
+          cacheCreationTokens: 500,
+          cacheReadTokens: 3000,
+          model: 'claude-opus-4-6',
+        },
+        // Turn 2: larger cumulative total (includes turn 1)
+        {
+          projectId: PROJECT_ID,
+          missionId: MISSION_ID,
+          eventType: 'stop',
+          agentName: 'hannibal',
+          status: 'stopped',
+          summary: 'hannibal turn 2',
+          timestamp: new Date(ts.getTime() + 1000),
+          inputTokens: 2500,
+          outputTokens: 600,
+          cacheCreationTokens: 1200,
+          cacheReadTokens: 8000,
+          model: 'claude-opus-4-6',
+        },
+        // Turn 3: final cumulative total (includes turns 1+2)
+        {
+          projectId: PROJECT_ID,
+          missionId: MISSION_ID,
+          eventType: 'stop',
+          agentName: 'hannibal',
+          status: 'stopped',
+          summary: 'hannibal turn 3',
+          timestamp: new Date(ts.getTime() + 2000),
+          inputTokens: 5000,
+          outputTokens: 1000,
+          cacheCreationTokens: 2000,
+          cacheReadTokens: 15000,
+          model: 'claude-opus-4-6',
+        },
+      ],
+    });
+
+    const response = await POST(makeRequest('POST'), routeParams);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+
+    const hannibal = data.data.agents.find((a: { agentName: string }) => a.agentName === 'hannibal');
+    expect(hannibal).toBeDefined();
+
+    // Should use only the latest (turn 3) values, NOT sum all three turns
+    // Buggy behavior would give: 1000+2500+5000 = 8500 input tokens
+    expect(hannibal.inputTokens).toBe(5000);        // latest only
+    expect(hannibal.outputTokens).toBe(1000);       // latest only
+    expect(hannibal.cacheCreationTokens).toBe(2000); // latest only
+    expect(hannibal.cacheReadTokens).toBe(15000);    // latest only
   });
 });
 

@@ -206,7 +206,6 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:murdock",
-  model: "sonnet",
   run_in_background: true,
   description: "Murdock: {feature title}",
   prompt: "... [Murdock prompt from agents/murdock.md]
@@ -232,7 +231,6 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:ba",
-  model: "sonnet",
   run_in_background: true,
   description: "B.A.: {feature title}",
   prompt: "... [B.A. prompt from agents/ba.md]
@@ -256,7 +254,6 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:lynch",
-  model: "sonnet",
   run_in_background: true,
   description: "Lynch: {feature title}",
   prompt: "... [Lynch prompt from agents/lynch.md]
@@ -282,7 +279,6 @@ Then dispatch:
 ```
 Task(
   subagent_type: "ai-team:amy",
-  model: "sonnet",
   run_in_background: true,
   description: "Amy: {feature title}",
   prompt: "... [Amy prompt from agents/amy.md]
@@ -319,7 +315,6 @@ When ALL items reach `done` stage, fetch `prdPath` from the `mission_current` re
 ```
 Task(
   subagent_type: "ai-team:lynch-final",
-  model: "opus",
   run_in_background: true,
   description: "Lynch: Final Mission Review",
   prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.
@@ -352,7 +347,6 @@ After post-checks pass:
 ```
 Task(
   subagent_type: "ai-team:tawnia",
-  model: "haiku",
   run_in_background: true,
   description: "Tawnia: Documentation and final commit",
   prompt: "... [Tawnia prompt from agents/tawnia.md]
@@ -395,22 +389,22 @@ When resuming an interrupted mission with `/ai-team:resume`:
 ```
 for item in testing stage:
     board_release(itemId)
-    task = Task(subagent_type: "ai-team:murdock", model: "sonnet", run_in_background: true, ...)
+    task = Task(subagent_type: "ai-team:murdock", run_in_background: true, ...)
     active_tasks[item_id] = task.id
 
 for item in implementing stage:
     board_release(itemId)
-    task = Task(subagent_type: "ai-team:ba", model: "sonnet", run_in_background: true, ...)
+    task = Task(subagent_type: "ai-team:ba", run_in_background: true, ...)
     active_tasks[item_id] = task.id
 
 for item in review stage:
     board_release(itemId)
-    task = Task(subagent_type: "ai-team:lynch", model: "sonnet", run_in_background: true, ...)
+    task = Task(subagent_type: "ai-team:lynch", run_in_background: true, ...)
     active_tasks[item_id] = task.id
 
 for item in probing stage:
     board_release(itemId)
-    task = Task(subagent_type: "ai-team:amy", model: "sonnet", run_in_background: true, ...)
+    task = Task(subagent_type: "ai-team:amy", run_in_background: true, ...)
     active_tasks[item_id] = task.id
 ```
 

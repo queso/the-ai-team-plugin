@@ -1,3 +1,6 @@
+---
+model: sonnet
+---
 # /ai-team:resume
 
 Resume an interrupted mission from where it left off.
