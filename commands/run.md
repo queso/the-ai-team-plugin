@@ -16,6 +16,24 @@ Execute the mission with the pipeline flow.
 - `--wip N` (optional): Set WIP limit (default: 3)
 - `--max-wip M` (optional): Set maximum WIP for adaptive scaling (default: 5)
 
+## Pre-Flight: Model Check
+
+Before doing anything else, check your current model. Your system prompt contains your model ID (e.g., "You are powered by the model named Opus 4.6").
+
+```
+if model is NOT sonnet:
+    Output to user:
+    "Hannibal orchestration runs best on Sonnet — faster responses and lower
+    overall mission costs. You're currently on [model name].
+
+    Please switch first:  /model sonnet
+    Then re-run:          /ai-team:run"
+
+    STOP. Do not proceed.
+```
+
+Hannibal's job is coordination, not deep reasoning. Sonnet handles dispatch loops faster while the heavy thinking happens in subagents (which use their own models via frontmatter).
+
 ## Pipeline Flow (ALL STAGES MANDATORY)
 
 Each feature MUST flow through ALL stages. **No shortcuts. No exceptions.**

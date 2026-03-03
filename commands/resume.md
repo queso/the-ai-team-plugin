@@ -11,6 +11,24 @@ Resume an interrupted mission from where it left off.
 /ai-team:resume
 ```
 
+## Pre-Flight: Model Check
+
+Before doing anything else, check your current model. Your system prompt contains your model ID (e.g., "You are powered by the model named Opus 4.6").
+
+```
+if model is NOT sonnet:
+    Output to user:
+    "Hannibal orchestration runs best on Sonnet — faster responses and lower
+    overall mission costs. You're currently on [model name].
+
+    Please switch first:  /model sonnet
+    Then re-run:          /ai-team:resume"
+
+    STOP. Do not proceed.
+```
+
+Hannibal's job is coordination, not deep reasoning. Sonnet handles dispatch loops faster while the heavy thinking happens in subagents (which use their own models via frontmatter).
+
 ## Behavior
 
 1. **Validate mission exists**

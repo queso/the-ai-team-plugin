@@ -259,3 +259,37 @@ Parameters:
 - Appends work summary to `work_log` array
 
 All tools automatically include the `X-Project-ID` header from the `ATEAM_PROJECT_ID` environment variable.
+
+### Observability: Hook Events & Token Usage
+
+Observer hooks (`scripts/hooks/lib/observer.js`) fire on every tool call and agent lifecycle event, POSTing structured data to the API. This gives us real-time telemetry for every mission — do NOT parse Claude Code session transcripts (`.jsonl` files) when this data is available.
+
+**Hook events** are stored in the database per-project. They capture agent name, tool name, event type, timestamps, token counts, and model. Events are posted automatically by the observer hooks — no manual instrumentation needed.
+
+**Token usage per mission** is the primary way to check costs:
+```
+# Aggregate token usage (POST triggers aggregation, GET returns cached results)
+POST /api/missions/{missionId}/token-usage  (Header: X-Project-ID)
+GET  /api/missions/{missionId}/token-usage  (Header: X-Project-ID)
+```
+
+Returns per-agent breakdown with model, token counts, and estimated cost:
+```json
+{
+  "agents": [
+    { "agentName": "face", "model": "claude-opus-4-6", "estimatedCostUsd": 18.78, ... },
+    { "agentName": "hannibal", "model": "claude-sonnet-4-6", "estimatedCostUsd": 0.58, ... }
+  ],
+  "totals": { "estimatedCostUsd": 36.87, ... }
+}
+```
+
+**Useful API endpoints** (all require `X-Project-ID` header):
+- `GET /api/projects` — list all projects
+- `GET /api/missions` — list missions for a project
+- `GET /api/missions/current` — get active mission
+- `GET /api/items` — get work items (board state)
+- `POST /api/missions/{id}/token-usage` — aggregate and return token costs
+- `POST /api/hooks/events` — store hook events (called by observer hooks, not manually)
+
+Token pricing is loaded from `ateam.config.json` at runtime (see `packages/kanban-viewer/src/lib/token-cost.ts`).
