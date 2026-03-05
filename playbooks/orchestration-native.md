@@ -174,12 +174,14 @@ LOOP CONTINUOUSLY:
             board_move(itemId=item_id, to="ready")
 
     # ═══════════════════════════════════════════════════════════
-    # PHASE 3: FILL PIPELINE FROM READY (respects WIP limit)
+    # PHASE 3: FILL PIPELINE FROM READY (per-column WIP limits)
     # ═══════════════════════════════════════════════════════════
-    in_flight = count(testing) + count(implementing) + count(review) + count(probing)
-    while in_flight < WIP_LIMIT and ready stage not empty:
+    # No global WIP throttle — each column enforces its own limit.
+    # board_move rejects moves when the target column is full.
+    while ready stage not empty:
         pick ONE item from ready stage
-        board_move(itemId=item_id, to="testing", agent="Murdock")
+        result = board_move(itemId=item_id, to="testing", agent="Murdock")
+        if result is WIP error: break  # testing column is full
         spawn or message Murdock with new work
         active_teammates[item_id] = "murdock"
 
@@ -189,7 +191,7 @@ LOOP CONTINUOUSLY:
 **KEY BEHAVIORS:**
 - Phase 1: Messages arrive automatically - no polling required
 - Phase 2: Unlock next-wave items when deps complete (correct waiting)
-- Phase 3: Keep pipeline full up to WIP limit
+- Phase 3: Keep pipeline full — per-column WIP limits enforced by board_move
 
 ## Minimizing Per-Cycle Token Spend
 

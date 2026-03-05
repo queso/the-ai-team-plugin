@@ -87,12 +87,14 @@ LOOP CONTINUOUSLY:
             # This item's deps are now satisfied
 
     # ═══════════════════════════════════════════════════════════
-    # PHASE 3: FILL PIPELINE FROM READY (respects WIP limit)
+    # PHASE 3: FILL PIPELINE FROM READY (per-column WIP limits)
     # ═══════════════════════════════════════════════════════════
-    in_flight = count(testing) + count(implementing) + count(review) + count(probing)
-    while in_flight < WIP_LIMIT and ready stage not empty:
+    # No global WIP throttle — each column enforces its own limit.
+    # board_move rejects moves when the target column is full.
+    while ready stage not empty:
         pick ONE item from ready stage
-        board_move(itemId=item_id, to="testing", agent="Murdock")
+        result = board_move(itemId=item_id, to="testing", agent="Murdock")
+        if result is WIP error: break  # testing column is full
         new_task = dispatch Murdock in background
         active_tasks[item_id] = new_task.id
 
@@ -104,7 +106,7 @@ LOOP CONTINUOUSLY:
 **KEY BEHAVIORS:**
 - Phase 1: Advance items IMMEDIATELY - no waiting for siblings
 - Phase 2: Unlock next-wave items when deps complete (correct waiting)
-- Phase 3: Keep pipeline full up to WIP limit
+- Phase 3: Keep pipeline full — per-column WIP limits enforced by board_move
 
 ## Minimizing Per-Cycle Token Spend
 
