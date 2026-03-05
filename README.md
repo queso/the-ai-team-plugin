@@ -132,6 +132,14 @@ The dashboard provides two views:
 - **Filtering controls** to view specific agents, tools, or event types
 - **Live updates** via SSE as agents execute tools
 
+### Token Usage Panel (NEW)
+- **Per-agent cost breakdown** with estimated USD for each agent (Face, Murdock, B.A., Lynch, Amy, Tawnia, Hannibal)
+- **Proportional bars** showing relative token consumption across agents
+- **Model-aware pricing** loaded from `ateam.config.json` (Opus, Sonnet, Haiku rates)
+- **Input/output/cache token counts** with K/M notation
+- **Mission totals** including cache savings
+- Appears in the right sidebar after mission completes; populated via SSE `mission-token-usage` event
+
 Switch between views using the navigation tabs at the top of the dashboard.
 
 ## Pipeline Flow
@@ -291,6 +299,15 @@ If issues are found, specific items return to the pipeline for fixes.
 - ✅ Negative paths (error cases)
 - ✅ Key edge cases
 - ❌ Don't chase 100% coverage
+
+### Token Usage Tracking
+
+After each mission, the dashboard shows a per-agent cost breakdown:
+
+- **Observer hooks** (`observe-subagent.js`, `observe-stop.js`) parse JSONL transcripts on agent completion and forward token counts to the API
+- **Aggregation endpoint** (`POST /api/missions/{id}/token-usage`) groups usage by agent+model with deduplication
+- **Configurable pricing** via `ateam.config.json` — set per-model rates ($/1M tokens) for Opus, Sonnet, and Haiku
+- **Token summary** in CHANGELOG entries — Tawnia includes a one-line summary (e.g., `Tokens: 1.2M input, 45K output`)
 
 ### Work Item Sizing
 
