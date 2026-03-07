@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { createValidationError } from '@/lib/errors';
 import { getAndValidateProjectId, ensureProject } from '@/lib/project-utils';
 import type { CreateMissionRequest, CreateMissionResponse, ApiError } from '@/types/api';
-import type { Mission } from '@/types/mission';
+import type { Mission, MissionState, MissionPrecheckOutput } from '@/types/mission';
 
 /**
  * GET /api/missions
@@ -24,15 +24,36 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     const projectId = projectValidation.projectId;
 
-    const missions = await prisma.mission.findMany({
-      where: {
-        projectId,
-      },
-    });
+    const stateFilter = request.nextUrl.searchParams.get('state');
+
+    const where: Record<string, unknown> = { projectId };
+    if (stateFilter) {
+      where.state = stateFilter;
+    }
+
+    const missions = await prisma.mission.findMany({ where });
+
+    const parseJsonField = <T>(field: unknown): T | null => {
+      if (field === null || field === undefined) return null;
+      if (typeof field === 'string') return JSON.parse(field) as T;
+      return field as T;
+    };
+
+    const data = missions.map((m) => ({
+      id: m.id,
+      name: m.name,
+      state: m.state as MissionState,
+      prdPath: m.prdPath,
+      startedAt: m.startedAt,
+      completedAt: m.completedAt,
+      archivedAt: m.archivedAt,
+      precheckBlockers: parseJsonField<string[]>(m.precheckBlockers),
+      precheckOutput: parseJsonField<MissionPrecheckOutput>(m.precheckOutput),
+    }));
 
     return NextResponse.json({
       success: true,
-      data: missions,
+      data,
     });
   } catch (error) {
     const apiError: ApiError = {
@@ -126,6 +147,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }),
       },
     });
+
+    // Guard: if an active mission exists and force is not set, return 409
+    if (activeMission && !body.force) {
+      const conflictMessage = activeMission.state === 'precheck_failure'
+        ? 'Mission is in precheck_failure state. Fix the issues and re-run /ai-team:run to retry, or use force: true to archive and start fresh.'
+        : 'An active mission already exists. Use force: true to archive it and start fresh, or re-run /ai-team:run to continue.';
+
+      const conflictError: ApiError = {
+        success: false,
+        error: {
+          code: 'CONFLICT',
+          message: conflictMessage,
+        },
+      };
+      return NextResponse.json(conflictError, { status: 409 });
+    }
 
     // Archive active mission and its items in a transaction to ensure consistency
     if (activeMission) {
