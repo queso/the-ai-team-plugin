@@ -211,6 +211,29 @@ describe('PrecheckFailureBanner raw output', () => {
     // The newline separator means they are not directly concatenated
     expect(rawOutput.textContent).not.toContain('stdout contentstderr content');
   });
+
+  it('should show [TIMED OUT] marker when timedOut is true and stdout/stderr are empty', () => {
+    const mission = createMission({
+      precheckOutput: {
+        lint: { stdout: '', stderr: '', timedOut: true },
+      },
+    });
+    render(<PrecheckFailureBanner mission={mission} />);
+    const rawOutput = screen.getByTestId('precheck-raw-output');
+    expect(rawOutput.textContent).toContain('[TIMED OUT]');
+  });
+
+  it('should show [TIMED OUT] marker alongside any captured output', () => {
+    const mission = createMission({
+      precheckOutput: {
+        tests: { stdout: 'some partial output', stderr: '', timedOut: true },
+      },
+    });
+    render(<PrecheckFailureBanner mission={mission} />);
+    const rawOutput = screen.getByTestId('precheck-raw-output');
+    expect(rawOutput.textContent).toContain('[TIMED OUT]');
+    expect(rawOutput.textContent).toContain('some partial output');
+  });
 });
 
 // ============ Retry Instructions ============

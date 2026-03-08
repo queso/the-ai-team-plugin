@@ -133,10 +133,14 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
            passed = false
            continue
 
-       result = Bash(config.checks[checkName], capture: stdout+stderr+exitcode)
-       output[checkName] = { stdout: result.stdout, stderr: result.stderr, timedOut: false }
+       result = Bash(config.checks[checkName], capture: stdout+stderr+exitcode, timeout: 300s)
+       timedOut = (result.exitcode == TIMEOUT_CODE)
+       output[checkName] = { stdout: result.stdout, stderr: result.stderr, timedOut }
 
-       if result.exitcode != 0:
+       if timedOut:
+           passed = false
+           blockers.append(checkName + " timed out after 5 minutes")
+       elif result.exitcode != 0:
            passed = false
            blockers.append(checkName + " failed: " + result.stdout.slice(0,200))
 

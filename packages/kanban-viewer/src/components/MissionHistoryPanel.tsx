@@ -24,13 +24,16 @@ interface MissionHistoryPanelProps {
 function formatPrecheckOutput(output: Record<string, unknown>): string {
   const sections: string[] = [];
   for (const [checkName, result] of Object.entries(output)) {
-    if (result && typeof result === "object") {
-      const r = result as { stdout?: string; stderr?: string };
-      const parts = [r.stdout, r.stderr].filter(Boolean);
-      sections.push(`[${checkName}]\n${parts.join("\n")}`);
-    }
+    if (!result || typeof result !== "object") continue;
+    const r = result as { stdout?: string; stderr?: string; timedOut?: boolean };
+    const lines: string[] = [];
+    if (r.timedOut) lines.push('[TIMED OUT]');
+    if (r.stdout) lines.push(r.stdout);
+    if (r.stderr) lines.push(r.stderr);
+    if (lines.length === 0) lines.push('(no output captured)');
+    sections.push(`[${checkName}]\n${lines.join('\n')}`);
   }
-  return sections.join("\n\n").trim() || "(no output captured)";
+  return sections.join('\n\n').trim() || '(no output captured)';
 }
 
 function formatDate(dateStr: string | null | undefined): string {

@@ -10,12 +10,15 @@ interface PrecheckFailureBannerProps {
 function formatPrecheckOutput(output: MissionPrecheckOutput): string {
   const sections: string[] = [];
   for (const [checkName, result] of Object.entries(output)) {
-    if (result) {
-      const parts = [result.stdout, result.stderr].filter(Boolean);
-      sections.push(`[${checkName}]\n${parts.join("\n")}`);
-    }
+    if (!result) continue;
+    const lines: string[] = [];
+    if (result.timedOut) lines.push('[TIMED OUT]');
+    if (result.stdout) lines.push(result.stdout);
+    if (result.stderr) lines.push(result.stderr);
+    if (lines.length === 0) lines.push('(no output captured)');
+    sections.push(`[${checkName}]\n${lines.join('\n')}`);
   }
-  return sections.join("\n\n").trim() || "(no output captured)";
+  return sections.join('\n\n').trim() || '(no output captured)';
 }
 
 export function PrecheckFailureBanner({ mission }: PrecheckFailureBannerProps) {

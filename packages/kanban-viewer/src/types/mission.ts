@@ -37,8 +37,8 @@ export interface Mission {
   startedAt: Date;
   completedAt: Date | null;
   archivedAt: Date | null;
-  precheckBlockers: string[] | null;
-  precheckOutput: MissionPrecheckOutput | null;
+  precheckBlockers?: string[] | null;
+  precheckOutput?: MissionPrecheckOutput | null;
 }
 
 /**

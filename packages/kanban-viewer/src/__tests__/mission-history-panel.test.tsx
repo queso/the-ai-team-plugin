@@ -426,4 +426,55 @@ describe('MissionHistoryPanel precheck_failure detail pane', () => {
     fireEvent.click(screen.getByTestId('mission-history-row'));
     expect(screen.getByTestId('mission-detail-pane')).toBeInTheDocument();
   });
+
+  it('should show [TIMED OUT] marker in detail pane when timedOut is true and stdout/stderr are empty', async () => {
+    global.fetch = createMockFetchWithMissions([
+      createApiMission({
+        id: 'M-20260122-003',
+        name: 'Timed Out Mission',
+        state: 'precheck_failure',
+        precheckBlockers: ['lint timed out after 5 minutes'],
+        precheckOutput: {
+          lint: { stdout: '', stderr: '', timedOut: true },
+        },
+      }),
+    ]);
+
+    render(
+      <MissionHistoryPanel isOpen={true} onClose={vi.fn()} projectId="proj-1" />
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('mission-history-row')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('mission-history-row'));
+
+    const output = screen.getByTestId('detail-precheck-output');
+    expect(output.textContent).toContain('[TIMED OUT]');
+  });
+
+  it('should show [TIMED OUT] marker alongside captured output in detail pane', async () => {
+    global.fetch = createMockFetchWithMissions([
+      createApiMission({
+        id: 'M-20260122-004',
+        name: 'Partial Timeout Mission',
+        state: 'precheck_failure',
+        precheckBlockers: ['tests timed out after 5 minutes'],
+        precheckOutput: {
+          tests: { stdout: 'partial test output', stderr: '', timedOut: true },
+        },
+      }),
+    ]);
+
+    render(
+      <MissionHistoryPanel isOpen={true} onClose={vi.fn()} projectId="proj-1" />
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('mission-history-row')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('mission-history-row'));
+
+    const output = screen.getByTestId('detail-precheck-output');
+    expect(output.textContent).toContain('[TIMED OUT]');
+    expect(output.textContent).toContain('partial test output');
+  });
 });

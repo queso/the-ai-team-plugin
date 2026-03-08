@@ -38,9 +38,10 @@ Hannibal runs precheck by executing commands and forwarding results to the API �
 
 **When `mission_current` returns `precheck_failure`:**
 - The mission state is `precheck_failure` — blockers from the last run are stored in the API database.
-  Fetch them via `GET /api/missions/current` (REST endpoint) which returns the full mission record
-  including the `precheckBlockers` array. The `mission_current` MCP tool returns a simplified object
-  without the `precheckBlockers` field; use the REST endpoint or the `mission_precheck` response instead.
+  Fetch them via `GET /api/missions/current` (REST endpoint) with header `X-Project-ID: <ATEAM_PROJECT_ID>`
+  — this returns the full mission record including the `precheckBlockers` array. The `mission_current`
+  MCP tool returns a simplified object without the `precheckBlockers` field; use the REST endpoint or
+  the `mission_precheck` response instead.
 - Display the blockers to the operator:
   ```
   [Hannibal] Previous precheck failed. Blockers:
@@ -70,7 +71,7 @@ No manual `Bash` commands needed — the marker lifecycle is handled at the code
 
 **Check for precheck retry at start of run:**
 If mission state is `precheck_failure`:
-  - Display blockers to operator (fetch from `GET /api/missions/current` REST endpoint)
+  - Display blockers to operator (fetch from `GET /api/missions/current` REST endpoint with header `X-Project-ID: <ATEAM_PROJECT_ID>`)
   - Re-run the precheck flow (same steps as in the Precheck Flow section above)
   - If passed: continue to main orchestration loop below
   - If failed: call `mission_precheck({ passed: false, blockers, output })` to update blockers and exit — operator must fix issues before retrying
