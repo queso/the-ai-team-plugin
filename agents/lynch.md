@@ -180,6 +180,10 @@ Same pattern applies to value matching: `find(r => r.action === "increase_bid" |
 - Reinventing existing utilities instead of reusing them
 - Tautological mock-call assertions — `expect(mock).toHaveBeenCalledWith(x)` when the mock was set up to return a value regardless; proves nothing about correctness
 - Conditional fallback test paths — `if/else` branches where the fallback silently passes, making the test unable to fail
+- An acceptance criterion from the work item has zero test coverage
+- Assertions so vague that a completely wrong return value would still pass (e.g. `toBeTruthy()` on a critical computed value)
+- Test file so over-mocked it exercises no real logic at all — every dependency stubbed, nothing real runs
+- Tests that only assert implementation details — no behavioral coverage whatsoever, would all break on any internal refactor
 
 **Priority 2 - Readability & Testability (SHOULD FIX):**
 - Confusing or misleading variable/function names
@@ -303,12 +307,12 @@ Required fixes:
 - Nitpicks
 - Minor readability concerns
 
-**Reject for test quality if:**
+**Reject for test quality if (all Priority 1 — blocking):**
 - An acceptance criterion from the work item has zero test coverage
-- Assertions are so vague that a completely wrong return value would still pass
-- The test file is so over-mocked it exercises no real logic at all
-- Tests assert implementation details that would break on any refactor (testing the how, not the what)
-- Tautological mock-call assertions are present — these give false confidence by testing mock setup, not behavior
+- Assertions so vague that a completely wrong return value would still pass
+- Test file so over-mocked it exercises no real logic at all
+- Tests assert only implementation details — no behavioral coverage, would break on any refactor
+- Tautological mock-call assertions are present — testing mock setup, not behavior
 - Conditional fallback paths exist where a missing element silently reroutes through a passing branch
 - OR-pattern assertion chains (`??` or `||`) where any of N messages satisfies the check, hiding regressions to generic error states
 
