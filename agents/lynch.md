@@ -184,6 +184,7 @@ Same pattern applies to value matching: `find(r => r.action === "increase_bid" |
 - Assertions so vague that a completely wrong return value would still pass (e.g. `toBeTruthy()` on a critical computed value)
 - Test file so over-mocked it exercises no real logic at all — every dependency stubbed, nothing real runs
 - Tests that only assert implementation details — no behavioral coverage whatsoever, would all break on any internal refactor
+- OR-pattern assertion chains (`??` or `||`) where any of N messages satisfies the check, hiding regressions to generic error states
 
 **Priority 2 - Readability & Testability (SHOULD FIX):**
 - Confusing or misleading variable/function names
@@ -194,7 +195,6 @@ Same pattern applies to value matching: `find(r => r.action === "increase_bid" |
 - Vague assertions (`toBeTruthy`, `toBeDefined`) on critical behavior
 - Mocks that return wrong data shapes (false confidence)
 - Tests tightly coupled to internals that would break on refactor
-- OR-pattern assertions (`??` chains, `||` value matching) that accept multiple possible outputs when only one is correct
 - Incomplete contract assertions (e.g. testing `.status` but not `.body` when both are documented)
 
 **Priority 3 - Everything Else (CONSIDER FIXING - DO NOT REJECT FOR THESE):**
