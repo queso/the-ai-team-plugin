@@ -336,6 +336,13 @@ export function useBoardEvents(
   }, []);
 
   const connect = useCallback(() => {
+    // Short-circuit if projectId is absent to prevent connecting with an empty ID
+    // (the SSE route rejects empty projectId with a permanent 400)
+    if (!projectId) {
+      setRawConnectionState('disconnected');
+      return;
+    }
+
     // Clean up any existing connection
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -346,7 +353,7 @@ export function useBoardEvents(
     setRawConnectionState('connecting');
 
     try {
-      const url = `${SSE_ENDPOINT}?projectId=${encodeURIComponent(projectId ?? '')}`;
+      const url = `${SSE_ENDPOINT}?projectId=${encodeURIComponent(projectId)}`;
       const eventSource = new EventSource(url);
       eventSourceRef.current = eventSource;
 

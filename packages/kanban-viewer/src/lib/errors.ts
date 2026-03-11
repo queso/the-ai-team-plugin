@@ -277,11 +277,11 @@ export function createClaimConflictError(itemId: string): ApiError {
 /**
  * Create an error when an item is already claimed by an agent.
  */
-export function createItemClaimedError(itemId: string, agent: string): ApiError {
+export function createItemClaimedError(itemId: string, claimedBy: string): ApiError {
   return new ApiError(
     ErrorCodes.ITEM_CLAIMED,
-    `Item ${itemId} is already claimed by ${agent}`,
-    { itemId, agent }
+    `Item ${itemId} is already claimed by ${claimedBy}`,
+    { itemId, claimedBy }
   );
 }
 
@@ -360,10 +360,10 @@ export function createStageNotFoundError(stageId: string): ApiError {
 /**
  * Create an error when item dependencies are not yet in the done stage.
  */
-export function createDependenciesNotMetError(itemId: string, blockedBy: string[]): ApiError {
+export function createDependenciesNotMetError(itemId: string, unmetDependencies: string[]): ApiError {
   return new ApiError(
     ErrorCodes.DEPENDENCIES_NOT_MET,
-    `Item ${itemId} has unmet dependencies: ${blockedBy.join(', ')}`,
-    { itemId, blockedBy }
+    `Item ${itemId} has unmet dependencies: ${unmetDependencies.join(', ')}`,
+    { itemId, unmetDependencies }
   );
 }

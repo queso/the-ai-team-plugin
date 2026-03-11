@@ -763,9 +763,9 @@ describe('RawAgentView', () => {
 
       const denialBadge = screen.getByTestId('denial-badge-1');
 
-      // Badge text should be readable in dark mode
-      expect(denialBadge).toHaveClass('text-orange-700');
-      expect(denialBadge).toHaveClass('dark:text-orange-300');
+      // Badge text should be readable in both light and dark mode (contrast fix)
+      expect(denialBadge).toHaveClass('text-orange-900');
+      expect(denialBadge).toHaveClass('dark:text-orange-100');
     });
 
     it('should use dark mode compatible swim lane backgrounds', () => {

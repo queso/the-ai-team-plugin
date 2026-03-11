@@ -187,8 +187,8 @@ describe('isValidTransition', () => {
   });
 
   describe('review transitions (Lynch)', () => {
-    it('should allow review -> probing (approved, send to Amy)', () => {
-      expect(isValidTransition('review', 'probing')).toBe(true);
+    it('should reject review -> done', () => {
+      expect(isValidTransition('review', 'done')).toBe(false);
     });
 
     it('should allow review -> testing (rejected, needs tests)', () => {

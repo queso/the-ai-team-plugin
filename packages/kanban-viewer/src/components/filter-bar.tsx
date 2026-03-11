@@ -283,7 +283,7 @@ export function FilterBar({
         isActive={isStatusActive}
         dropdownRef={statusDropdownRef}
       />
-      {hasActiveFilters && (
+      {hasActiveFilters && onClearFilters && (
         <button
           type="button"
           data-testid="clear-filters-button"

@@ -97,7 +97,7 @@ const EventCard = React.memo(({ event }: EventCardProps) => {
             {isDenied && (
               <span
                 data-testid={`denial-badge-${event.id}`}
-                className="rounded bg-orange-500 px-2 py-0.5 text-xs font-semibold text-orange-700 dark:text-orange-300 flex-shrink-0"
+                className="rounded bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-900 dark:bg-orange-900 dark:text-orange-100 flex-shrink-0"
               >
                 DENIED
               </span>
