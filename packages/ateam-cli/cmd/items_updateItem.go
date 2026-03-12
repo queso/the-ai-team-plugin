@@ -68,9 +68,13 @@ var itemsUpdateItemCmd = &cobra.Command{
 			return nil
 		}
 		bodyMap := map[string]interface{}{}
-		bodyMap["dependencies"] = itemsUpdateItemCmd_dependencies
-		bodyMap["description"] = itemsUpdateItemCmd_description
-		{
+		if cmd.Flags().Changed("dependencies") {
+			bodyMap["dependencies"] = itemsUpdateItemCmd_dependencies
+		}
+		if cmd.Flags().Changed("description") {
+			bodyMap["description"] = itemsUpdateItemCmd_description
+		}
+		if cmd.Flags().Changed("outputs.types") {
 			_parts := strings.Split("outputs.types", ".")
 			_cur := bodyMap
 			for _, _p := range _parts[:len(_parts)-1] {
@@ -81,7 +85,7 @@ var itemsUpdateItemCmd = &cobra.Command{
 			}
 			_cur[_parts[len(_parts)-1]] = itemsUpdateItemCmd_outputsTypes
 		}
-		{
+		if cmd.Flags().Changed("outputs.impl") {
 			_parts := strings.Split("outputs.impl", ".")
 			_cur := bodyMap
 			for _, _p := range _parts[:len(_parts)-1] {
@@ -92,7 +96,7 @@ var itemsUpdateItemCmd = &cobra.Command{
 			}
 			_cur[_parts[len(_parts)-1]] = itemsUpdateItemCmd_outputsImpl
 		}
-		{
+		if cmd.Flags().Changed("outputs.test") {
 			_parts := strings.Split("outputs.test", ".")
 			_cur := bodyMap
 			for _, _p := range _parts[:len(_parts)-1] {
@@ -103,9 +107,18 @@ var itemsUpdateItemCmd = &cobra.Command{
 			}
 			_cur[_parts[len(_parts)-1]] = itemsUpdateItemCmd_outputsTest
 		}
-		bodyMap["priority"] = itemsUpdateItemCmd_priority
-		bodyMap["title"] = itemsUpdateItemCmd_title
-		bodyMap["type"] = itemsUpdateItemCmd_type
+		if cmd.Flags().Changed("priority") {
+			bodyMap["priority"] = itemsUpdateItemCmd_priority
+		}
+		if cmd.Flags().Changed("title") {
+			bodyMap["title"] = itemsUpdateItemCmd_title
+		}
+		if cmd.Flags().Changed("type") {
+			bodyMap["type"] = itemsUpdateItemCmd_type
+		}
+		if len(bodyMap) == 0 {
+			return fmt.Errorf("no fields to update")
+		}
 		resp, err := c.Do("PATCH", "/api/items/{id}", pathParams, queryParams, bodyMap)
 		if err != nil {
 			return err
