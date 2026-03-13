@@ -655,12 +655,24 @@ paths:
         (required for browser EventSource which cannot set headers).
       tags: [board]
       parameters:
-        - $ref: '#/components/parameters/ProjectId'
-        - name: projectId
-          in: query
+        - name: X-Project-ID
+          in: header
+          required: false
           schema:
             type: string
-          description: Fallback when X-Project-ID header cannot be set (EventSource)
+          description: |
+            Project identifier. Required unless `projectId` query parameter is
+            provided. Use the query parameter for browser EventSource clients,
+            which cannot set custom headers.
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Fallback project identifier for browser EventSource clients that
+            cannot set custom headers. Either this or the `X-Project-ID` header
+            must be provided.
       responses:
         '200':
           description: SSE stream
