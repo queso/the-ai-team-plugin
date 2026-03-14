@@ -197,11 +197,11 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - If FINAL REJECTED → specified items return to pipeline
 
 7. **Post-Mission Checks:**
-   Run checks via Bash first (like precheck), then call `mission_postcheck` with results.
+   Run checks via Bash first (like precheck), then call `ateam missions-postcheck missionPostcheck` with results.
 
    Read `ateam.config.json` to get the list of check names (`config.postcheck`) and their commands
    (`config.checks`). Run each check via Bash, capturing stdout, stderr, and exit code.
-   Then call `mission_postcheck` with the computed result:
+   Then call `ateam missions-postcheck missionPostcheck` with the computed result:
 
    ```text
    config = Read("ateam.config.json")  # parse JSON
@@ -229,7 +229,7 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
            passed = false
            blockers.append(checkName + " failed: " + result.stdout.slice(0,200))
 
-   mission_postcheck({ passed, blockers, output })
+   ateam missions-postcheck missionPostcheck --passed {passed} --blockers {blockers} --output {output}
    ```
 
    - If `passed = true`: mission transitions to `completed`.
