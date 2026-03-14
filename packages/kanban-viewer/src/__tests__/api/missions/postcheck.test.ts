@@ -267,6 +267,29 @@ describe('POST /api/missions/postcheck', () => {
       expect(data.data.e2eTestsFailed).toBe(0);
     });
 
+    it('should handle custom check names dynamically (not hardcoded lint/unit/e2e)', async () => {
+      mockPrismaClient.mission.findFirst.mockResolvedValue(mockMission);
+
+      // "linting" contains "lint" → lintErrors; "tests" → unitTests; "playwright" → e2e
+      const body = {
+        passed: true,
+        blockers: [],
+        output: {
+          linting: { stdout: '2 errors found', stderr: '', timedOut: false },
+          tests: { stdout: 'Tests: 7 passed, 1 failed', stderr: '', timedOut: false },
+          playwright: { stdout: '3 passed', stderr: '', timedOut: false },
+        },
+      };
+
+      const response = await POST(makeRequest(body));
+      const data: PostcheckResponse = await response.json();
+
+      expect(data.data.lintErrors).toBe(2);
+      expect(data.data.unitTestsPassed).toBe(7);
+      expect(data.data.unitTestsFailed).toBe(1);
+      expect(data.data.e2eTestsPassed).toBe(3);
+    });
+
     it('should forward blockers from the request body', async () => {
       mockPrismaClient.mission.findFirst.mockResolvedValue(mockMission);
       mockPrismaClient.mission.update.mockResolvedValue({ ...mockMission, state: 'failed' });

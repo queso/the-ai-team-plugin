@@ -161,21 +161,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    // Parse counts from output map
+    // Parse counts from output map dynamically — avoids hardcoding "lint"/"unit"/"e2e"
+    // so renamed check keys in ateam.config.json continue to work.
+    // Heuristic: check names containing "lint" use parseLintErrors; all others use parseTestResults.
     type CheckOutput = { stdout?: string; stderr?: string; timedOut?: boolean };
-    const lintOut: CheckOutput = output.lint ?? {};
-    const unitOut: CheckOutput = output.unit ?? {};
-    const e2eOut: CheckOutput = output.e2e ?? {};
+    let lintErrors = 0;
+    let unitTestsPassed = 0;
+    let unitTestsFailed = 0;
+    let e2eTestsPassed = 0;
+    let e2eTestsFailed = 0;
 
-    const lintErrors = parseLintErrors(lintOut.stdout ?? '', lintOut.stderr ?? '');
-    const { passed: unitTestsPassed, failed: unitTestsFailed } = parseTestResults(
-      unitOut.stdout ?? '',
-      unitOut.stderr ?? ''
-    );
-    const { passed: e2eTestsPassed, failed: e2eTestsFailed } = parseTestResults(
-      e2eOut.stdout ?? '',
-      e2eOut.stderr ?? ''
-    );
+    for (const [checkName, checkOut] of Object.entries(output as Record<string, CheckOutput>)) {
+      const stdout = checkOut.stdout ?? '';
+      const stderr = checkOut.stderr ?? '';
+      if (checkName.includes('lint')) {
+        lintErrors += parseLintErrors(stdout, stderr);
+      } else if (checkName.includes('e2e') || checkName.includes('playwright')) {
+        const counts = parseTestResults(stdout, stderr);
+        e2eTestsPassed += counts.passed;
+        e2eTestsFailed += counts.failed;
+      } else {
+        const counts = parseTestResults(stdout, stderr);
+        unitTestsPassed += counts.passed;
+        unitTestsFailed += counts.failed;
+      }
+    }
 
     // Update mission state based on result
     const newState = passed ? 'completed' : 'failed';
