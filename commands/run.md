@@ -197,11 +197,44 @@ WIP limit controls how many features are in-flight (not in briefings, ready, or 
    - If FINAL REJECTED → specified items return to pipeline
 
 7. **Post-Mission Checks:**
-   Run `ateam missions-postcheck missionPostcheck --json`.
-   - Run after final review approves
-   - Verifies lint, unit tests, and e2e tests all pass
-   - Updates mission state with postcheck results
-   - If checks fail, items return to pipeline for fixes
+   Run checks via Bash first (like precheck), then call `mission_postcheck` with results.
+
+   Read `ateam.config.json` to get the list of check names (`config.postcheck`) and their commands
+   (`config.checks`). Run each check via Bash, capturing stdout, stderr, and exit code.
+   Then call `mission_postcheck` with the computed result:
+
+   ```text
+   config = Read("ateam.config.json")  # parse JSON
+
+   passed   = true
+   blockers = []
+   output   = {}
+
+   # config.postcheck lists the check names to run (e.g. ["lint", "unit"] by default).
+   # config.checks maps each name to its shell command.
+   # Results are stored in output keyed by check name: output["lint"], output["unit"], etc.
+   for checkName in config.postcheck:
+       if checkName not in config.checks or config.checks[checkName] is null:
+           # Skip null commands (e.g. e2e: null means no e2e checks)
+           continue
+
+       result = Bash(config.checks[checkName], capture: stdout+stderr+exitcode, timeout: 300s)
+       timedOut = (result.exitcode == TIMEOUT_CODE)
+       output[checkName] = { stdout: result.stdout, stderr: result.stderr, timedOut }
+
+       if timedOut:
+           passed = false
+           blockers.append(checkName + " timed out after 5 minutes")
+       elif result.exitcode != 0:
+           passed = false
+           blockers.append(checkName + " failed: " + result.stdout.slice(0,200))
+
+   mission_postcheck({ passed, blockers, output })
+   ```
+
+   - If `passed = true`: mission transitions to `completed`.
+   - If `passed = false`: mission transitions to `failed`. Report blockers to user.
+     Items that caused the failure return to pipeline for fixes.
 
 8. **Documentation Phase (Tawnia):**
    - Dispatch Tawnia when ALL three conditions are met:
