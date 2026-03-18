@@ -278,7 +278,17 @@ BINARY="${BIN_DIR}/ateam"
 # TODO: Update this if the repo is hosted elsewhere
 GITHUB_REPO="queso/the-ai-team-plugin"
 
-# Read desired version from ateam.config.json (default: "latest")
+# Read minimum required version from plugin.json (set by plugin authors on each release)
+MIN_CLI_VERSION=""
+PLUGIN_JSON="${PLUGIN_ROOT}/.claude-plugin/plugin.json"
+if [ -f "$PLUGIN_JSON" ]; then
+  DETECTED=$(grep -o '"minCliVersion"[[:space:]]*:[[:space:]]*"[^"]*"' "$PLUGIN_JSON" | sed 's/.*"minCliVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/')
+  if [ -n "$DETECTED" ]; then
+    MIN_CLI_VERSION="$DETECTED"
+  fi
+fi
+
+# Read desired version from ateam.config.json (user pin, default: "latest")
 DESIRED_VERSION="latest"
 if [ -f ateam.config.json ]; then
   DETECTED=$(grep -o '"ateamCliVersion"[[:space:]]*:[[:space:]]*"[^"]*"' ateam.config.json | sed 's/.*"ateamCliVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/')
@@ -286,6 +296,11 @@ if [ -f ateam.config.json ]; then
     DESIRED_VERSION="$DETECTED"
   fi
 fi
+
+# Semver comparison helper: returns 0 if $1 >= $2, 1 otherwise
+semver_gte() {
+  [ "$(printf '%s\n%s' "$1" "$2" | sort -V | head -1)" = "$2" ]
+}
 
 # Detect platform
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -313,15 +328,36 @@ esac
 
 ASSET_NAME="ateam-${PLATFORM}-${ARCH_SUFFIX}"
 
-# Check if binary already exists and matches desired version
+# Check if binary already exists and satisfies version requirements
 if [ -f "$BINARY" ] && [ -x "$BINARY" ]; then
-  CURRENT_VERSION=$("$BINARY" --version 2>/dev/null || echo "unknown")
-  if [ "$DESIRED_VERSION" != "latest" ] && [ "$CURRENT_VERSION" = "$DESIRED_VERSION" ]; then
+  CURRENT_VERSION=$("$BINARY" --version 2>/dev/null | awk '{print $NF}' || echo "unknown")
+
+  # Check minimum version requirement from plugin.json
+  MEETS_MIN=true
+  if [ -n "$MIN_CLI_VERSION" ] && [ "$CURRENT_VERSION" != "unknown" ]; then
+    if ! semver_gte "$CURRENT_VERSION" "$MIN_CLI_VERSION"; then
+      MEETS_MIN=false
+      echo "⚠ ateam CLI ${CURRENT_VERSION} is below minimum required version ${MIN_CLI_VERSION}"
+      echo "  Updating..."
+    fi
+  fi
+
+  # If pinned version matches and minimum is met, skip download
+  if [ "$MEETS_MIN" = "true" ] && [ "$DESIRED_VERSION" != "latest" ] && [ "$CURRENT_VERSION" = "$DESIRED_VERSION" ]; then
     echo "✓ ateam CLI already installed (${CURRENT_VERSION})"
     exit 0
   fi
-  echo "Existing ateam CLI version: ${CURRENT_VERSION}"
-  echo "Desired version: ${DESIRED_VERSION} — updating..."
+
+  # If latest requested and minimum is met, skip download
+  if [ "$MEETS_MIN" = "true" ] && [ "$DESIRED_VERSION" = "latest" ]; then
+    echo "✓ ateam CLI already installed (${CURRENT_VERSION})"
+    exit 0
+  fi
+
+  if [ "$MEETS_MIN" = "true" ]; then
+    echo "Existing ateam CLI version: ${CURRENT_VERSION}"
+    echo "Desired version: ${DESIRED_VERSION} — updating..."
+  fi
 fi
 
 # Resolve download URL

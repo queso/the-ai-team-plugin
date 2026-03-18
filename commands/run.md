@@ -16,6 +16,33 @@ Execute the mission with the pipeline flow.
 - `--wip N` (optional): Set WIP limit (default: 3)
 - `--max-wip M` (optional): Set maximum WIP for adaptive scaling (default: 5)
 
+## Pre-Flight: CLI Version Check
+
+Before doing anything else, verify the `ateam` CLI meets the minimum version required by this plugin:
+
+```bash
+# Read minCliVersion from plugin.json
+MIN_CLI_VERSION=$(grep -o '"minCliVersion"[[:space:]]*:[[:space:]]*"[^"]*"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" | sed 's/.*"minCliVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/')
+
+# Get current CLI version
+CURRENT_VERSION=$(${CLAUDE_PLUGIN_ROOT}/bin/ateam --version 2>/dev/null | awk '{print $NF}' || echo "not found")
+
+# Compare (sort -V puts older versions first)
+IS_SUFFICIENT=$([ "$(printf '%s\n%s' "$CURRENT_VERSION" "$MIN_CLI_VERSION" | sort -V | head -1)" = "$MIN_CLI_VERSION" ] && echo "yes" || echo "no")
+```
+
+```text
+if CURRENT_VERSION is "not found" OR IS_SUFFICIENT is "no":
+    Output to user:
+    "⚠ ateam CLI is outdated or missing (have: {CURRENT_VERSION}, need: ≥{MIN_CLI_VERSION}).
+
+    Run /ai-team:setup to update it, then re-run /ai-team:run"
+
+    STOP. Do not proceed.
+```
+
+If the version check passes, continue silently — no output needed.
+
 ## Pre-Flight: Model Check
 
 Before doing anything else, check your current model. Your system prompt contains your model ID (e.g., "You are powered by the model named Opus 4.6").

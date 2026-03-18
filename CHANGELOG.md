@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Versioning:** `ateam` CLI binary now embeds version via ldflags (`-X ateam/cmd.Version`), exposing `ateam --version`. Release workflow injects the git tag. `plugin.json` gains a `minCliVersion` field; `/ai-team:run` aborts with a clear message if the installed CLI is below the minimum, and `/ai-team:setup` auto-updates the binary when it is. Lock-step versioning: plugin version == CLI minimum version.
 - **Plugin distribution:** Added `.claude-plugin/marketplace.json` — users can now install via `/plugin marketplace add queso/the-ai-team-plugin` + `/plugin install ai-team@the-ai-team-plugin` instead of git submodule.
 - **Setup command:** Removed automatic permission injection. `setup` no longer writes `permissions.allow` entries to `settings.local.json` — permissions are the user's decision. The Permissions section in the setup docs is now informational guidance only.
 - **B.A. retry guidance:** Added `ba-{id}-r{n}` naming convention for re-dispatched agents after rejection. Hannibal now injects a `## Prior Rejection` section at the top of B.A.'s prompt on retries so Lynch's rejection reason is prominent rather than buried in the work log. Fixed misleading comment implying B.A. saw the diagnosis automatically.
