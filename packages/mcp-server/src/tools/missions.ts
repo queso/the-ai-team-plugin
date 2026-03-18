@@ -124,7 +124,7 @@ export const MissionArchiveInputSchema = z.object({
 type MissionInitInput = z.infer<typeof MissionInitInputSchema>;
 type MissionCurrentInput = z.infer<typeof MissionCurrentInputSchema>;
 type MissionPrecheckInput = z.infer<typeof MissionPrecheckInputSchema>;
-type MissionPostcheckInput = z.infer<typeof MissionPostcheckInputSchema>;
+type MissionPostcheckInput = z.input<typeof MissionPostcheckInputSchema>;
 type MissionArchiveInput = z.infer<typeof MissionArchiveInputSchema>;
 type MissionListInput = z.infer<typeof MissionListInputSchema>;
 
