@@ -5,14 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] — 2026-03-23
+
+### Changed
+
+- **Org migration:** Moved repository from `queso/the-ai-team-plugin` to `theaiteam-dev/the-ai-team-plugin`. All references updated (marketplace, GHCR images, setup command, README).
+- **Access token support:** The `ateam` CLI now reads `ACCESS_CLIENT_ID` and `ACCESS_CLIENT_SECRET` from the environment and sends them as `CF-Access-Client-Id` / `CF-Access-Client-Secret` headers. Enables hosted instances behind Cloudflare Access or similar access gateways.
+- **README overhaul:** Replaced separate Installation/Quick Start/Kanban Dashboard sections with a unified Getting Started guide covering plugin install, Docker image startup, setup, and hosted instance configuration.
+
+## [1.0.2] — 2026-03-22
 
 ### Added — Kanban-Viewer Docker Image (GHCR)
 
 The kanban-viewer now ships as a pre-built multi-platform Docker image published to GHCR on every release. Users no longer need to clone the repo or build locally — `/ai-team:setup` pulls and starts the container automatically.
 
 #### New Files
-- `.claude-plugin/docker-compose.yml` — one-file compose config pointing at `ghcr.io/queso/kanban-viewer:latest`; data persisted at `~/.ateam/data`
+- `.claude-plugin/docker-compose.yml` — one-file compose config pointing at `ghcr.io/theaiteam-dev/kanban-viewer:latest`; data persisted at `~/.ateam/data`
 - `packages/kanban-viewer/docker-entrypoint.sh` — initializes the SQLite database on first boot when a fresh volume is mounted (copies baked-in seed DB), then starts the server
 
 #### Changed
@@ -24,7 +32,7 @@ The kanban-viewer now ships as a pre-built multi-platform Docker image published
 ### Changed
 
 - **Versioning:** `ateam` CLI binary now embeds version via ldflags (`-X ateam/cmd.Version`), exposing `ateam --version`. Release workflow injects the git tag. `plugin.json` gains a `minCliVersion` field; `/ai-team:run` aborts with a clear message if the installed CLI is below the minimum, and `/ai-team:setup` auto-updates the binary when it is. Lock-step versioning: plugin version == CLI minimum version.
-- **Plugin distribution:** Added `.claude-plugin/marketplace.json` — users can now install via `/plugin marketplace add queso/the-ai-team-plugin` + `/plugin install ai-team@the-ai-team-plugin` instead of git submodule.
+- **Plugin distribution:** Added `.claude-plugin/marketplace.json` — users can now install via `/plugin marketplace add theaiteam-dev/the-ai-team-plugin` + `/plugin install ai-team@the-ai-team-plugin` instead of git submodule.
 - **Setup command:** Removed automatic permission injection. `setup` no longer writes `permissions.allow` entries to `settings.local.json` — permissions are the user's decision. The Permissions section in the setup docs is now informational guidance only.
 - **B.A. retry guidance:** Added `ba-{id}-r{n}` naming convention for re-dispatched agents after rejection. Hannibal now injects a `## Prior Rejection` section at the top of B.A.'s prompt on retries so Lynch's rejection reason is prominent rather than buried in the work log. Fixed misleading comment implying B.A. saw the diagnosis automatically.
 - **MCP server:** `MissionPostcheckInput` now uses `z.input` instead of `z.infer` so callers can legally omit defaulted fields (`blockers`, `output`).

@@ -62,36 +62,79 @@ Agents interact with the API via the `ateam` CLI binary (`${CLAUDE_PLUGIN_ROOT}/
 | **Amy** | Investigator | `bug-hunter` | Probes every feature for bugs beyond tests. |
 | **Tawnia** | Documentation | `clean-code-architect` | Updates docs and makes the final commit. |
 
-## Installation
+## Getting Started
+
+### 1. Install the Plugin
 
 **Via Claude Code plugin marketplace (recommended):**
 
 ```bash
-/plugin marketplace add queso/the-ai-team-plugin
+/plugin marketplace add theaiteam-dev/the-ai-team-plugin
 /plugin install ai-team@the-ai-team-plugin
 ```
 
 **Via git submodule (self-hosted / development):**
 
 ```bash
-git submodule add git@github.com:queso/the-ai-team-plugin.git .claude/ai-team
+git submodule add git@github.com:theaiteam-dev/the-ai-team-plugin.git .claude/ai-team
 ```
 
-**Updating:**
-```bash
-# Marketplace install
-/plugin update ai-team@the-ai-team-plugin
+### 2. Start the Kanban Viewer
 
-# Submodule
-git submodule update --remote .claude/ai-team
+The kanban viewer is the API backend and web dashboard. It ships as a pre-built Docker image — no build step required.
+
+```bash
+# Start the container (pulls ghcr.io/theaiteam-dev/kanban-viewer on first run)
+docker compose -f "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/docker-compose.yml" up -d
+
+# Visit http://localhost:3000
 ```
 
-## Quick Start
+Mission data is persisted at `~/.ateam/data` on your host machine and survives container restarts and upgrades.
+
+If you're running a hosted instance (e.g., `https://kanban.theaiteam.dev`), skip this step — just point `ATEAM_API_URL` at the hosted URL in step 3.
+
+### 3. Run Setup
 
 ```bash
-# First time: configure project ID and permissions
 /ai-team:setup
+```
 
+This configures your project:
+1. Sets `ATEAM_PROJECT_ID` for multi-project isolation
+2. Auto-detects package manager, lint/test commands from your project
+3. Creates `ateam.config.json` with check commands
+4. Downloads the `ateam` CLI binary
+5. Verifies API connectivity
+6. Configures permissions for background agents
+
+Your settings are stored in `.claude/settings.local.json`:
+
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "http://localhost:3000"
+  }
+}
+```
+
+For hosted instances behind access control (e.g., Cloudflare Access), add your service token credentials:
+
+```json
+{
+  "env": {
+    "ATEAM_PROJECT_ID": "my-project-name",
+    "ATEAM_API_URL": "https://kanban.theaiteam.dev",
+    "ACCESS_CLIENT_ID": "<your-client-id>",
+    "ACCESS_CLIENT_SECRET": "<your-client-secret>"
+  }
+}
+```
+
+### 4. Run a Mission
+
+```bash
 # Plan a mission from a PRD
 /ai-team:plan ./docs/my-feature-prd.md
 
@@ -108,21 +151,17 @@ git submodule update --remote .claude/ai-team
 /ai-team:unblock 015 --guidance "Try using the existing AuthService"
 ```
 
-## Kanban Dashboard
-
-The A(i)-Team includes a web-based dashboard for real-time visibility into mission progress. It ships as a pre-built Docker image — no build step required.
+### Updating
 
 ```bash
-# Start the kanban-viewer (pulls image on first run)
-docker compose -f ~/.claude/plugins/ai-team/the-ai-team-plugin/.claude-plugin/docker-compose.yml up -d
+# Marketplace install
+/plugin update ai-team@the-ai-team-plugin
 
-# Or let /ai-team:setup handle it for you
-/ai-team:setup
-
-# Visit http://localhost:3000
+# Submodule
+git submodule update --remote .claude/ai-team
 ```
 
-Mission data is persisted at `~/.ateam/data` on your host machine and survives container restarts and upgrades.
+## Kanban Dashboard
 
 The dashboard provides two views:
 
@@ -465,6 +504,8 @@ Configure environment via `.claude/settings.local.json`:
 | `ATEAM_PROJECT_ID` | `default` | Project identifier for multi-project isolation |
 | `ATEAM_API_URL` | `http://localhost:3000` | A(i)-Team API server URL |
 | `ATEAM_API_KEY` | - | Optional API key for authentication |
+| `ACCESS_CLIENT_ID` | - | Service token ID for access-controlled instances |
+| `ACCESS_CLIENT_SECRET` | - | Service token secret for access-controlled instances |
 
 ## Plugin Structure
 

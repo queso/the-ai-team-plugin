@@ -1,6 +1,6 @@
 services:
   kanban-viewer:
-    image: ghcr.io/queso/kanban-viewer:latest
+    image: ghcr.io/theaiteam-dev/kanban-viewer:latest
     ports:
       - "3000:3000"
     volumes:

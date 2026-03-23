@@ -18,10 +18,12 @@ const DefaultBaseURL = "http://localhost:3000"
 
 // Client holds the configuration for making authenticated HTTP requests.
 type Client struct {
-	BaseURL    string
-	Token      string
-	ProjectID  string
-	HTTPClient *http.Client
+	BaseURL            string
+	Token              string
+	ProjectID          string
+	AccessClientID     string
+	AccessClientSecret string
+	HTTPClient         *http.Client
 }
 
 // NewClient constructs a Client with the given baseURL and token.
@@ -33,9 +35,11 @@ func NewClient(baseURL, token string) *Client {
 		baseURL = DefaultBaseURL
 	}
 	return &Client{
-		BaseURL:   baseURL,
-		Token:     token,
-		ProjectID: os.Getenv("ATEAM_PROJECT_ID"),
+		BaseURL:            baseURL,
+		Token:              token,
+		ProjectID:          os.Getenv("ATEAM_PROJECT_ID"),
+		AccessClientID:     os.Getenv("ACCESS_CLIENT_ID"),
+		AccessClientSecret: os.Getenv("ACCESS_CLIENT_SECRET"),
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -53,6 +57,10 @@ func (c *Client) execute(req *http.Request) ([]byte, error) {
 	}
 	if c.ProjectID != "" {
 		req.Header.Set("X-Project-ID", c.ProjectID)
+	}
+	if c.AccessClientID != "" {
+		req.Header.Set("CF-Access-Client-Id", c.AccessClientID)
+		req.Header.Set("CF-Access-Client-Secret", c.AccessClientSecret)
 	}
 
 	resp, err := c.HTTPClient.Do(req)

@@ -276,7 +276,7 @@ BIN_DIR="${PLUGIN_ROOT}/bin"
 BINARY="${BIN_DIR}/ateam"
 
 # TODO: Update this if the repo is hosted elsewhere
-GITHUB_REPO="queso/the-ai-team-plugin"
+GITHUB_REPO="theaiteam-dev/the-ai-team-plugin"
 
 # Read minimum required version from plugin.json (set by plugin authors on each release)
 MIN_CLI_VERSION=""
@@ -429,7 +429,7 @@ Downloading ateam CLI (ateam-darwin-arm64)...
 **If download fails:**
 ```
 ERROR: Failed to download ateam CLI binary.
-  URL: https://github.com/queso/the-ai-team-plugin/releases/latest/download/ateam-darwin-arm64
+  URL: https://github.com/theaiteam-dev/the-ai-team-plugin/releases/latest/download/ateam-darwin-arm64
 
 Possible causes:
   - No release published yet for this version
@@ -437,7 +437,7 @@ Possible causes:
   - Repository is private (may need GITHUB_TOKEN)
 
 You can download it manually from:
-  https://github.com/queso/the-ai-team-plugin/releases
+  https://github.com/theaiteam-dev/the-ai-team-plugin/releases
 ```
 
 **Note:** The binary is downloaded to `${CLAUDE_PLUGIN_ROOT}/bin/ateam` which is gitignored. Each machine downloads its own platform-specific binary.
@@ -550,7 +550,7 @@ AskUserQuestion({
     question: "The A(i)-Team kanban-viewer provides a web UI and API backend. Would you like to start it now?",
     header: "Kanban UI",
     options: [
-      { label: "Start with Docker (Recommended)", description: "Pulls ghcr.io/queso/kanban-viewer and starts the container" },
+      { label: "Start with Docker (Recommended)", description: "Pulls ghcr.io/theaiteam-dev/kanban-viewer and starts the container" },
       { label: "Skip for now", description: "You can start it later — see setup docs" }
     ],
     multiSelect: false
