@@ -221,7 +221,7 @@ Model selection is defined in each agent's frontmatter (`agents/*.md`) — do NO
 
 ## ateam CLI
 
-Agents interact with the A(i)-Team API by running the `ateam` binary via the `Bash` tool. The binary lives at `${CLAUDE_PLUGIN_ROOT}/bin/ateam` (installed) or `~/go/bin/ateam` (dev). It reads `ATEAM_PROJECT_ID` from the environment automatically.
+Agents interact with the A(i)-Team API by running the `ateam` binary via the `Bash` tool. The entry point is `${CLAUDE_PLUGIN_ROOT}/bin/ateam` — a wrapper script that auto-downloads and updates the Go binary on first use (or when `minCliVersion` bumps). For development, use `~/go/bin/ateam` built from source. It reads `ATEAM_PROJECT_ID` from the environment automatically.
 
 Usage: `ateam <resource> <command> [flags]`
 

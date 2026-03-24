@@ -273,7 +273,7 @@ set -euo pipefail
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT}"
 BIN_DIR="${PLUGIN_ROOT}/bin"
-BINARY="${BIN_DIR}/ateam"
+BINARY="${BIN_DIR}/ateam-bin"
 
 # TODO: Update this if the repo is hosted elsewhere
 GITHUB_REPO="theaiteam-dev/the-ai-team-plugin"

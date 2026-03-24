@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Wrapper script for the ateam CLI binary.
+# Auto-downloads the binary on first use and updates it when the plugin
+# version requires a newer CLI. All status messages go to stderr so
+# JSON output from the real binary is never corrupted.
+set -euo pipefail
+
+# Resolve plugin root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
+BINARY="${SCRIPT_DIR}/ateam-bin"
+GITHUB_REPO="theaiteam-dev/the-ai-team-plugin"
+
+# --- Fast path: binary exists and meets minimum version ---
+
+semver_gte() {
+  [ "$(printf '%s\n%s' "$1" "$2" | sort -V | head -1)" = "$2" ]
+}
+
+if [ -f "$BINARY" ] && [ -x "$BINARY" ]; then
+  # Read minCliVersion from plugin.json
+  MIN_CLI_VERSION=""
+  PLUGIN_JSON="${PLUGIN_ROOT}/.claude-plugin/plugin.json"
+  if [ -f "$PLUGIN_JSON" ]; then
+    MIN_CLI_VERSION=$(grep -o '"minCliVersion"[[:space:]]*:[[:space:]]*"[^"]*"' "$PLUGIN_JSON" | sed 's/.*"minCliVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/' || true)
+  fi
+
+  if [ -z "$MIN_CLI_VERSION" ]; then
+    exec "$BINARY" "$@"
+  fi
+
+  CURRENT_VERSION=$("$BINARY" --version 2>/dev/null | awk '{print $NF}' || echo "unknown")
+
+  if [ "$CURRENT_VERSION" != "unknown" ] && semver_gte "$CURRENT_VERSION" "$MIN_CLI_VERSION"; then
+    exec "$BINARY" "$@"
+  fi
+
+  echo "ateam CLI ${CURRENT_VERSION} is below required ${MIN_CLI_VERSION}, updating..." >&2
+fi
+
+# --- Slow path: download the binary ---
+
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+
+case "$OS" in
+  darwin) PLATFORM="darwin" ;;
+  linux)  PLATFORM="linux" ;;
+  *)
+    echo "ERROR: Unsupported OS: $OS (need darwin or linux)" >&2
+    exit 1
+    ;;
+esac
+
+case "$ARCH" in
+  x86_64|amd64) ARCH_SUFFIX="amd64" ;;
+  arm64|aarch64) ARCH_SUFFIX="arm64" ;;
+  *)
+    echo "ERROR: Unsupported architecture: $ARCH (need amd64 or arm64)" >&2
+    exit 1
+    ;;
+esac
+
+ASSET_NAME="ateam-${PLATFORM}-${ARCH_SUFFIX}"
+
+# Check for pinned version in ateam.config.json
+DESIRED_VERSION="latest"
+if [ -f ateam.config.json ]; then
+  PINNED=$(grep -o '"ateamCliVersion"[[:space:]]*:[[:space:]]*"[^"]*"' ateam.config.json | sed 's/.*"ateamCliVersion"[[:space:]]*:[[:space:]]*"\([^"]*\)"/\1/' || true)
+  if [ -n "$PINNED" ] && [ "$PINNED" != "latest" ]; then
+    DESIRED_VERSION="$PINNED"
+  fi
+fi
+
+if [ "$DESIRED_VERSION" = "latest" ]; then
+  DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/${ASSET_NAME}"
+else
+  DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/releases/download/${DESIRED_VERSION}/${ASSET_NAME}"
+fi
+
+echo "Downloading ateam CLI (${ASSET_NAME})..." >&2
+
+HTTP_STATUS=$(curl -fSL -w "%{http_code}" -o "$BINARY" "$DOWNLOAD_URL" 2>/dev/null || true)
+
+if [ ! -f "$BINARY" ] || [ "$(wc -c < "$BINARY" | tr -d ' ')" -lt 1000 ]; then
+  echo "" >&2
+  echo "ERROR: Failed to download ateam CLI binary." >&2
+  echo "  URL: ${DOWNLOAD_URL}" >&2
+  echo "  HTTP status: ${HTTP_STATUS:-unknown}" >&2
+  echo "" >&2
+  echo "Download manually from: https://github.com/${GITHUB_REPO}/releases" >&2
+  rm -f "$BINARY"
+  exit 1
+fi
+
+chmod +x "$BINARY"
+
+if ! "$BINARY" --help >/dev/null 2>&1; then
+  echo "ERROR: Binary downloaded but failed to execute (platform mismatch?)." >&2
+  rm -f "$BINARY"
+  exit 1
+fi
+
+INSTALLED_VERSION=$("$BINARY" --version 2>/dev/null | awk '{print $NF}' || echo "unknown")
+echo "ateam CLI installed (${INSTALLED_VERSION})" >&2
+
+exec "$BINARY" "$@"

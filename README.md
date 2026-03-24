@@ -104,9 +104,10 @@ This configures your project:
 1. Sets `ATEAM_PROJECT_ID` for multi-project isolation
 2. Auto-detects package manager, lint/test commands from your project
 3. Creates `ateam.config.json` with check commands
-4. Downloads the `ateam` CLI binary
-5. Verifies API connectivity
-6. Configures permissions for background agents
+4. Verifies API connectivity
+5. Configures permissions for background agents
+
+The `ateam` CLI binary is auto-downloaded on first use — no manual install step needed.
 
 Your settings are stored in `.claude/settings.local.json`:
 
@@ -455,7 +456,7 @@ The plugin uses the `ateam` Go CLI binary to interact with the A(i)-Team API. Al
 
 ### Setup
 
-The `/ai-team:setup` command downloads the correct platform binary automatically. To build locally during development:
+The CLI binary auto-downloads on first use via the `bin/ateam` wrapper script. It also auto-updates when the plugin's `minCliVersion` requires a newer release. To build locally during development:
 
 ```bash
 cd packages/ateam-cli
