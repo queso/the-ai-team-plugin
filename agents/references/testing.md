@@ -102,8 +102,8 @@ test('debounce delays API call until user stops typing', () => {
 
 - Do tests exist for the new/changed behavior?
 - Does each test have a descriptive name that explains the expected outcome?
-- Are edge cases covered (empty input, null, boundary values)?
-- Are error paths tested, not just happy paths?
+- Cover edge cases (empty input, null, boundary values)
+- Include tests for error paths, not just happy paths
 - Are mocks/stubs minimal — only faking what's necessary?
 - Do tests clean up after themselves (no shared mutable state between tests)?
 - Are snapshot tests used sparingly and intentionally (not as a lazy catch-all)?

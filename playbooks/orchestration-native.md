@@ -507,13 +507,13 @@ When ALL items reach `done` stage, fetch `prdPath` from `ateam missions-current 
 
 **Always spawn a new Stockwell agent** for the final review (it uses a different, slimmer prompt optimized for PRD+diff review):
 
-```
+```text
 Task(
   team_name: "mission-{missionId}",
   name: "stockwell",
   subagent_type: "ai-team:stockwell",
-  description: "Lynch: Final Mission Review",
-  prompt: "You are Colonel Lynch conducting a FINAL MISSION REVIEW.
+  description: "Stockwell: Final Mission Review",
+  prompt: "You are Stockwell conducting a FINAL MISSION REVIEW.
 
   PRD path: {prdPath from ateam missions-current getCurrentMission}
 

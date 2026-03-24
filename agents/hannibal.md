@@ -564,7 +564,7 @@ Before dispatching Tawnia, move the mission's PRD from `prd/ready/` to `prd/comp
 ateam missions-current getCurrentMission --json
 
 # Move the PRD — adjust filename to match the actual file
-mv prd/ready/<slug>.md prd/completed/<slug>.md
+git mv prd/ready/<slug>.md prd/completed/<slug>.md
 ```
 
 If the PRD is in `prd/drafts/` instead of `prd/ready/`, move it from there. If no PRD file is found, skip this step and log a warning — do not block Tawnia.
