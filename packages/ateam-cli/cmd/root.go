@@ -23,7 +23,13 @@ func init() {
 	rootCmd.PersistentFlags().Bool("json", false, "Output raw JSON")
 	rootCmd.PersistentFlags().Bool("verbose", false, "Verbose output")
 	rootCmd.PersistentFlags().String("config", "", "Config file path")
-	rootCmd.PersistentFlags().String("base-url", "http://localhost:3000", "API base URL")
+
+	defaultBaseURL := "http://localhost:3000"
+	if envURL := os.Getenv("ATEAM_API_URL"); envURL != "" {
+		defaultBaseURL = envURL
+	}
+	rootCmd.PersistentFlags().String("base-url", defaultBaseURL, "API base URL (env: ATEAM_API_URL)")
+
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	// swagger-jack:custom:start init-hook
 	// swagger-jack:custom:end
