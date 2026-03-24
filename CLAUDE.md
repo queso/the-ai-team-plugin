@@ -308,3 +308,49 @@ Returns per-agent breakdown with model, token counts, and estimated cost:
 - `POST /api/hooks/events` — store hook events (called by observer hooks, not manually)
 
 Token pricing is loaded from `ateam.config.json` at runtime (see `packages/kanban-viewer/src/lib/token-cost.ts`).
+
+## Commits & Releases
+
+### Commit Messages
+
+All commits MUST follow [Conventional Commits](https://www.conventionalcommits.org/). This is enforced by commitlint on PRs (`.github/workflows/commitlint.yml`).
+
+| Prefix | Purpose | Release Effect |
+|--------|---------|----------------|
+| `feat:` | New feature | Minor bump (v1.**1**.0) |
+| `fix:` | Bug fix | Patch bump (v1.0.**1**) |
+| `docs:` | Documentation only | No release |
+| `style:` | Formatting, no logic change | No release |
+| `refactor:` | Code change, no new feature/fix | No release |
+| `perf:` | Performance improvement | Patch bump |
+| `test:` | Adding/updating tests | No release |
+| `build:` | Build system or dependencies | No release |
+| `ci:` | CI configuration | No release |
+| `chore:` | Maintenance | No release |
+| `revert:` | Revert a previous commit | Patch bump |
+
+For breaking changes, add `BREAKING CHANGE:` in the commit footer → major bump (v**2**.0.0).
+
+### Release Process
+
+Releases are fully automated via semantic-release (`.github/workflows/release.yml`):
+
+```
+Branch → PR to main → commitlint validates → merge → semantic-release
+                                                         ↓
+                                              Analyzes commits since last tag
+                                                         ↓
+                                              feat: → minor, fix: → patch
+                                                         ↓
+                                              Creates GitHub Release + v* tag
+                                                         ↓
+                                         ┌───────────────┼───────────────┐
+                                         ↓               ↓               ↓
+                                    Go CLI build    Docker image    Release notes
+                                   (4 platforms)   (GHCR publish)  (auto-generated)
+```
+
+- **No manual tagging needed** — semantic-release handles versioning from commit messages
+- **Manual tag fallback** — `git tag v1.2.3 && git push --tags` still triggers the full pipeline
+- **Changelogs are manual** — semantic-release does NOT update `CHANGELOG.md`; update it by hand
+- **Config**: `.releaserc.json` (plugins), `.commitlintrc.yml` (commit rules)
